@@ -134,6 +134,106 @@
     else Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') startPlugin(); });
 
 })();
+    class MDBListProvider {
+        static fetch(movie, callback) {
+            const apiKey = Lampa.Storage.get('mdblists_api_key', '');
+            if (!apiKey || !movie || !movie.id) return callback(null);
+            const type = movie.number_of_seasons ? 'show' : 'movie';
+            const url  = `https://api.mdblist.com/tmdb/${type}/${movie.id}?apikey=${apiKey}`;
+            const req = new Lampa.Reguest();
+            req.timeout(RATINGS_CONFIG.requestTimeout);
+            req.silent(url, (json) => { callback(this.parse(json)); }, () => callback(null), false, { dataType: 'json' });
+        }
+        static parse(response) {
+            const enabled = Lampa.Storage.get('mdblists_sources', ['imdb']);
+            const result = { logo: response.logo || null, ratings: {} };
+            if (response && response.ratings) {
+                response.ratings.forEach(r => {
+                    const key = (r.source || '').toLowerCase();
+                    if (enabled.includes(key)) result.ratings[key] = r.value;
+                });
+            }
+            return result;
+        }
+    }
+
+    // --- РЕНДЕР ---
+    function render(container, data) {
+        if (!data) return;
+        container.find('.mdb-ext').remove();
+        if (data.logo) {
+            container.find('.full-start__title-text').hide();
+            container.prepend(`<img class="mdb-ext" src="${data.logo}" style="max-height: 100px; margin-bottom: 15px; display: block; border: none;">`);
+        }
+        if (data.ratings && Object.keys(data.ratings).length > 0) {
+            let row = $('<div class="mdb-ext" style="display: flex; gap: 15px; margin-top: 10px; font-weight: bold; font-size: 1.2em; color: #fff;"></div>');
+            Object.keys(data.ratings).forEach(k => {
+                row.append(`<span>${k.toUpperCase()}: ${data.ratings[k]}</span>`);
+            });
+            container.append(row);
+        }
+    }
+
+    // --- РЕЄСТРАЦІЯ КОМПОНЕНТА (ФІКС ПОМИЛКИ) ---
+    Lampa.Component.add(PLUGIN_KEY, function (object, exam) {
+        var gui = new Lampa.Settings.Gui();
+        
+        this.create = function () {
+            this.activity.loader(true); // Показуємо завантаження
+            gui.create(exam);
+            this.activity.loader(false);
+            return gui.render();
+        };
+
+        this.render = function () {
+            return gui.render();
+        };
+    });
+
+    // --- НАЛАШТУВАННЯ ---
+    function initSettings() {
+        Lampa.SettingsApi.addComponent({
+            component: PLUGIN_KEY,
+            name: PLUGIN_NAME,
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z" fill="currentColor"/></svg>'
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: PLUGIN_KEY,
+            param: { name: 'mdblists_api_key', type: 'input', placeholder: 'MDBList API key', default: '' },
+            field: { name: 'API-ключ MDBList' }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: PLUGIN_KEY,
+            param: {
+                name: 'mdblists_sources',
+                type: 'select',
+                multiple: true,
+                values: { imdb: 'IMDb', metacritic: 'Metacritic', tomatoes: 'Rotten Tomatoes', popcorn: 'Audience', letterboxd: 'Letterboxd' },
+                default: ['imdb']
+            },
+            field: { name: 'Джерела рейтингів' }
+        });
+    }
+
+    // --- СТАРТ ---
+    function startPlugin() {
+        initSettings();
+        Lampa.Listener.follow('full', function (e) {
+            if (e.type == 'complite') {
+                const container = e.object.find('.full-start__title');
+                const cached = RatingsCache.load(e.data.movie.id);
+                if (cached) render(container, cached);
+                else MDBListProvider.fetch(e.data.movie, (d) => { if (d) { RatingsCache.save(e.data.movie.id, d); render(container, d); } });
+            }
+        });
+    }
+
+    if (window.appready) startPlugin();
+    else Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') startPlugin(); });
+
+})();
 (function () {
     'use strict';
 
