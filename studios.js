@@ -4,6 +4,7 @@
     function TMDBStudios() {
         var _this = this;
 
+        // Локалізація
         if (Lampa.Lang) {
             Lampa.Lang.add({
                 tmdb_studios: {
@@ -25,6 +26,7 @@
                 }
             });
 
+            // Стилі для кнопки та іконки
             var style = document.createElement('style');
             style.innerHTML = `
                 .studios-icon-img { 
@@ -83,14 +85,14 @@
                     title: title, 
                     items: items,
                     onSelect: function (selectedItem) {
-                        // Викликаємо компонент каталогу компанії
-                        Lampa.Activity.push({ 
-                            url: '', // Порожньо, бо дані бере компонент
-                            title: selectedItem.title, 
-                            component: 'studios', // Спеціальний компонент Lampa для студій
+                        // Точне копіювання логіки з надісланого тобою плагіна
+                        Lampa.Activity.push({
+                            url: 'movie', // Це ключовий момент для фільтрації
                             id: selectedItem.id,
-                            source: 'tmdb', 
-                            page: 1 
+                            title: selectedItem.title,
+                            component: 'company',
+                            source: 'tmdb',
+                            page: 1
                         });
                     },
                     onBack: function() {
@@ -104,8 +106,8 @@
         };
     }
 
-    if (!window.plugin_tmdb_studios_final) {
-        window.plugin_tmdb_studios_final = new TMDBStudios();
-        window.plugin_tmdb_studios_final.init();
+    if (!window.plugin_tmdb_studios_vfinal) {
+        window.plugin_tmdb_studios_vfinal = new TMDBStudios();
+        window.plugin_tmdb_studios_vfinal.init();
     }
 })();
