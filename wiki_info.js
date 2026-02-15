@@ -2,7 +2,7 @@
     'use strict';
 
     function WikiInfoPlugin() {
-        // Твоя іконка
+        // Посилання на іконку (не вшита)
         var ICON_WIKI = 'https://bodya-elven.github.io/Different/wikipedia.svg';
         var isOpened = false;
 
@@ -30,10 +30,10 @@
             var container = $(html);
             if (container.find('.lampa-wiki-button').length) return;
 
-            // Підпис змінено на Wikipedia
+            // Підпис Wikipedia
             var button = $('<div class="full-start__button selector lampa-wiki-button">' +
                                 '<img src="' + ICON_WIKI + '" class="wiki-icon-img">' +
-                                '<span>Wikipedia</span>' +
+                                <span>Wikipedia</span>' +
                             '</div>');
 
             var style = '<style>' +
@@ -81,9 +81,9 @@
             var isTV = !!(movie.first_air_date || movie.number_of_seasons);
             
             var results = [];
-            // По 5 запитів на кожну мову
-            var p1 = $.ajax({ url: 'https://uk.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleUA + ' ' + year + (isTV ? ' серіал' : ' фільм'), srlimit: 5, format: 'json', origin: '*' }, dataType: 'json' });
-            var p2 = $.ajax({ url: 'https://en.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleEN + ' ' + year + (isTV ? ' series' : ' film'), srlimit: 5, format: 'json', origin: '*' }, dataType: 'json' });
+            // Встановлено srlimit: 4
+            var p1 = $.ajax({ url: 'https://uk.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleUA + ' ' + year + (isTV ? ' серіал' : ' фільм'), srlimit: 4, format: 'json', origin: '*' }, dataType: 'json' });
+            var p2 = $.ajax({ url: 'https://en.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleEN + ' ' + year + (isTV ? ' series' : ' film'), srlimit: 4, format: 'json', origin: '*' }, dataType: 'json' });
 
             $.when(p1, p2).done(function (r1, r2) {
                 if (r1[0].query && r1[0].query.search) {
@@ -179,6 +179,5 @@
         };
     }
 
-    // Назва плагіна тепер wiki_info
     if (window.Lampa) window.wiki_info = new WikiInfoPlugin().init();
 })();
