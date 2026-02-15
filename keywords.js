@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    function TMDBKeywords() {
+    function TMDBKeywordsButton() {
         var _this = this;
 
         this.init = function () {
@@ -9,110 +9,85 @@
                 if (e.type == 'complite') {
                     var html = e.object.activity.render();
                     var card_data = e.data.movie;
-                    
-                    // Перевіряємо, чи є ID і чи це TMDB
+
+                    // Перевіряємо, чи це TMDB і чи є ID
                     if (card_data.id) {
                         _this.getKeywords(html, card_data);
                     }
                 }
             });
-
-            // Стилі для кнопок-тегів
-            var style = document.createElement('style');
-            style.innerHTML = `
-                .tmdb-tags-wrapper { margin: 1em 1.2em; }
-                .tmdb-tags-label { font-size: 0.9em; opacity: 0.6; margin-bottom: 0.5em; }
-                .tmdb-tags-list { display: flex; flex-wrap: wrap; gap: 0.5em; }
-                .tmdb-tag-btn {
-                    border: 2px solid rgba(255,255,255,0.1);
-                    background-color: rgba(0,0,0,0.3);
-                    border-radius: 0.5em;
-                    padding: 0.4em 0.8em;
-                    font-size: 0.9em;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    color: #fff;
-                }
-                .tmdb-tag-btn:hover, .tmdb-tag-btn.focus {
-                    background-color: #fff;
-                    color: #000;
-                    border-color: #fff;
-                }
-            `;
-            document.head.appendChild(style);
         };
 
         this.getKeywords = function (html, data) {
-            // Визначаємо тип: фільм чи серіал
             var method = (data.original_name || data.name) ? 'tv' : 'movie';
             var url = method + '/' + data.id + '/keywords';
 
             Lampa.TMDB.get(url, function (resp) {
-                // API TMDB віддає 'keywords' для фільмів і 'results' для серіалів
+                // Отримуємо список тегів
                 var tags = resp.keywords || resp.results || [];
-                
+
                 if (tags.length > 0) {
-                    _this.render(html, tags, method);
+                    _this.renderButton(html, tags, method);
                 }
             }, function (err) {
-                console.log('TMDB Tags Error:', err);
+                console.log('TMDB Keywords Error:', err);
             });
         };
 
-        this.render = function (html, tags, method) {
-            var container = $('<div class="tmdb-tags-wrapper"></div>');
-            var label = $('<div class="tmdb-tags-label">Теги:</div>');
-            var list = $('<div class="tmdb-tags-list"></div>');
+        this.renderButton = function (html, tags, method) {
+            // Знаходимо блок кнопок
+            var buttons = html.find('.full-start-new__buttons, .full-start__buttons');
 
-            tags.forEach(function (tag) {
-                // Клас selector робить елемент видимим для пульта
-                var item = $('<div class="tmdb-tag-btn selector">' + tag.name + '</div>');
+            if (buttons.length) {
+                // Створюємо кнопку в стилі Lampa
+                // SVG іконка (можна замінити на будь-яку іншу всередині тегу <svg>)
+                var icon = '<svg width="24px" height="24px" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M4 7V17C4 19 6 20 8 20H16C18 20 20 19 20 17V7C20 5 18 4 16 4H8C6 4 4 5 4 7Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M9 12H15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M12 9V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                
+                var button = $(
+                    '<div class="full-start__button selector view--category">' +
+                        icon +
+                        '<span>Теги</span>' +
+                    '</div>'
+                );
 
-                item.on('hover:enter click', function () {
-                    Lampa.Activity.push({
-                        url: 'discover/' + method + '?with_keywords=' + tag.id,
-                        title: 'Тег: ' + tag.name,
-                        component: 'category_full',
-                        source: 'tmdb',
-                        page: 1
+                // Додаємо дію при натисканні
+                button.on('hover:enter click', function () {
+                    // Формуємо масив для меню Lampa
+                    var items = tags.map(function (tag) {
+                        return {
+                            title: tag.name,
+                            id: tag.id,
+                            url: 'discover/' + method + '?with_keywords=' + tag.id
+                        };
+                    });
+
+                    // Відкриваємо меню вибору
+                    Lampa.Select.show({
+                        title: 'Теги',
+                        items: items,
+                        onSelect: function (item) {
+                            Lampa.Activity.push({
+                                url: item.url,
+                                title: 'Тег: ' + item.title,
+                                component: 'category_full',
+                                source: 'tmdb',
+                                page: 1
+                            });
+                        }
                     });
                 });
 
-                list.append(item);
-            });
+                // Додаємо кнопку в кінець списку
+                buttons.append(button);
 
-            container.append(label);
-            container.append(list);
-
-            // === ГОЛОВНА ЗМІНА: КУДИ ВСТАВЛЯТИ ===
-            
-            // Шукаємо опис (текст). У різних скінах класи можуть відрізнятися.
-            // Перебираємо найпопулярніші варіанти.
-            var description_block = html.find('.full-start__description'); // Стандарт
-            if (!description_block.length) description_block = html.find('.full-descr'); // Мобільні/Моди
-            if (!description_block.length) description_block = html.find('.full-story'); // Інші скіни
-
-            if (description_block.length) {
-                // Вставляємо ПІСЛЯ опису
-                description_block.after(container);
-            } else {
-                // Якщо опис не знайдено, вставляємо в кінець блоку інформації
-                var body = html.find('.full-start__body');
-                if(body.length) {
-                    body.append(container);
-                } else {
-                    // Аварійний варіант - просто в кінець всього
-                    html.append(container);
-                }
+                // Оновлюємо навігацію (щоб пульт побачив нову кнопку)
+                Lampa.Controller.toggle('full_start');
             }
-            
-            // Оновлюємо навігацію пульта
-            Lampa.Controller.toggle('full_start');
         };
     }
 
-    if (!window.plugin_tmdb_keywords) {
-        window.plugin_tmdb_keywords = new TMDBKeywords();
-        window.plugin_tmdb_keywords.init();
+    if (!window.plugin_tmdb_keywords_btn) {
+        window.plugin_tmdb_keywords_btn = new TMDBKeywordsButton();
+        window.plugin_tmdb_keywords_btn.init();
     }
 })();
