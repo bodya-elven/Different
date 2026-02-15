@@ -7,7 +7,7 @@
         // Посилання на твою іконку
         var ICON_STREAM = 'https://bodya-elven.github.io/Different/stream.svg';
 
-        // Локалізація назви кнопки
+        // Локалізація
         if (Lampa.Lang) {
             Lampa.Lang.add({
                 plugin_streaming_title: {
@@ -21,27 +21,28 @@
             if (!Lampa.Listener) return;
 
             Lampa.Listener.follow('full', function (e) {
-                if (e.type == 'complite') {
+                if (e.type == 'complite' || e.type == 'complete') {
                     var card = e.data.movie;
-                    // Працюємо тільки з TMDB
                     if (card && (card.source == 'tmdb' || e.data.source == 'tmdb') && card.id) {
-                        _this.getStreamingData(e.object.activity.render(), card);
+                        // Додаємо невелику затримку для впевненого рендеру
+                        setTimeout(function() {
+                            _this.getStreamingData(e.object.activity.render(), card);
+                        }, 200);
                     }
                 }
             });
 
-            // Стилі для іконки та пунктів меню
             var style = document.createElement('style');
             style.innerHTML = `
                 .streaming-icon-img { 
-                    width: 1.6em; 
-                    height: 1.6em; 
+                    width: 1.4em; 
+                    height: 1.4em; 
                     object-fit: contain;
                     display: block;
                     filter: invert(1); 
                 }
                 .button--streaming { 
-                    display: flex; 
+                    display: flex !important; 
                     align-items: center; 
                     justify-content: center; 
                     gap: 0.4em; 
@@ -69,16 +70,29 @@
                 url: url,
                 dataType: 'json',
                 success: function (resp) {
-                    // Тільки регіон США (US)
+                    // Використовуємо регіон US, як найбільш інформативний
                     var us_data = resp.results ? resp.results.US : null;
                     var providers = [];
                     
-                    if (us_data && us_data.flatrate) {
-                        providers = us_data.flatrate;
+                    // Об'єднуємо підписку, оренду та купівлю, щоб точно щось знайти
+                    if (us_data) {
+                        providers = (us_data.flatrate || [])
+                            .concat(us_data.rent || [])
+                            .concat(us_data.buy || []);
                     }
 
-                    if (providers.length > 0) {
-                        _this.renderButton(html, providers, type);
+                    // Видаляємо дублікати за ID
+                    var unique_providers = [];
+                    var ids = [];
+                    providers.forEach(function(p) {
+                        if (ids.indexOf(p.provider_id) === -1) {
+                            ids.push(p.provider_id);
+                            unique_providers.push(p);
+                        }
+                    });
+
+                    if (unique_providers.length > 0) {
+                        _this.renderButton(html, unique_providers, type);
                     }
                 }
             });
@@ -86,8 +100,7 @@
 
         this.renderButton = function (html, providers, type) {
             var container = html.find('.full-start-new__buttons, .full-start__buttons').first();
-            if (!container.length) return;
-            if (container.find('.button--streaming').length) return;
+            if (!container.length || container.find('.button--streaming').length) return;
 
             var title = Lampa.Lang.translate('plugin_streaming_title');
             var icon = '<img src="' + ICON_STREAM + '" class="streaming-icon-img" />';
@@ -110,7 +123,6 @@
                         $(html_item).prepend('<img src="' + item.icon + '">');
                     },
                     onSelect: function (selected) {
-                        // Відкриваємо категорію цієї платформи (фільми або серіали)
                         Lampa.Activity.push({
                             url: 'discover/' + type,
                             title: selected.title + ' (US)',
@@ -130,7 +142,7 @@
                 });
             });
 
-            // Кнопка в самому кінці списку
+            // Додаємо кнопку останньою в списку
             container.append(button);
         };
     }
