@@ -49,14 +49,13 @@
 
                     var regions = ['UA', 'US'];
                     var providers = [];
-                    var excludeList = ['Free', 'Ad', 'Plex', 'Tubi', 'Pluto TV', 'YouTube', 'Google Play'];
+                    // Apple TV Store додано до виключень разом з YouTube та Google
+                    var excludeList = ['Free', 'Ad', 'Plex', 'Tubi', 'Pluto TV', 'YouTube', 'Google Play', 'Apple TV Store'];
                     
-                    // Мапа для заміни довгих назв на короткі (як на скріншоті)
                     var renameMap = {
                         'MGM+ Amazon Channel': 'MGM+',
                         'Epix': 'MGM+',
-                        'Amazon Prime Video': 'Amazon Video',
-                        'HBO Max': 'Max'
+                        'Amazon Prime Video': 'Prime Video',
                     };
 
                     regions.forEach(function(reg) {
@@ -68,10 +67,7 @@
                                 
                             list.forEach(function(p) { 
                                 p.reg = reg;
-                                // Заміна назви, якщо вона є в мапі
-                                if (renameMap[p.provider_name]) {
-                                    p.provider_name = renameMap[p.provider_name];
-                                }
+                                if (renameMap[p.provider_name]) p.provider_name = renameMap[p.provider_name];
                             });
                             providers = providers.concat(list);
                         }
@@ -81,7 +77,8 @@
                     var added_ids = [];
 
                     providers.forEach(function(p) {
-                        if (p.display_priority > 25) return;
+                        // Жорсткий фільтр пріоритету: залишаємо лише основні сервіси
+                        if (p.display_priority > 16) return; 
                         
                         var isExcluded = excludeList.some(function(key) {
                             return p.provider_name.toLowerCase().indexOf(key.toLowerCase()) !== -1;
@@ -137,7 +134,6 @@
                         });
                     },
                     onBack: function() {
-                        // ПОВЕРНЕННЯ ФОКУСУ (виправляє зависання)
                         Lampa.Controller.toggle(controller_name);
                     }
                 });
