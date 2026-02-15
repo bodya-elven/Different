@@ -39,12 +39,16 @@
             // Стилі
             var style = document.createElement('style');
             style.innerHTML = `
-                .keywords-icon-img { 
+                /* Стилі для вбудованої SVG іконки */
+                .keywords-icon-svg { 
                     width: 1.6em; 
                     height: 1.6em; 
-                    object-fit: contain;
                     display: block;
-                    filter: invert(1); /* Робить чорну іконку білою */
+                    fill: none;
+                    stroke: currentColor; /* Бере колір тексту (білий) */
+                    stroke-width: 2;
+                    stroke-linecap: round;
+                    stroke-linejoin: round;
                 }
                 .button--keywords { 
                     display: flex; 
@@ -62,7 +66,6 @@
         this.getKeywords = function (html, card) {
             var method = (card.original_name || card.name) ? 'tv' : 'movie';
             
-            // Запит до API
             var url = Lampa.TMDB.api(method + '/' + card.id + '/keywords?api_key=' + Lampa.TMDB.key());
 
             $.ajax({
@@ -72,23 +75,18 @@
                 success: function (resp) {
                     var tags = resp.keywords || resp.results || [];
                     if (tags.length > 0) {
-                        // Переклад + Рендер
                         _this.translateTags(tags, function(translatedTags) {
                             _this.renderButton(html, translatedTags);
                         });
                     }
                 },
-                error: function () {
-                    // Тиха помилка
-                }
+                error: function () {}
             });
         };
 
-        // Переклад через Google (UK only)
         this.translateTags = function (tags, callback) {
             var lang = Lampa.Storage.get('language', 'uk');
             
-            // Якщо мова інтерфейсу не українська (наприклад англ), не перекладаємо
             if (lang !== 'uk') {
                 callback(tags);
                 return;
@@ -131,13 +129,14 @@
             if (!container.length || container.find('.button--keywords').length) return;
 
             var title = Lampa.Lang.translate('tmdb_keywords');
-            // Твоя іконка
-            var icon = '<img src="https://bodya-elven.github.io/Different/tag.svg" class="keywords-icon-img" />';
+            
+            // === ВБУДОВАНА SVG (Вирішує проблему з іконкою на ТБ) ===
+            // Це іконка "Tag" (схожа на ту, що ти скидав)
+            var icon = '<svg class="keywords-icon-svg" viewBox="0 0 24 24"><path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z"></path><line x1="7" y1="7" x2="7.01" y2="7"></line></svg>';
             
             var button = $('<div class="full-start__button selector view--category button--keywords">' + icon + '<span>' + title + '</span></div>');
 
             button.on('hover:enter click', function () {
-                // 1. Список тегів
                 var items = tags.map(function(tag) {
                     return { 
                         title: tag.name, 
@@ -145,12 +144,17 @@
                     };
                 });
 
+                // Відкриваємо список тегів
                 Lampa.Select.show({
                     title: title, 
                     items: items,
                     onSelect: function (selectedItem) {
-                        // 2. Меню вибору: Фільми чи Серіали (сортування ЗАВЖДИ за популярністю)
                         _this.showTypeMenu(selectedItem.tag_data);
+                    },
+                    // === ВИПРАВЛЕННЯ ЗАВИСАННЯ ===
+                    // Коли натискаємо "Назад", повертаємо керування картці фільму
+                    onBack: function() {
+                        Lampa.Controller.toggle('full_start');
                     }
                 });
             });
@@ -172,10 +176,9 @@
             ];
 
             Lampa.Select.show({
-                title: tag.name, // Назва тегу в заголовку
+                title: tag.name, 
                 items: menu,
                 onSelect: function(item) {
-                    // Відкриваємо каталог з сортуванням POPULARITY
                     Lampa.Activity.push({ 
                         url: 'discover/' + item.method + '?with_keywords=' + tag.id + '&sort_by=popularity.desc', 
                         title: tag.name + ' - ' + item.title, 
@@ -183,13 +186,17 @@
                         source: 'tmdb', 
                         page: 1 
                     });
+                },
+                // Теж додаємо onBack для другого меню, про всяк випадок
+                onBack: function() {
+                    Lampa.Controller.toggle('full_start');
                 }
             });
         };
     }
 
-    if (!window.plugin_tmdb_keywords_pop) {
-        window.plugin_tmdb_keywords_pop = new TMDBKeywords();
-        window.plugin_tmdb_keywords_pop.init();
+    if (!window.plugin_tmdb_keywords_fixed) {
+        window.plugin_tmdb_keywords_fixed = new TMDBKeywords();
+        window.plugin_tmdb_keywords_fixed.init();
     }
 })();
