@@ -2,8 +2,8 @@
     'use strict';
 
     function WikiInfoPlugin() {
-        // Вшита іконка Wikipedia (Base64)
-        var ICON_WIKI = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAyNCAyNCI+PHBhdGggZD0iTTEyIDJDNi40OCAyIDIgNi40OCAyIDEyczQuNDggMTAgMTAgMTAgMTAtNC40OCAxMC0xMFMxNy41MiAyIDEyIDJ6bS0uMDEgMTcuOTNjLTQuMzggMC03LjkzLTMuNTUtNy45My03LjkzcyTMuNTUtNy45MyA3LjkzLTcuOTNTMTkuOTMgNy41NCAxOS45MyAxMnMtMy41NiA3LjkzLTcuOTQgNy45M3ptLTQuMjQtNy45M2MwIC42OS41NiAxLjI1IDEuMjUgMS4yNXMuNjMtLjA3IDEuMjUtMS4yNWMuNjItMS4xOCAxLjI1LTEuMjUgMS4yNS0xLjI1cy42My4wNyAxLjI1IDEuMjVjLjYyIDEuMTggMS4yNSAxLjI1IDEuMjUgMS4yNXMxLjI1LS41NiAxLjI1LTEuMjVzLS41Ni0xLjI1LTEuMjUtMS4yNXMtLjYzLjA3LTEuMjUgMS4yNWMtLjYyIDEuMTgtMS4yNSAxLjI1LTEuMjUgMS4yNXMtLjYzLS4wNy0xLjI1LTEuMjVjLS42Mi0xLjE4LTEuMjUtMS4yNS0xLjI1LTEuMjVzLTEuMjUuNTYtMS4yNSAxLjI1eiIvPjwvc3ZnPg==';
+        // Твоя іконка
+        var ICON_WIKI = 'https://bodya-elven.github.io/Different/wikipedia.svg';
         var isOpened = false;
 
         this.init = function () {
@@ -30,6 +30,7 @@
             var container = $(html);
             if (container.find('.lampa-wiki-button').length) return;
 
+            // Підпис змінено на Wikipedia
             var button = $('<div class="full-start__button selector lampa-wiki-button">' +
                                 '<img src="' + ICON_WIKI + '" class="wiki-icon-img">' +
                                 '<span>Wikipedia</span>' +
@@ -80,6 +81,7 @@
             var isTV = !!(movie.first_air_date || movie.number_of_seasons);
             
             var results = [];
+            // По 5 запитів на кожну мову
             var p1 = $.ajax({ url: 'https://uk.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleUA + ' ' + year + (isTV ? ' серіал' : ' фільм'), srlimit: 5, format: 'json', origin: '*' }, dataType: 'json' });
             var p2 = $.ajax({ url: 'https://en.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleEN + ' ' + year + (isTV ? ' series' : ' film'), srlimit: 5, format: 'json', origin: '*' }, dataType: 'json' });
 
@@ -177,5 +179,6 @@
         };
     }
 
+    // Назва плагіна тепер wiki_info
     if (window.Lampa) window.wiki_info = new WikiInfoPlugin().init();
 })();
