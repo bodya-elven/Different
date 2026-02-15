@@ -83,11 +83,12 @@
                     title: title, 
                     items: items,
                     onSelect: function (selectedItem) {
-                        // Змінено компонент на 'category' для правильного відображення як на фото
+                        // Викликаємо компонент каталогу компанії
                         Lampa.Activity.push({ 
-                            url: 'company/' + selectedItem.id, 
+                            url: '', // Порожньо, бо дані бере компонент
                             title: selectedItem.title, 
-                            component: 'category', 
+                            component: 'studios', // Спеціальний компонент Lampa для студій
+                            id: selectedItem.id,
                             source: 'tmdb', 
                             page: 1 
                         });
@@ -103,8 +104,8 @@
         };
     }
 
-    if (!window.plugin_tmdb_studios_v3) {
-        window.plugin_tmdb_studios_v3 = new TMDBStudios();
-        window.plugin_tmdb_studios_v3.init();
+    if (!window.plugin_tmdb_studios_final) {
+        window.plugin_tmdb_studios_final = new TMDBStudios();
+        window.plugin_tmdb_studios_final.init();
     }
 })();
