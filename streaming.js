@@ -4,10 +4,8 @@
     function StreamingPlugin() {
         var _this = this;
         
-        // Посилання на іконку
         var ICON_STREAM = 'https://bodya-elven.github.io/Different/stream.svg';
 
-        // Локалізація (повертаємо назву "Стрімінги")
         if (Lampa.Lang) {
             Lampa.Lang.add({
                 plugin_streaming_title: {
@@ -51,8 +49,15 @@
 
                     var regions = ['UA', 'US'];
                     var providers = [];
-                    // Apple TV залишаємо, YouTube та Google Play — прибираємо
                     var excludeList = ['Free', 'Ad', 'Plex', 'Tubi', 'Pluto TV', 'YouTube', 'Google Play'];
+                    
+                    // Мапа для заміни довгих назв на короткі (як на скріншоті)
+                    var renameMap = {
+                        'MGM+ Amazon Channel': 'MGM+',
+                        'Epix': 'MGM+',
+                        'Amazon Prime Video': 'Amazon Video',
+                        'HBO Max': 'Max'
+                    };
 
                     regions.forEach(function(reg) {
                         var reg_data = resp.results[reg];
@@ -61,7 +66,13 @@
                                 .concat(reg_data.rent || [])
                                 .concat(reg_data.buy || []);
                                 
-                            list.forEach(function(p) { p.reg = reg; });
+                            list.forEach(function(p) { 
+                                p.reg = reg;
+                                // Заміна назви, якщо вона є в мапі
+                                if (renameMap[p.provider_name]) {
+                                    p.provider_name = renameMap[p.provider_name];
+                                }
+                            });
                             providers = providers.concat(list);
                         }
                     });
@@ -70,7 +81,7 @@
                     var added_ids = [];
 
                     providers.forEach(function(p) {
-                        if (p.display_priority > 20) return;
+                        if (p.display_priority > 25) return;
                         
                         var isExcluded = excludeList.some(function(key) {
                             return p.provider_name.toLowerCase().indexOf(key.toLowerCase()) !== -1;
@@ -99,9 +110,10 @@
             var button = $('<div class="full-start__button selector button--streaming">' + icon + '<span>' + title + '</span></div>');
 
             button.on('hover:enter click', function () {
+                var controller_name = Lampa.Controller.enabled().name;
                 var items = providers.map(function(p) {
                     return {
-                        title: p.provider_name, // Тільки назва
+                        title: p.provider_name,
                         id: p.provider_id,
                         reg: p.reg
                     };
@@ -124,7 +136,10 @@
                             }
                         });
                     },
-                    onBack: function() { Lampa.Controller.toggle('full_start'); }
+                    onBack: function() {
+                        // ПОВЕРНЕННЯ ФОКУСУ (виправляє зависання)
+                        Lampa.Controller.toggle(controller_name);
+                    }
                 });
             });
 
