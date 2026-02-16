@@ -82,50 +82,53 @@
             });
         };
 
-        this.renderButton = function (html, tags) {
-            html.find('.button--keywords').remove();
+        this.renderButton = function (render, tags) {
+            $('.button--keywords', render).remove();
 
-            var container = html.find('.full-start-new__buttons, .full-start__buttons').first();
+            var container = $('.full-start-new__buttons, .full-start__buttons', render).first();
             if (!container.length) return;
 
             var title = Lampa.Lang.translate('plugin_keywords_title');
-            var button = $('<div class="full-start__button selector button--keywords"><img src="' + ICON_TAG + '" class="keywords-icon-img" /><span>' + title + '</span></div>');
+            var btn = $('<div class="full-start__button selector button--keywords"><img src="' + ICON_TAG + '" class="keywords-icon-img" /><span>' + title + '</span></div>');
 
-            button.on('hover:enter click', function () {
-                var controllerName = Lampa.Controller.enabled().name;
-                var items = tags.map(function(tag) {
-                    return { 
-                        title: tag.name.charAt(0).toUpperCase() + tag.name.slice(1), 
-                        tag_data: tag 
-                    };
-                });
-
-                Lampa.Select.show({
-                    title: title,
-                    items: items,
-                    onSelect: function (selectedItem) {
-                        _this.showTypeMenu(selectedItem.tag_data, controllerName, button, html);
-                    },
-                    onBack: function () {
-                        // Точно як у твоєму прикладі: toggle + collectionFocus
-                        Lampa.Controller.toggle(controllerName);
-                        Lampa.Controller.collectionFocus(button[0], html[0]);
-                    }
-                });
+            // ВИПРАВЛЕННЯ: Передаємо 'this' (DOM елемент) у функцію обробки, як у референсному плагіні
+            btn.on('hover:enter click', function () {
+                _this.onButtonClick(tags, this);
             });
 
-            container.append(button);
+            container.append(btn);
+
+            if (Lampa.Activity.active().activity.toggle) {
+                Lampa.Activity.active().activity.toggle();
+            }
+        };
+
+        // Логіка кліку винесена окремо, точно як у tmdb-networks
+        this.onButtonClick = function(tags, element) {
+            var controllerName = Lampa.Controller.enabled().name;
             
-            // Оновлення активності для реєстрації нових селекторів
-            Lampa.Controller.add('full_start', {
-                toggle: function () {
-                    Lampa.Controller.collectionSet(html);
-                    Lampa.Controller.collectionFocus(html.find('.selector')[0], html[0]);
+            var items = tags.map(function(tag) {
+                return { 
+                    title: tag.name.charAt(0).toUpperCase() + tag.name.slice(1), 
+                    tag_data: tag 
+                };
+            });
+
+            Lampa.Select.show({
+                title: Lampa.Lang.translate('plugin_keywords_title'),
+                items: items,
+                onSelect: function (selectedItem) {
+                    _this.showTypeMenu(selectedItem.tag_data, controllerName, element);
+                },
+                onBack: function () {
+                    Lampa.Controller.toggle(controllerName);
+                    // ВИПРАВЛЕННЯ: Використовуємо Lampa.Activity.active().activity.render() для отримання актуального контексту
+                    Lampa.Controller.collectionFocus(element, Lampa.Activity.active().activity.render());
                 }
             });
         };
 
-        this.showTypeMenu = function(tag, prevController, btnElement, renderElement) {
+        this.showTypeMenu = function(tag, prevController, btnElement) {
             Lampa.Select.show({
                 title: tag.name,
                 items: [
@@ -142,11 +145,70 @@
                     });
                 },
                 onBack: function() {
-                    // Повернення до селекту тегів
-                    Lampa.Controller.toggle('select');
+                    // Повертаємося до попереднього меню (список тегів)
+                    // Тут ми просто викликаємо onButtonClick знову, передаючи ті самі параметри
+                    // Це надійніше, ніж намагатися "відкрити назад" селект
+                    _this.onButtonClick([tag], btnElement); 
+                    
+                    // АБО (якщо ви хочете просто повернутись до меню):
+                    // Але оскільки ми не зберігаємо повний список тегів у showTypeMenu, 
+                    // краще просто зімітувати натискання "Назад" ще раз або перезапустити onButtonClick, 
+                    // але для цього треба прокинути tags.
+                    // Спростимо: повертаємо на кнопку.
+                    
+                    Lampa.Controller.toggle(prevController);
+                    Lampa.Controller.collectionFocus(btnElement, Lampa.Activity.active().activity.render());
                 }
             });
         };
+        
+        // Переписуємо showTypeMenu, щоб коректно працювала кнопка "Назад" всередині підменю
+        // Нам потрібно зберегти посилання на tags, щоб відкрити список заново
+        this.onButtonClick = function(tags, element) {
+            var controllerName = Lampa.Controller.enabled().name;
+            
+            var items = tags.map(function(tag) {
+                return { 
+                    title: tag.name.charAt(0).toUpperCase() + tag.name.slice(1), 
+                    tag_data: tag 
+                };
+            });
+
+            Lampa.Select.show({
+                title: Lampa.Lang.translate('plugin_keywords_title'),
+                items: items,
+                onSelect: function (selectedItem) {
+                    _this.showTypeMenu(selectedItem.tag_data, tags, element, controllerName);
+                },
+                onBack: function () {
+                    Lampa.Controller.toggle(controllerName);
+                    Lampa.Controller.collectionFocus(element, Lampa.Activity.active().activity.render());
+                }
+            });
+        };
+
+        this.showTypeMenu = function(tag, allTags, btnElement, prevController) {
+             Lampa.Select.show({
+                title: tag.name,
+                items: [
+                    { title: Lampa.Lang.translate('plugin_keywords_movies'), method: 'movie' },
+                    { title: Lampa.Lang.translate('plugin_keywords_tv'), method: 'tv' }
+                ],
+                onSelect: function(item) {
+                    Lampa.Activity.push({
+                        url: 'discover/' + item.method + '?with_keywords=' + tag.id + '&sort_by=popularity.desc',
+                        title: tag.name,
+                        component: 'category_full',
+                        source: 'tmdb',
+                        page: 1
+                    });
+                },
+                onBack: function() {
+                    // Ось тут правильна логіка: при поверненні з вибору типу ми знову відкриваємо список тегів
+                    _this.onButtonClick(allTags, btnElement);
+                }
+            });
+        }
     }
 
     if (!window.plugin_keywords_instance) {
