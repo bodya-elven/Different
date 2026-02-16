@@ -56,7 +56,6 @@
             var lang = Lampa.Storage.get('language', 'uk');
             if (lang !== 'uk') return callback(tags);
 
-            // Додаємо вказівку контексту "Movie tag:" перед кожним словом
             var tagsWithContext = tags.map(function(tag) {
                 return "Movie tag: " + tag.name;
             });
@@ -75,14 +74,15 @@
                                 if (item[0]) translatedText += item[0];
                             });
                         }
-                        
-                        // Розбиваємо переклад назад на масив
                         var translatedArray = translatedText.split('|||');
-                        
                         tags.forEach(function(tag, index) {
                             if (translatedArray[index]) {
-                                // Прибираємо префікс "Тег фільму:" або "Movie tag:", який додав перекладач
-                                var cleanName = translatedArray[index].replace(/тег фільму:|тег фільму|movie tag:|movie tag/gi, '').trim();
+                                // ПОКРАЩЕНО: Видаляємо всі варіанти префікса (з двокрапкою, пробілами, різним регістром)
+                                var cleanName = translatedArray[index]
+                                    .replace(/movie tag[:\s]*/gi, '')
+                                    .replace(/тег фільму[:\s]*/gi, '')
+                                    .replace(/^[:\s\-]*/, '') // Видаляємо зайві символи на початку
+                                    .trim();
                                 tag.name = cleanName;
                             }
                         });
@@ -118,6 +118,7 @@
                         _this.showTypeMenu(selectedItem.tag_data);
                     },
                     onBack: function() {
+                        // Повернення фокусу на кнопку картки
                         Lampa.Controller.toggle('full_start');
                     }
                 });
@@ -145,7 +146,8 @@
                     });
                 },
                 onBack: function() {
-                    Lampa.Controller.toggle('full_start');
+                    // Повернення фокусу до списку тегів
+                    Lampa.Controller.toggle('select'); 
                 }
             });
         };
