@@ -4,8 +4,7 @@
     function KeywordsAIPlugin() {
         var _this = this;
         
-        // === НАЛАШТУВАННЯ ===
-        // Встав свій ключ всередину лапок
+        // === ВСТАВ СВІЙ КЛЮЧ ===
         var GEMINI_API_KEY = 'AIzaSyA7txXLnMtCdUvKFde9W-tXYJHVxXOW4_Q'; 
         
         var ICON_TAG = 'https://bodya-elven.github.io/Different/tag.svg';
@@ -49,7 +48,6 @@
                 success: function (resp) {
                     var tags = resp.keywords || resp.results || [];
                     if (tags.length > 0) {
-                        // Запускаємо процес перекладу
                         _this.processTranslation(tags, function(finalTags) {
                             _this.renderButton(html, finalTags);
                         });
@@ -60,15 +58,12 @@
 
         this.processTranslation = function (tags, callback) {
             var lang = Lampa.Storage.get('language', 'uk');
-            
-            // Якщо мова не українська - не перекладаємо
             if (lang !== 'uk') return callback(tags);
 
-            // Якщо ключ є і він не пустий - пробуємо Gemini
+            // Якщо ключ є - використовуємо Gemini з контекстом
             if (GEMINI_API_KEY && GEMINI_API_KEY.length > 10 && GEMINI_API_KEY !== 'ВСТАВ_СВІЙ_КЛЮЧ_СЮДИ') {
                 _this.translateWithGemini(tags, callback);
             } else {
-                console.log('Gemini Key missing, using Google Translate');
                 _this.translateWithGoogle(tags, callback);
             }
         };
@@ -76,16 +71,20 @@
         this.translateWithGemini = function(tags, callback) {
             var originalNames = tags.map(function(t) { return t.name; });
             
-            // Промпт для AI: просимо перекласти масив і повернути JSON
-            var prompt = "Translate these movie tags from English to Ukrainian. Context: cinema metadata keywords. " +
-                         "Strict rules: 'based on comic' -> 'за мотивами коміксів', 'anime' -> 'аніме', 'short' -> 'короткометражка', 'stand-up comedy' -> 'стендап'. " +
-                         "Output format: JSON array of strings only. No markdown. Input: " + JSON.stringify(originalNames);
+            // === ПРАВИЛЬНИЙ ЗАПИТ З КОНТЕКСТОМ ===
+            // Ми кажемо: "Це теги фільмів. Переклади правильно."
+            var prompt = 
+                "Translate the following JSON array of strings from English to Ukrainian.\n" +
+                "CONTEXT: These are **movie tags** (metadata) describing genres, plots, or sources.\n" +
+                "INSTRUCTIONS:\n" +
+                "- Translate specifically for a cinema interface.\n" +
+                "- E.g. interpret 'comic' as 'comic book' (комікс), NOT 'funny'.\n" +
+                "- E.g. interpret 'short' as 'short film' (короткометражка).\n" +
+                "OUTPUT: Return ONLY the raw JSON array of translated strings.\n\n" +
+                "Input: " + JSON.stringify(originalNames);
 
             var url = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=' + GEMINI_API_KEY;
-
-            var payload = {
-                contents: [{ parts: [{ text: prompt }] }]
-            };
+            var payload = { contents: [{ parts: [{ text: prompt }] }] };
 
             $.ajax({
                 url: url,
@@ -94,29 +93,22 @@
                 contentType: 'application/json',
                 success: function(resp) {
                     try {
-                        // Отримуємо текст відповіді
-                        var text = resp.candidates[0].content.parts[0].text;
-                        // Чистимо від можливих ```json ... ```
-                        text = text.replace(/```json|```/g, '').trim();
+                        var text = resp.candidates[0].content.parts[0].text.replace(/```json|```/g, '').trim();
                         var translatedArray = JSON.parse(text);
 
-                        // Перевіряємо, чи кількість слів збігається
                         if (Array.isArray(translatedArray) && translatedArray.length === tags.length) {
                             tags.forEach(function(tag, index) {
                                 tag.name = translatedArray[index];
                             });
                             callback(tags);
                         } else {
-                            // Якщо AI повернув щось не те - фолбек
                             _this.translateWithGoogle(tags, callback);
                         }
                     } catch (e) {
-                        console.error('Gemini Error:', e);
                         _this.translateWithGoogle(tags, callback);
                     }
                 },
-                error: function(err) {
-                    console.error('Gemini API Error:', err);
+                error: function() {
                     _this.translateWithGoogle(tags, callback);
                 }
             });
@@ -134,9 +126,7 @@
                     try {
                         var translatedText = '';
                         if (result && result[0]) {
-                            result[0].forEach(function(item) {
-                                if (item[0]) translatedText += item[0];
-                            });
+                            result[0].forEach(function(item) { if (item[0]) translatedText += item[0]; });
                         }
                         var translatedArray = translatedText.split('|||');
                         tags.forEach(function(tag, index) {
@@ -155,17 +145,14 @@
                 var btn = html.find('.button--play, .button--trailer, .full-start__button').first();
                 if (btn.length) container = btn.parent();
             }
-
             if (!container.length || container.find('.button--keywords').length) return;
 
             var title = Lampa.Lang.translate('plugin_keywords_title');
             var icon = '<img src="' + ICON_TAG + '" class="keywords-icon-img" />';
-            
             var button = $('<div class="full-start__button selector view--category button--keywords">' + icon + '<span>' + title + '</span></div>');
 
             button.on('hover:enter click', function () {
                 var items = tags.map(function(tag) {
-                    // Робимо першу літеру великою
                     var niceName = tag.name.charAt(0).toUpperCase() + tag.name.slice(1);
                     return { title: niceName, tag_data: tag };
                 });
@@ -176,12 +163,9 @@
                     onSelect: function (selectedItem) {
                         _this.showTypeMenu(selectedItem.tag_data);
                     },
-                    onBack: function() {
-                        Lampa.Controller.toggle('full_start');
-                    }
+                    onBack: function() { Lampa.Controller.toggle('full_start'); }
                 });
             });
-
             container.append(button);
         };
 
@@ -190,7 +174,6 @@
                 { title: Lampa.Lang.translate('plugin_keywords_movies'), method: 'movie' },
                 { title: Lampa.Lang.translate('plugin_keywords_tv'), method: 'tv' }
             ];
-
             Lampa.Select.show({
                 title: tag.name, 
                 items: menu,
@@ -203,9 +186,7 @@
                         page: 1 
                     });
                 },
-                onBack: function() {
-                    Lampa.Controller.toggle('full_start');
-                }
+                onBack: function() { Lampa.Controller.toggle('full_start'); }
             });
         };
     }
