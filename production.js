@@ -72,7 +72,7 @@
             if (!container.length || container.find('.button--studios').length) return;
 
             var title = Lampa.Lang.translate('tmdb_studios');
-            var icon = '<img src="https://bodya-elven.github.io/different/film.svg" class="studios-icon-img" />';
+            var icon = '<img src="https://bodya-elven.github.io/different/icons/film.svg" class="studios-icon-img" />';
             
             var button = $('<div class="full-start__button selector view--category button--studios">' + icon + '<span>' + title + '</span></div>');
 
