@@ -2,7 +2,7 @@
     'use strict';
 
     function WikiInfoPlugin() {
-        var ICON_WIKI = 'https://bodya-elven.github.io/Different/wikipedia.svg';
+        var ICON_WIKI = 'https://bodya-elven.github.io/different/wikipedia.svg';
         var isOpened = false;
 
         this.init = function () {
