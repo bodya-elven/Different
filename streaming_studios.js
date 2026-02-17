@@ -2,9 +2,8 @@
     'use strict';
 
     /**
-     * STUDIOS MASTER v3.0 (Custom Icons)
+     * STUDIOS MASTER v3.1 (White Icons & Logic Fixes)
      * Unified Collections for Lampa
-     * Description: Uses external icons from bodya-elven GitHub Pages.
      */
 
     var ICON_BASE = 'https://bodya-elven.github.io/different/icons/';
@@ -34,7 +33,7 @@
             ]
         },
         'hbo': {
-            title: 'HBO / Max',
+            title: 'HBO',
             icon: '<img class="studios_icon" src="' + ICON_BASE + 'hbo.svg" />',
             categories: [
                 { title: "Нові фільми", type: "movie", params: { "with_companies": "174", "sort_by": "primary_release_date.desc", "primary_release_date.lte": "{current_date}" } },
@@ -116,7 +115,7 @@
             ]
         },
         'bbc': {
-            title: 'BBC iPlayer',
+            title: 'BBC',
             icon: '<img class="studios_icon" src="' + ICON_BASE + 'bbc.svg" />',
             categories: [
                 { title: "Нові серіали", type: "tv", params: { "with_networks": "4|2", "origin_country": "GB", "sort_by": "first_air_date.desc", "first_air_date.lte": "{current_date}" } },
@@ -138,7 +137,8 @@
             title: 'Пізнавальне',
             icon: '<img class="studios_icon" src="' + ICON_BASE + 'world.svg" />',
             categories: [
-                { title: "Новинки", type: "tv", params: { "with_networks": "64|91|43|2696|4|65", "sort_by": "first_air_date.desc", "first_air_date.lte": "{current_date}" } },
+                // Виправлена логіка: шукаємо шоу, що мали ефір за останні 30 днів
+                { title: "Нові випуски", type: "tv", params: { "with_networks": "64|91|43|2696|4|65", "air_date.gte": "{date_30_days_ago}", "air_date.lte": "{current_date}", "sort_by": "popularity.desc" } },
                 { title: "BBC Earth", type: "tv", params: { "with_networks": "4", "with_genres": "99", "sort_by": "vote_average.desc" } },
                 { title: "National Geographic", type: "tv", params: { "with_networks": "43", "sort_by": "popularity.desc" } },
                 { title: "Discovery Channel", type: "tv", params: { "with_networks": "64", "sort_by": "popularity.desc" } },
@@ -148,8 +148,30 @@
         }
     };
     // -----------------------------------------------------------------
-    // COMPONENTS
+    // COMPONENTS & HELPERS
     // -----------------------------------------------------------------
+
+    // Функція для підстановки дат
+    function processParams(paramsObj) {
+        var result = [];
+        result.push('api_key=' + Lampa.TMDB.key());
+        result.push('language=' + Lampa.Storage.get('language', 'uk'));
+
+        if (paramsObj) {
+            for (var key in paramsObj) {
+                var val = paramsObj[key];
+                if (val === '{current_date}' || val === '{date_30_days_ago}') {
+                    var d = new Date();
+                    if (val === '{date_30_days_ago}') {
+                        d.setDate(d.getDate() - 30);
+                    }
+                    val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
+                }
+                result.push(key + '=' + val);
+            }
+        }
+        return result;
+    }
 
     function StudiosMain(object) {
         var comp = new Lampa.InteractionMain(object);
@@ -188,21 +210,7 @@
             };
 
             categories.forEach(function (cat, index) {
-                var params = [];
-                params.push('api_key=' + Lampa.TMDB.key());
-                params.push('language=' + Lampa.Storage.get('language', 'uk'));
-
-                if (cat.params) {
-                    for (var key in cat.params) {
-                        var val = cat.params[key];
-                        if (val === '{current_date}') {
-                            var d = new Date();
-                            val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
-                        }
-                        params.push(key + '=' + val);
-                    }
-                }
-
+                var params = processParams(cat.params);
                 var url = Lampa.TMDB.api((cat.type === 'movie' ? 'discover/movie' : 'discover/tv') + '?' + params.join('&'));
 
                 network.silent(url, function (json) {
@@ -233,21 +241,8 @@
         var network = new Lampa.Reguest();
 
         function buildUrl(page) {
-            var params = [];
-            params.push('api_key=' + Lampa.TMDB.key());
-            params.push('language=' + Lampa.Storage.get('language', 'uk'));
+            var params = processParams(object.params);
             params.push('page=' + page);
-
-            if (object.params) {
-                for (var key in object.params) {
-                    var val = object.params[key];
-                    if (val === '{current_date}') {
-                        var d = new Date();
-                        val = [d.getFullYear(), ('0' + (d.getMonth() + 1)).slice(-2), ('0' + d.getDate()).slice(-2)].join('-');
-                    }
-                    params.push(key + '=' + val);
-                }
-            }
             return Lampa.TMDB.api(object.url + '?' + params.join('&'));
         }
 
@@ -270,21 +265,27 @@
     // -----------------------------------------------------------------
 
     function startPlugin() {
-        if (window.plugin_studios_master_v3_ready) return;
-        window.plugin_studios_master_v3_ready = true;
+        if (window.plugin_studios_master_v3_1_ready) return;
+        window.plugin_studios_master_v3_1_ready = true;
 
         // Register components
         Lampa.Component.add('studios_main', StudiosMain);
         Lampa.Component.add('studios_view', StudiosView);
 
-        // Inject CSS for wide cards and custom icons
+        // Inject CSS: Wide cards + WHITE ICON FILTER
         if (!$('#studios-unified-css').length) {
             $('body').append(`
                 <style id="studios-unified-css">
                     .studios_main .card--wide { width: 18.3em !important; }
                     .studios_view .card--wide { width: 18.3em !important; }
                     .studios_view .category-full { padding-top: 1em; }
-                    .studios_icon { width: 100%; height: 100%; display: block; object-fit: contain; }
+                    .studios_icon { 
+                        width: 100%; 
+                        height: 100%; 
+                        display: block; 
+                        object-fit: contain;
+                        filter: brightness(0) invert(1); 
+                    }
                 </style>
             `);
         }
@@ -331,5 +332,5 @@
         }, 3000);
     }
 
-    if (!window.plugin_studios_master_v3_ready) startPlugin();
+    if (!window.plugin_studios_master_v3_1_ready) startPlugin();
 })();
