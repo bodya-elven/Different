@@ -3,7 +3,7 @@
 
     function KeywordsPlugin() {
         var _this = this;
-        var ICON_TAG = 'https://bodya-elven.github.io/different/icons/tag.svg';
+        var ICON_TAG = 'https://bodya-elven.github.io/Different/tag.svg';
 
         if (Lampa.Lang) {
             Lampa.Lang.add({
@@ -21,17 +21,36 @@
                     var card = e.data.movie;
                     if (card && (card.source == 'tmdb' || e.data.source == 'tmdb') && card.id) {
                         var render = e.object.activity.render();
+                        // 1. Спочатку малюємо пусту кнопку-заглушку, щоб зайняти місце
+                        _this.drawPlaceholder(render);
+                        // 2. Потім вантажимо дані
                         _this.getKeywords(render, card);
                     }
                 }
             });
 
-            var style = document.createElement('style');
-            style.innerHTML = `
-                .keywords-icon-img { width: 1.6em; height: 1.6em; object-fit: contain; display: block; filter: invert(1); }
-                .button--keywords { display: flex; align-items: center; justify-content: center; gap: 0.4em; }
-            `;
-            document.head.appendChild(style);
+            $('<style>').prop('type', 'text/css').html(
+                '.keywords-icon-img { width: 1.4em; height: 1.4em; object-fit: contain; filter: invert(1); margin-right: 0.5em; } ' +
+                '.button--keywords { display: none; align-items: center; } ' + // Спочатку display: none
+                '.button--keywords.visible { display: flex; }' // Показуємо тільки коли готові
+            ).appendTo('head');
+        };
+
+        // Функція створення кнопки-заглушки в правильному місці
+        this.drawPlaceholder = function (render) {
+            var container = render.find('.full-start-new__buttons, .full-start__buttons').first();
+            if (!container.length || container.find('.button--keywords').length) return;
+
+            var title = Lampa.Lang.translate('plugin_keywords_title');
+            var btn = $('<div class="full-start__button selector button--keywords"><img src="' + ICON_TAG + '" class="keywords-icon-img" /><span>' + title + '</span></div>');
+
+            // Спроба вставити кнопку ПЕРЕД закладками (book) або лайком, щоб вона була на місці "дірки"
+            var bookmarkBtn = container.find('.button--book, .button--like').first();
+            if (bookmarkBtn.length) {
+                bookmarkBtn.before(btn);
+            } else {
+                container.append(btn);
+            }
         };
 
         this.getKeywords = function (render, card) {
@@ -45,7 +64,7 @@
                     var tags = resp.keywords || resp.results || [];
                     if (tags.length > 0) {
                         _this.translateTags(tags, function(translatedTags) {
-                            _this.renderButton(render, translatedTags);
+                            _this.activateButton(render, translatedTags);
                         });
                     }
                 }
@@ -84,72 +103,70 @@
             });
         };
 
-        this.renderButton = function (render, tags) {
-            var container = render.find('.full-start-new__buttons, .full-start__buttons').first();
-            if (!container.length) return;
+        this.activateButton = function (render, tags) {
+            var btn = render.find('.button--keywords');
+            if (!btn.length) return; // Якщо раптом заглушка зникла
 
-            // Видаляємо стару кнопку, щоб не дублювалася
-            container.find('.button--keywords').remove();
+            // Робимо кнопку видимою
+            btn.addClass('visible');
 
-            var title = Lampa.Lang.translate('plugin_keywords_title');
-            var icon = '<img src="' + ICON_TAG + '" class="keywords-icon-img" />';
-            
-            // Важливо: додаємо клас selector
-            var btn = $('<div class="full-start__button selector view--category button--keywords">' + icon + '<span>' + title + '</span></div>');
-
+            // Навішуємо події
             btn.on('hover:enter click', function () {
-                var controllerName = Lampa.Controller.enabled().name;
-                
-                var items = tags.map(function(tag) {
-                    var niceName = tag.name.charAt(0).toUpperCase() + tag.name.slice(1);
-                    return { title: niceName, tag_data: tag };
-                });
-
-                Lampa.Select.show({
-                    title: title, 
-                    items: items,
-                    onSelect: function (selectedItem) {
-                        _this.showTypeMenu(selectedItem.tag_data);
-                    },
-                    onBack: function() {
-                        // ТУТ КЛЮЧОВИЙ МОМЕНТ:
-                        // 1. Повертаємо ім'я попереднього контролера
-                        Lampa.Controller.toggle(controllerName);
-                        // 2. Примусово ставимо фокус на кнопку (btn) всередині картки (render)
-                        Lampa.Controller.collectionFocus(btn, render);
-                    }
-                });
+                _this.openTagsMenu(tags, btn, render);
             });
 
-            container.append(btn);
-            
-            // Оновлюємо активність, щоб нова кнопка зареєструвалася в навігації
+            // Оновлюємо навігацію, щоб пульт побачив нову кнопку
             if (Lampa.Activity.active().activity.toggle) {
                 Lampa.Activity.active().activity.toggle();
             }
         };
 
-        this.showTypeMenu = function(tag) {
-            var menu = [
-                { title: Lampa.Lang.translate('plugin_keywords_movies'), method: 'movie' },
-                { title: Lampa.Lang.translate('plugin_keywords_tv'), method: 'tv' }
-            ];
+        // Логіка відкриття меню винесена окремо для повторного використання (кнопка Назад)
+        this.openTagsMenu = function(tags, btnElement, renderContainer) {
+            var controllerName = Lampa.Controller.enabled().name;
+            var items = tags.map(function(tag) {
+                return { 
+                    title: tag.name.charAt(0).toUpperCase() + tag.name.slice(1), 
+                    tag_data: tag 
+                };
+            });
 
             Lampa.Select.show({
-                title: tag.name, 
-                items: menu,
+                title: Lampa.Lang.translate('plugin_keywords_title'),
+                items: items,
+                onSelect: function (selectedItem) {
+                    _this.openTypeMenu(selectedItem.tag_data, tags, btnElement, renderContainer, controllerName);
+                },
+                onBack: function () {
+                    // Виправлення для телефону: не чіпаємо фокус, якщо це тач-інтерфейс
+                    if (!Lampa.Platform.is('android') || Lampa.Platform.is('tv')) {
+                        Lampa.Controller.toggle(controllerName);
+                        Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]);
+                    }
+                }
+            });
+        };
+
+        // Меню вибору типу (Фільм/Серіал)
+        this.openTypeMenu = function(tag, allTags, btnElement, renderContainer, prevController) {
+            Lampa.Select.show({
+                title: tag.name,
+                items: [
+                    { title: Lampa.Lang.translate('plugin_keywords_movies'), method: 'movie' },
+                    { title: Lampa.Lang.translate('plugin_keywords_tv'), method: 'tv' }
+                ],
                 onSelect: function(item) {
-                    Lampa.Activity.push({ 
-                        url: 'discover/' + item.method + '?with_keywords=' + tag.id + '&sort_by=popularity.desc', 
-                        title: tag.name + ' - ' + item.title, 
-                        component: 'category_full', 
-                        source: 'tmdb', 
-                        page: 1 
+                    Lampa.Activity.push({
+                        url: 'discover/' + item.method + '?with_keywords=' + tag.id + '&sort_by=popularity.desc',
+                        title: tag.name,
+                        component: 'category_full',
+                        source: 'tmdb',
+                        page: 1
                     });
                 },
                 onBack: function() {
-                    // При поверненні з підменю (фільм/серіал) повертаємося до списку тегів
-                    Lampa.Controller.toggle('select'); 
+                    // ТУТ ВИПРАВЛЕННЯ: Повертаємося до списку всіх тегів
+                    _this.openTagsMenu(allTags, btnElement, renderContainer);
                 }
             });
         };
