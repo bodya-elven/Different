@@ -202,7 +202,13 @@
                 },
                 back: function() {
                     menu.remove();
-                    Lampa.Controller.toggle(current_controller);
+                    // === ВИПРАВЛЕННЯ ДЛЯ СВАЙПУ ===
+                    // Перемикаємо активність, щоб свайп назад спрацював
+                    if (Lampa.Activity.active() && Lampa.Activity.active().activity) {
+                        Lampa.Activity.active().activity.toggle();
+                    } else {
+                        Lampa.Controller.toggle(current_controller);
+                    }
                 }
             });
             Lampa.Controller.toggle('wiki_menu');
@@ -222,7 +228,12 @@
 
             var closeViewer = function() {
                 viewer.remove();
-                Lampa.Controller.toggle(prev_controller);
+                // === ВИПРАВЛЕННЯ ДЛЯ СВАЙПУ ТАКОЖ І ТУТ ===
+                if (Lampa.Activity.active() && Lampa.Activity.active().activity) {
+                    Lampa.Activity.active().activity.toggle();
+                } else {
+                    Lampa.Controller.toggle(prev_controller);
+                }
             };
 
             viewer.find('.wiki-close-btn').on('hover:enter click', closeViewer);
