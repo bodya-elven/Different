@@ -93,13 +93,16 @@
             var button = $('<div class="full-start__button selector view--category button--keywords">' + icon + '<span>' + title + '</span></div>');
 
             button.on('hover:enter click', function () {
-                _this.showTagsMenu(tags, button, html);
+                // 1. ЗАПАМ'ЯТОВУЄМО АКТИВНИЙ КОНТРОЛЕР
+                var currentController = Lampa.Controller.enabled().name;
+                _this.showTagsMenu(tags, button, html, currentController);
             });
 
             container.append(button);
         };
 
-        this.showTagsMenu = function(tags, btnElement, renderContainer) {
+        // Передаємо currentController далі
+        this.showTagsMenu = function(tags, btnElement, renderContainer, prevController) {
             var title = Lampa.Lang.translate('plugin_keywords_title');
             var items = tags.map(function(tag) {
                 return { title: tag.name, tag_data: tag };
@@ -109,14 +112,13 @@
                 title: title, 
                 items: items,
                 onSelect: function (selectedItem) {
-                    _this.showTypeMenu(selectedItem.tag_data, tags, btnElement, renderContainer);
+                    _this.showTypeMenu(selectedItem.tag_data, tags, btnElement, renderContainer, prevController);
                 },
                 onBack: function() {
-                    // === ГОЛОВНЕ ВИПРАВЛЕННЯ ===
-                    // 1. Повертаємо управління картці фільму ЗАВЖДИ (і для телефону, і для ТБ)
-                    Lampa.Controller.toggle('full_start');
+                    // 2. ВІДНОВЛЮЄМО САМЕ ТОЙ КОНТРОЛЕР, ЩО БУВ
+                    Lampa.Controller.toggle(prevController);
 
-                    // 2. А ось фокус на кнопку ставимо ТІЛЬКИ якщо це НЕ тач (ТБ/пульт)
+                    // Фокус тільки для ТВ
                     if (!Lampa.Platform.is('touch')) {
                         if (btnElement && renderContainer) {
                             Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]);
@@ -126,7 +128,7 @@
             });
         };
 
-        this.showTypeMenu = function(tag, allTags, btnElement, renderContainer) {
+        this.showTypeMenu = function(tag, allTags, btnElement, renderContainer, prevController) {
             var menu = [
                 { title: Lampa.Lang.translate('plugin_keywords_movies'), method: 'movie' },
                 { title: Lampa.Lang.translate('plugin_keywords_tv'), method: 'tv' }
@@ -145,8 +147,8 @@
                     });
                 },
                 onBack: function() {
-                    // Повертаємось до попереднього меню (список тегів)
-                    _this.showTagsMenu(allTags, btnElement, renderContainer);
+                    // Повертаємось до списку тегів, передаючи контролер далі
+                    _this.showTagsMenu(allTags, btnElement, renderContainer, prevController);
                 }
             });
         };
