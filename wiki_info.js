@@ -35,60 +35,51 @@
                                 '<span>Wikipedia</span>' +
                             '</div>');
 
-            // АДАПТИВНІ СТИЛІ
             var style = '<style>' +
                 '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.3s; } ' +
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
                 '.wiki-icon-img { width: 1.6em; height: 1.6em; object-fit: contain; margin-right: 5px; filter: grayscale(100%) brightness(2); } ' +
                 
-                // Меню вибору
+                // --- МЕНЮ ВИБОРУ (Оновлене) ---
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 2000; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-select-body { width: 90%; max-width: 600px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80%; display: flex; flex-direction: column; }' +
+                '.wiki-select-body { width: 90%; max-width: 650px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80%; display: flex; flex-direction: column; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; }' +
-                '.wiki-item { padding: 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; }' +
+                '.wiki-item { padding: 12px; margin: 6px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; position: relative; }' +
                 '.wiki-item.focus { border-color: #fff; background: #333; }' +
-                '.wiki-item__lang { font-size: 1.5em; }' +
-                '.wiki-item__title { font-size: 1.2em; color: #fff; font-weight: 500; }' +
                 
-                // Переглядач
+                // Стилі для типу контенту
+                '.wiki-item__icon { font-size: 1.6em; width: 40px; text-align: center; }' +
+                '.wiki-item__content { flex: 1; display: flex; flex-direction: column; }' +
+                '.wiki-item__title { font-size: 1.1em; color: #fff; font-weight: 500; }' +
+                '.wiki-item__type { font-size: 0.85em; color: #aaa; margin-top: 3px; }' +
+                '.wiki-item__lang { font-size: 1.2em; opacity: 0.7; }' +
+                
+                // --- ПЕРЕГЛЯДАЧ ---
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #121212; z-index: 2001; display: flex; flex-direction: column; }' +
                 '.wiki-header { padding: 15px; background: #1f1f1f; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
                 '.wiki-title { font-size: 1.4em; color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }' +
                 '.wiki-close-btn { width: 40px; height: 40px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid transparent; }' +
                 '.wiki-close-btn.focus { border-color: #fff; background: #555; }' +
                 
-                // --- СТИЛІ СТАТТІ (Адаптивні) ---
+                // --- СТАТТЯ ---
                 '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #d0d0d0; line-height: 1.6; font-size: 1.1em; }' +
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
-                
-                // Заголовки та текст
                 '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
                 '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
                 '.wiki-content-scroll a { color: #8ab4f8; text-decoration: none; pointer-events: none; }' +
-                
-                // Інфобокс (Головна таблиця з фото)
-                '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; color: #ccc; margin-bottom: 20px; }' +
+                '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; color: #ccc; margin-bottom: 20px; box-sizing: border-box; }' +
                 '.wiki-content-scroll .infobox td, .wiki-content-scroll .infobox th { padding: 5px; border-bottom: 1px solid #333; vertical-align: top; }' +
                 '.wiki-content-scroll .infobox img { max-width: 100%; height: auto; border-radius: 5px; }' +
-                
-                // Звичайні таблиці (додано скрол)
                 '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; display: block; overflow-x: auto; margin: 15px 0; border-collapse: collapse; }' +
-                '.wiki-content-scroll table td, .wiki-content-scroll table th { border: 1px solid #444; padding: 8px; background: transparent !important; color: inherit !important; }' +
-                
-                // Картинки
+                '.wiki-content-scroll table td, .wiki-content-scroll table th { border: 1px solid #444; padding: 8px; background: transparent !important; color: inherit !important; min-width: 100px; }' +
                 '.wiki-content-scroll .thumb { background: transparent; margin: 10px auto; max-width: 100%; width: auto !important; }' +
-                '.wiki-content-scroll .thumbinner { background: #1a1a1a; padding: 5px; border-radius: 5px; width: auto !important; max-width: 100%; }' +
+                '.wiki-content-scroll .thumbinner { background: #1a1a1a; padding: 5px; border-radius: 5px; width: auto !important; max-width: 100%; box-sizing: border-box; }' +
                 '.wiki-content-scroll img { max-width: 100%; height: auto; }' +
-
-                // Приховуємо сміття
                 '.wiki-content-scroll .mw-empty-elt, .wiki-content-scroll .hatnote, .wiki-content-scroll .ambox, .wiki-content-scroll .navbox { display: none; }' +
-
-                // --- MEDIA QUERIES (Адаптивність) ---
-                // Для телефонів (вузькі екрани): інфобокс на всю ширину
+                
                 '@media (max-width: 900px) {' +
                     '.wiki-content-scroll .infobox { float: none !important; width: 100% !important; margin: 0 auto 20px auto !important; }' +
                 '}' +
-                // Для ТБ (широкі екрани): інфобокс справа
                 '@media (min-width: 901px) {' +
                     '.wiki-content-scroll .infobox { float: right; width: 320px; margin-left: 20px; }' +
                 '}' +
@@ -99,7 +90,6 @@
             var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
             buttons_container.append(button);
 
-            // Запускаємо пошук одразу (Pre-loading)
             _this.performSearch(data.movie, function(hasResults) {
                 if (hasResults) button.addClass('ready');
             });
@@ -128,6 +118,39 @@
             }
         };
 
+        // --- ГОЛОВНА ЛОГІКА: Класифікатор типу контенту ---
+        this.detectType = function(item, movieYear) {
+            var t = (item.title + ' ' + (item.snippet || '')).toLowerCase();
+            var title = item.title.toLowerCase();
+
+            // 1. Фільм/Серіал
+            // Якщо є рік фільму в заголовку або слова "фільм/серіал"
+            if (movieYear && title.includes(movieYear)) return { type: 'Цей фільм/серіал', icon: '🎬', priority: 1 };
+            if (t.includes('фільм') || t.includes('film') || t.includes('movie') || t.includes('серіал') || t.includes('series') || t.includes('episode') || t.includes('сезон')) {
+                return { type: 'Фільм / Серіал', icon: '🎬', priority: 2 };
+            }
+
+            // 2. Книга / Комікс
+            if (t.includes('роман') || t.includes('novel') || t.includes('книга') || t.includes('book') || t.includes('комікс') || t.includes('comic') || t.includes('манґа') || t.includes('manga') || t.includes('writer') || t.includes('письменник')) {
+                return { type: 'Книга / Першоджерело', icon: '📖', priority: 3 };
+            }
+
+            // 3. Персонаж
+            if (t.includes('персонаж') || t.includes('character') || t.includes('герой') || t.includes('fictional')) {
+                return { type: 'Персонаж', icon: '👤', priority: 4 };
+            }
+
+            // 4. Гра
+            if (t.includes('відеогра') || t.includes('video game') || t.includes('shooter') || t.includes('rpg')) {
+                return { type: 'Відеогра', icon: '🎮', priority: 5 };
+            }
+            
+            // 5. Люди (актори, режисери) - проста евристика: якщо немає слів "фільм/книга" і це просто Ім'я Прізвище
+            // Це складно визначити точно без NLP, тому залишимо як "Стаття" або "Інше"
+            
+            return { type: 'Стаття', icon: '📄', priority: 6 };
+        };
+
         this.performSearch = function (movie, callback) {
             if (!movie) return;
             var _this = this;
@@ -135,25 +158,37 @@
             var year = (movie.release_date || movie.first_air_date || '').substring(0, 4);
             var titleUA = (movie.title || movie.name || '').replace(/[^\w\sа-яієїґ]/gi, '');
             var titleEN = (movie.original_title || movie.original_name || '').replace(/[^\w\s]/gi, '');
-            var isTV = !!(movie.first_air_date || movie.number_of_seasons);
             
-            var p1 = $.ajax({ url: 'https://uk.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleUA + ' ' + year + (isTV ? ' серіал' : ' фільм'), srlimit: 3, format: 'json', origin: '*' }, dataType: 'json' });
-            var p2 = $.ajax({ url: 'https://en.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleEN + ' ' + year + (isTV ? ' series' : ' film'), srlimit: 3, format: 'json', origin: '*' }, dataType: 'json' });
+            // Шукаємо ШИРОКО (без року в запиті), щоб знайти книги, ігри і т.д.
+            // Srlimit збільшено до 7, щоб захопити більше варіантів
+            var p1 = $.ajax({ url: 'https://uk.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleUA, srlimit: 7, format: 'json', origin: '*' }, dataType: 'json' });
+            var p2 = $.ajax({ url: 'https://en.wikipedia.org/w/api.php', data: { action: 'query', list: 'search', srsearch: titleEN, srlimit: 7, format: 'json', origin: '*' }, dataType: 'json' });
 
             searchPromise = $.when(p1, p2).then(function (r1, r2) {
                 var results = [];
+
+                // Обробка UA
                 if (r1[0] && r1[0].query && r1[0].query.search) {
                     r1[0].query.search.forEach(function(i) {
-                        results.push({ title: i.title, lang: 'ua', lang_icon: '🇺🇦', key: i.title });
+                        var info = _this.detectType(i, year);
+                        results.push({ ...i, lang: 'ua', lang_icon: '🇺🇦', key: i.title, typeInfo: info });
                     });
                 }
+                // Обробка EN
                 if (r2[0] && r2[0].query && r2[0].query.search) {
                     r2[0].query.search.forEach(function(i) {
                         if (!results.some(function(r) { return r.title === i.title && r.lang === 'ua' })) {
-                            results.push({ title: i.title, lang: 'en', lang_icon: '🇺🇸', key: i.title });
+                            var info = _this.detectType(i, year);
+                            results.push({ ...i, lang: 'en', lang_icon: '🇺🇸', key: i.title, typeInfo: info });
                         }
                     });
                 }
+
+                // Сортування: Спочатку пріоритетні (фільм/рік), потім книги, потім все інше
+                results.sort(function(a, b) {
+                    return a.typeInfo.priority - b.typeInfo.priority;
+                });
+
                 cachedResults = results;
                 if (callback) callback(results.length > 0);
                 return results;
@@ -172,10 +207,16 @@
                             '<div class="wiki-items-list"></div></div></div>');
 
             items.forEach(function(item) {
+                // Рендер елемента з іконкою та типом
                 var el = $('<div class="wiki-item selector">' +
+                                '<div class="wiki-item__icon">' + item.typeInfo.icon + '</div>' +
+                                '<div class="wiki-item__content">' + 
+                                    '<div class="wiki-item__title">' + item.title + '</div>' +
+                                    '<div class="wiki-item__type">' + item.typeInfo.type + '</div>' +
+                                '</div>' +
                                 '<div class="wiki-item__lang">' + item.lang_icon + '</div>' +
-                                '<div class="wiki-item__title">' + item.title + '</div>' +
                             '</div>');
+                            
                 el.on('hover:enter click', function() {
                     menu.remove();
                     _this.showViewer(item.lang, item.key, item.title, current_controller);
@@ -240,7 +281,6 @@
             });
             Lampa.Controller.toggle('wiki_viewer');
 
-            // Завантаження статті
             var apiUrl = 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key);
 
             $.ajax({
@@ -249,7 +289,6 @@
                 success: function(htmlContent) {
                     htmlContent = htmlContent.replace(/src="\/\//g, 'src="https://');
                     htmlContent = htmlContent.replace(/href="\//g, 'href="https://wikipedia.org/');
-                    // Видаляємо жорсткі стилі з тегів, щоб працювала наша темна тема
                     htmlContent = htmlContent.replace(/style="[^"]*"/g, ""); 
                     htmlContent = htmlContent.replace(/bgcolor="[^"]*"/g, "");
                     
