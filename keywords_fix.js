@@ -89,6 +89,7 @@
                         tags.forEach(function(tag, index) {
                             if (translatedArray[index]) {
                                 tag.name = translatedArray[index]
+                                    .replace(/позначка до фільму[:\s]*/gi, '')
                                     .replace(/тег до фільму[:\s]*/gi, '')
                                     .replace(/тег фільму[:\s]*/gi, '')
                                     .replace(/movie tag[:\s]*/gi, '')
