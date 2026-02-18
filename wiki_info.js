@@ -6,6 +6,7 @@
         var ICON_WIKI = 'https://upload.wikimedia.org/wikipedia/commons/7/77/Wikipedia_svg_logo.svg';
         var cachedResults = null;
         var searchPromise = null;
+        var isOpened = false; // Запобіжник, як у SmartPlugin
 
         this.init = function () {
             Lampa.Listener.follow('full', function (e) {
@@ -24,6 +25,7 @@
             $('.lampa-wiki-button').remove();
             cachedResults = null;
             searchPromise = null;
+            isOpened = false;
         };
 
         this.render = function (data, html) {
@@ -43,17 +45,17 @@
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
                 '.wiki-select-body { width: 90%; max-width: 600px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80%; display: flex; flex-direction: column; position: relative; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }' +
-                '.wiki-item { padding: 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; }' +
-                '.wiki-item.focus { border-color: #fff; background: #333; }' +
+                '.wiki-item { padding: 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; }' +
+                '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
                 '.wiki-item__lang { font-size: 1.5em; }' +
                 '.wiki-item__title { font-size: 1.2em; color: #fff; font-weight: 500; }' +
                 
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; position: relative; width: 100%; height: 100%; }' + /* Added full size */
+                '.wiki-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; position: relative; }' +
                 '.wiki-header { padding: 15px; background: #1f1f1f; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
                 '.wiki-title { font-size: 1.4em; color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }' +
-                '.wiki-close-btn { width: 40px; height: 40px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid transparent; }' +
-                '.wiki-close-btn.focus { border-color: #fff; background: #555; }' +
+                '.wiki-close-btn { width: 40px; height: 40px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid transparent; cursor: pointer; }' +
+                '.wiki-close-btn.focus { border-color: #fff; background: #555; outline: none; }' +
                 
                 '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #d0d0d0; line-height: 1.6; font-size: 1.1em; -webkit-overflow-scrolling: touch; }' +
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
@@ -89,25 +91,30 @@
             });
 
             button.on('hover:enter click', function() {
-                _this.handleButtonClick(data.movie);
+                if (!isOpened) _this.handleButtonClick(data.movie);
             });
         };
 
         this.handleButtonClick = function(movie) {
             var _this = this;
+            if (!movie) return;
+            isOpened = true;
+
             if (cachedResults) {
                 if (cachedResults.length > 0) _this.showMenu(cachedResults, movie.title || movie.name);
-                else Lampa.Noty.show('Нічого не знайдено');
+                else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
             } else if (searchPromise) {
                 Lampa.Noty.show('Пошук...');
                 searchPromise.done(function(results) {
                     if (results.length) _this.showMenu(results, movie.title || movie.name);
-                    else Lampa.Noty.show('Нічого не знайдено');
+                    else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
+                }).fail(function() {
+                    Lampa.Noty.show('Помилка пошуку'); isOpened = false;
                 });
             } else {
                 _this.performSearch(movie, function(hasResults) {
                      if (hasResults) _this.showMenu(cachedResults, movie.title || movie.name);
-                     else Lampa.Noty.show('Нічого не знайдено');
+                     else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
                 });
             }
         };
@@ -150,7 +157,10 @@
 
         this.showMenu = function(items, movieTitle) {
             var _this = this;
+            
+            // 1. Динамічне запам'ятовування попереднього вікна
             var current_controller = Lampa.Controller.enabled().name;
+            
             var menu = $('<div class="wiki-select-container"><div class="wiki-select-body">' +
                             '<div style="font-size: 1.4em; margin-bottom: 20px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">Wikipedia: ' + movieTitle + '</div>' +
                             '<div class="wiki-items-list"></div></div></div>');
@@ -162,26 +172,15 @@
                             '</div>');
                 el.on('hover:enter click', function() {
                     menu.remove();
-                    _this.showViewer(item.lang, item.key, item.title, current_controller);
+                    // Передаємо current_controller далі, щоб після закриття статті повернутися до фільму
+                    _this.showViewer(item.lang, item.key, item.title, current_controller); 
                 });
                 menu.find('.wiki-items-list').append(el);
             });
 
             $('body').append(menu);
 
-            // Close logic
-            var closeMenu = function() {
-                menu.remove();
-                Lampa.Controller.toggle(current_controller);
-            };
-
-            // Close on background click
-            menu.on('click', function(e) {
-                if ($(e.target).is('.wiki-select-container')) {
-                    closeMenu();
-                }
-            });
-
+            // 2. Реєстрація власного контролера (як у SmartPlugin)
             Lampa.Controller.add('wiki_menu', {
                 toggle: function() {
                     Lampa.Controller.collectionSet(menu);
@@ -195,9 +194,14 @@
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
                     if (index < items.length - 1) Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
                 },
-                back: closeMenu
+                back: function() {
+                    menu.remove();
+                    isOpened = false;
+                    Lampa.Controller.toggle(current_controller); // Відновлюємо попередній
+                }
             });
 
+            // 3. Перехоплення керування
             Lampa.Controller.toggle('wiki_menu');
         };
 
@@ -215,18 +219,16 @@
 
             var closeViewer = function() {
                 viewer.remove();
+                isOpened = false;
                 Lampa.Controller.toggle(prev_controller);
             };
 
-            // Close on background click
-            viewer.on('click', function(e) {
-                if ($(e.target).is('.wiki-viewer-container')) {
-                    closeViewer();
-                }
+            viewer.find('.wiki-close-btn').on('click hover:enter', function(e) {
+                e.preventDefault();
+                closeViewer();
             });
 
-            viewer.find('.wiki-close-btn').on('hover:enter click', closeViewer);
-
+            // Реєстрація контролера для читалки
             Lampa.Controller.add('wiki_viewer', {
                 toggle: function() {
                     Lampa.Controller.collectionSet(viewer);
