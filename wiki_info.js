@@ -49,7 +49,7 @@
                 '.wiki-item__title { font-size: 1.2em; color: #fff; font-weight: 500; }' +
                 
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; position: relative; }' +
+                '.wiki-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; position: relative; width: 100%; height: 100%; }' + /* Added full size */
                 '.wiki-header { padding: 15px; background: #1f1f1f; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
                 '.wiki-title { font-size: 1.4em; color: #fff; font-weight: bold; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 80%; }' +
                 '.wiki-close-btn { width: 40px; height: 40px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; border: 2px solid transparent; }' +
@@ -169,27 +169,13 @@
 
             $('body').append(menu);
 
-            // === ФІКС: Зберігаємо керування при дотику ===
-            // Будь-який дотик до нашого меню гарантує, що контролер залишиться 'wiki_menu'
-            menu.on('touchstart mousedown', function(e) {
-                Lampa.Controller.toggle('wiki_menu');
-                // Не робимо stopPropagation, щоб працював скрол і кліки,
-                // але примусово вмикаємо наш контролер.
-            });
-
+            // Close logic
             var closeMenu = function() {
-                if ($('.wiki-select-container').length === 0) return;
                 menu.remove();
-                
-                // Відновлюємо свайпи картки
-                if (Lampa.Activity.active() && Lampa.Activity.active().activity) {
-                    Lampa.Activity.active().activity.toggle();
-                } else {
-                    Lampa.Controller.toggle(current_controller);
-                }
+                Lampa.Controller.toggle(current_controller);
             };
 
-            // Закриття по тапу на фон
+            // Close on background click
             menu.on('click', function(e) {
                 if ($(e.target).is('.wiki-select-container')) {
                     closeMenu();
@@ -212,10 +198,7 @@
                 back: closeMenu
             });
 
-            // Затримка для перехоплення фокусу
-            setTimeout(function() {
-                Lampa.Controller.toggle('wiki_menu');
-            }, 50);
+            Lampa.Controller.toggle('wiki_menu');
         };
 
         this.showViewer = function (lang, key, title, prev_controller) {
@@ -230,28 +213,12 @@
 
             $('body').append(viewer);
 
-            // === ФІКС: Зберігаємо керування при читанні статті ===
-            viewer.on('touchstart mousedown', function(e) {
-                Lampa.Controller.toggle('wiki_viewer');
-            });
-
             var closeViewer = function() {
-                if ($('.wiki-viewer-container').length === 0) return;
                 viewer.remove();
-                
-                // Якщо ми повертаємося до списку, то список сам відновить собі контролер
-                if ($('.wiki-select-container').length > 0) {
-                     Lampa.Controller.toggle('wiki_menu');
-                } else {
-                    // Якщо закриваємо все - відновлюємо картку
-                    if (Lampa.Activity.active() && Lampa.Activity.active().activity) {
-                        Lampa.Activity.active().activity.toggle();
-                    } else {
-                        Lampa.Controller.toggle(prev_controller);
-                    }
-                }
+                Lampa.Controller.toggle(prev_controller);
             };
 
+            // Close on background click
             viewer.on('click', function(e) {
                 if ($(e.target).is('.wiki-viewer-container')) {
                     closeViewer();
@@ -273,6 +240,7 @@
                 },
                 back: closeViewer
             });
+
             Lampa.Controller.toggle('wiki_viewer');
 
             var apiUrl = 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key);
