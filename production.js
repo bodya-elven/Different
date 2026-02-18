@@ -25,7 +25,7 @@
                     var card = e.data.movie;
                     if (card && (card.source == 'tmdb' || e.data.source == 'tmdb') && card.id) {
                         var render = e.object.activity.render();
-                        // 1. Малюємо кнопку відразу (неактивну)
+                        // 1. Малюємо кнопку відразу (напівпрозору)
                         _this.drawButton(render);
                         // 2. Вантажимо дані
                         _this.getStudios(render, card);
@@ -48,7 +48,7 @@
             var title = Lampa.Lang.translate('tmdb_studios');
             var btn = $('<div class="full-start__button selector view--category button--studios"><div class="studios-icon-svg">' + ICON_FILM + '</div><span>' + title + '</span></div>');
 
-            // Вставляємо перед кнопкою закладок/лайків (щоб не було "дірки")
+            // Вставляємо перед кнопкою закладок/лайків
             var bookmarkBtn = container.find('.button--book, .button--like').first();
             if (bookmarkBtn.length) {
                 bookmarkBtn.before(btn);
@@ -87,7 +87,6 @@
 
         this.openStudiosMenu = function(studios, btnElement, renderContainer) {
             var title = Lampa.Lang.translate('tmdb_studios');
-            var controllerName = Lampa.Controller.enabled().name;
 
             var items = studios.map(function(s) {
                 return { title: s.name, id: s.id };
@@ -107,15 +106,16 @@
                     });
                 },
                 onBack: function() {
-                    // === ТУТ ВИПРАВЛЕННЯ ДЛЯ СВАЙПУ ===
-                    // Пересмикуємо активність, щоб відновити свайпи на телефоні
+                    // === ВИПРАВЛЕННЯ (ТЕПЕР ПРАВИЛЬНО) ===
+                    // Використовуємо activity.toggle(), щоб Lampa відновила слухачі подій (свайпи)
                     if (Lampa.Activity.active() && Lampa.Activity.active().activity) {
                         Lampa.Activity.active().activity.toggle();
                     } else {
-                        Lampa.Controller.toggle(controllerName);
+                        // Резервний варіант
+                        Lampa.Controller.toggle('full_start');
                     }
 
-                    // Фокус тільки для ТВ
+                    // Фокус на кнопку повертаємо ТІЛЬКИ на телевізорі (не тач)
                     if (!Lampa.Platform.is('touch')) {
                         if (btnElement && renderContainer) {
                             Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]);
