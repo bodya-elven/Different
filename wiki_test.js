@@ -49,7 +49,7 @@
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
                 '.wiki-item__lang { font-size: 1.5em; width: 30px; text-align: center; }' +
                 '.wiki-item__info { display: flex; flex-direction: column; flex: 1; }' +
-                '.wiki-item__type { font-size: 0.85em; color: #999; margin-bottom: 2px; text-transform: uppercase; letter-spacing: 0.5px; }' +
+                '.wiki-item__type { font-size: 0.75em; color: #999; margin-bottom: 2px; }' + /* Зменшено шрифт підпису */
                 '.wiki-item__title { font-size: 1.1em; color: #fff; font-weight: 500; }' +
                 
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
@@ -106,12 +106,12 @@
                 if (cachedResults.length > 0) _this.showMenu(cachedResults, movie.title || movie.name);
                 else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
             } else if (searchPromise) {
-                Lampa.Noty.show('Пошук інформації...');
+                Lampa.Noty.show('Збір даних з Wikidata...');
                 searchPromise.done(function(results) {
                     if (results.length) _this.showMenu(results, movie.title || movie.name);
                     else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
                 }).fail(function() {
-                    Lampa.Noty.show('Помилка пошуку'); isOpened = false;
+                    Lampa.Noty.show('Помилка завантаження даних'); isOpened = false;
                 });
             } else {
                 _this.performSearch(movie, function(hasResults) {
@@ -127,104 +127,124 @@
             var def = $.Deferred();
             
             var method = (movie.original_name || movie.name) ? 'tv' : 'movie';
+            var mainType = method === 'tv' ? 'television series' : 'film';
             var tmdbKey = Lampa.TMDB.key();
 
-            // 1. Отримуємо дані фільму, зовнішні ID та акторів/режисерів одним запитом
-            var mainUrl = Lampa.TMDB.api(method + '/' + movie.id + '?append_to_response=external_ids,credits&api_key=' + tmdbKey);
-
+            // 1. Отримуємо wikidata_id з TMDB
             $.ajax({
-                url: mainUrl,
+                url: Lampa.TMDB.api(method + '/' + movie.id + '/external_ids?api_key=' + tmdbKey),
                 dataType: 'json',
-                success: function(resp) {
-                    var targets = []; // Сюди збираємо кого шукати
-
-                    // Фільм / Серіал
-                    if (resp.external_ids && resp.external_ids.wikidata_id) {
-                        targets.push({ type: (method === 'tv' ? 'Серіал' : 'Фільм'), qId: resp.external_ids.wikidata_id });
+                success: function(extResp) {
+                    var mainQId = extResp.wikidata_id;
+                    
+                    if (!mainQId) {
+                        cachedResults = [];
+                        if (callback) callback(false);
+                        def.reject();
+                        return;
                     }
 
-                    // Режисер (або творець для серіалів)
-                    var director = null;
-                    if (method === 'tv' && resp.created_by && resp.created_by.length > 0) {
-                        director = resp.created_by[0];
-                    } else if (resp.credits && resp.credits.crew) {
-                        director = resp.credits.crew.find(function(c) { return c.job === 'Director'; });
-                    }
-                    if (director) targets.push({ type: 'Режисер', tmdbId: director.id });
+                    // 2. Отримуємо структуру (властивості) цього об'єкта з Wikidata
+                    $.ajax({
+                        url: 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + mainQId + '&props=claims&format=json&origin=*',
+                        dataType: 'json',
+                        success: function(claimResp) {
+                            var claims = claimResp.entities[mainQId].claims || {};
+                            var targets = [];
 
-                    // Топ 3 актори
-                    if (resp.credits && resp.credits.cast) {
-                        var actors = resp.credits.cast.slice(0, 3);
-                        actors.forEach(function(a) { 
-                            targets.push({ type: 'Актор', tmdbId: a.id }); 
-                        });
-                    }
-
-                    // 2. Для людей отримуємо їхні Wikidata ID через TMDB API
-                    var personPromises = targets.filter(function(t) { return t.tmdbId && !t.qId; }).map(function(t) {
-                        return $.ajax({
-                            url: Lampa.TMDB.api('person/' + t.tmdbId + '/external_ids?api_key=' + tmdbKey),
-                            dataType: 'json'
-                        }).then(function(pResp) {
-                            if (pResp.wikidata_id) t.qId = pResp.wikidata_id;
-                        }).catch(function(){}); // ігноруємо помилки
-                    });
-
-                    // Коли всі ID зібрані
-                    $.when.apply($, personPromises).always(function() {
-                        var validTargets = targets.filter(function(t) { return t.qId; });
-                        if (validTargets.length === 0) {
-                            cachedResults = [];
-                            if (callback) callback(false);
-                            def.reject();
-                            return;
-                        }
-
-                        // 3. Звертаємося до Wikidata, щоб отримати назви статей UA/EN
-                        var qIds = validTargets.map(function(t) { return t.qId; }).join('|');
-                        var wikiUrl = 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + qIds + '&props=sitelinks&format=json&origin=*';
-
-                        $.ajax({
-                            url: wikiUrl,
-                            dataType: 'json',
-                            success: function(wikiResp) {
-                                var finalResults = [];
-                                
-                                // Проходимося по наших цілях у тому порядку, в якому ми їх додавали (Фільм -> Режисер -> Актори)
-                                validTargets.forEach(function(t) {
-                                    var entity = wikiResp.entities[t.qId];
-                                    if (entity && entity.sitelinks) {
-                                        // Пріоритет: Українська, потім Англійська
-                                        if (entity.sitelinks.ukwiki) {
-                                            finalResults.push({
-                                                typeTitle: t.type,
-                                                title: entity.sitelinks.ukwiki.title,
-                                                lang: 'ua',
-                                                lang_icon: '🇺🇦',
-                                                key: entity.sitelinks.ukwiki.title
-                                            });
-                                        } else if (entity.sitelinks.enwiki) {
-                                            finalResults.push({
-                                                typeTitle: t.type,
-                                                title: entity.sitelinks.enwiki.title,
-                                                lang: 'en',
-                                                lang_icon: '🇺🇸',
-                                                key: entity.sitelinks.enwiki.title
-                                            });
+                            // Функція для безпечного витягування Q-ідентифікаторів
+                            var extractQIds = function(prop, typeName, limit) {
+                                if (claims[prop]) {
+                                    var items = claims[prop];
+                                    if (limit) items = items.slice(0, limit);
+                                    items.forEach(function(item) {
+                                        if (item.mainsnak && item.mainsnak.datavalue && item.mainsnak.datavalue.value && item.mainsnak.datavalue.value.id) {
+                                            targets.push({ qId: item.mainsnak.datavalue.value.id, type: typeName });
                                         }
-                                    }
-                                });
+                                    });
+                                }
+                            };
 
-                                cachedResults = finalResults;
-                                if (callback) callback(finalResults.length > 0);
-                                def.resolve(finalResults);
-                            },
-                            error: function() {
+                            // Сам об'єкт (фільм/серіал)
+                            targets.push({ qId: mainQId, type: mainType });
+
+                            // На чому базується (P144)
+                            extractQIds('P144', 'based on');
+                            
+                            // Актори, перші 5 (P161)
+                            extractQIds('P161', 'cast member', 5);
+                            
+                            // Режисер (P57)
+                            extractQIds('P57', 'director');
+                            
+                            // За твором / Автор оригіналу (P1877)
+                            extractQIds('P1877', 'after a work by');
+                            
+                            // Названо на честь (P138)
+                            extractQIds('P138', 'named after');
+                            
+                            // Частина франшизи / серії (P179)
+                            extractQIds('P179', 'part of the series');
+
+                            if (targets.length === 0) {
                                 cachedResults = [];
                                 if (callback) callback(false);
                                 def.reject();
+                                return;
                             }
-                        });
+
+                            // Видаляємо дублікати Q-ідентифікаторів для запиту
+                            var qIdList = targets.map(function(t) { return t.qId; });
+                            var uniqueQIds = qIdList.filter(function(item, pos) { return qIdList.indexOf(item) == pos; });
+
+                            // 3. Отримуємо назви статей (sitelinks) для всіх знайдених Q-ідентифікаторів
+                            $.ajax({
+                                url: 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + uniqueQIds.join('|') + '&props=sitelinks&format=json&origin=*',
+                                dataType: 'json',
+                                success: function(siteResp) {
+                                    var finalResults = [];
+                                    var entities = siteResp.entities || {};
+
+                                    // Проходимо по наших цілях у правильному порядку
+                                    targets.forEach(function(t) {
+                                        var entity = entities[t.qId];
+                                        if (entity && entity.sitelinks) {
+                                            if (entity.sitelinks.ukwiki) {
+                                                finalResults.push({
+                                                    typeTitle: t.type,
+                                                    title: entity.sitelinks.ukwiki.title,
+                                                    lang: 'ua',
+                                                    lang_icon: '🇺🇦',
+                                                    key: entity.sitelinks.ukwiki.title
+                                                });
+                                            } else if (entity.sitelinks.enwiki) {
+                                                finalResults.push({
+                                                    typeTitle: t.type,
+                                                    title: entity.sitelinks.enwiki.title,
+                                                    lang: 'en',
+                                                    lang_icon: '🇺🇸',
+                                                    key: entity.sitelinks.enwiki.title
+                                                });
+                                            }
+                                        }
+                                    });
+
+                                    cachedResults = finalResults;
+                                    if (callback) callback(finalResults.length > 0);
+                                    def.resolve(finalResults);
+                                },
+                                error: function() {
+                                    cachedResults = [];
+                                    if (callback) callback(false);
+                                    def.reject();
+                                }
+                            });
+                        },
+                        error: function() {
+                            cachedResults = [];
+                            if (callback) callback(false);
+                            def.reject();
+                        }
                     });
                 },
                 error: function() {
@@ -241,6 +261,7 @@
         this.showMenu = function(items, movieTitle) {
             var _this = this;
             var current_controller = Lampa.Controller.enabled().name;
+            
             var menu = $('<div class="wiki-select-container"><div class="wiki-select-body">' +
                             '<div style="font-size: 1.4em; margin-bottom: 20px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">Wikipedia: ' + movieTitle + '</div>' +
                             '<div class="wiki-items-list"></div></div></div>');
@@ -255,7 +276,7 @@
                             '</div>');
                 el.on('hover:enter click', function() {
                     menu.remove();
-                    _this.showViewer(item.lang, item.key, item.title, current_controller);
+                    _this.showViewer(item.lang, item.key, item.title, current_controller); 
                 });
                 menu.find('.wiki-items-list').append(el);
             });
@@ -278,7 +299,7 @@
                 back: function() {
                     menu.remove();
                     isOpened = false;
-                    Lampa.Controller.toggle(current_controller);
+                    Lampa.Controller.toggle(current_controller); 
                 }
             });
 
