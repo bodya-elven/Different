@@ -49,7 +49,7 @@
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
                 '.wiki-item__lang { font-size: 1.5em; width: 30px; text-align: center; }' +
                 '.wiki-item__info { display: flex; flex-direction: column; flex: 1; }' +
-                '.wiki-item__type { font-size: 0.75em; color: #999; margin-bottom: 2px; text-transform: capitalize; }' + 
+                '.wiki-item__type { font-size: 0.75em; color: #999; margin-bottom: 2px; text-transform: none; }' + 
                 '.wiki-item__title { font-size: 1.1em; color: #fff; font-weight: 500; }' +
                 
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
