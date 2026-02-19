@@ -43,14 +43,15 @@
                 '.wiki-icon-img { width: 1.6em; height: 1.6em; object-fit: contain; margin-right: 5px; filter: grayscale(100%) brightness(2); } ' +
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-select-body { width: 90%; max-width: 800px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
+                /* max-height змінено на 80vh */
+                '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }' +
                 '.wiki-item { padding: 12px 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
-                '.wiki-item__lang { font-size: 1.5em; width: 40px; text-align: center; }' +
+                '.wiki-item__lang { font-size: 1.5em; width: 35px; text-align: center; }' +
                 '.wiki-item__info { display: flex; flex-direction: column; flex: 1; }' +
-                '.wiki-item__type { font-size: 0.95em; color: #aaa; margin-bottom: 2px; text-transform: none; }' + 
-                '.wiki-item__title { font-size: 1.25em; color: #fff; font-weight: 500; }' +
+                '.wiki-item__type { font-size: 0.95em; color: #999; margin-bottom: 2px; text-transform: none; }' + /* Збільшено ще на крок */
+                '.wiki-item__title { font-size: 1.25em; color: #fff; font-weight: 500; }' + 
                 
                 '.wiki-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
                 '.wiki-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; position: relative; }' +
@@ -59,20 +60,28 @@
                 '.wiki-close-btn { width: 50px; height: 50px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-close-btn.focus { border-color: #fff; background: #555; outline: none; }' +
                 
-                /* Одна колонка для тексту статті */
-                '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 25px 5%; color: #d0d0d0; line-height: 1.7; font-size: 1.3em; -webkit-overflow-scrolling: touch; }' +
+                '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #d0d0d0; line-height: 1.6; font-size: 1.3em; -webkit-overflow-scrolling: touch; }' +
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
                 
-                '.wiki-content-scroll h2 { border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; color: #fff; }' +
-                '.wiki-content-scroll p { margin-bottom: 1.2em; text-align: justify; }' +
-                /* Посилання майже кольору основного тексту */
-                '.wiki-content-scroll a { color: #bbb !important; text-decoration: none; pointer-events: none; }' +
-                /* Таблиці наслідують розмір основного шрифту */
-                '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; margin: 20px 0; border-collapse: collapse; font-size: inherit !important; }' +
-                '.wiki-content-scroll table td, .wiki-content-scroll table th { border: 1px solid #444; padding: 10px; }' +
-                '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; padding: 15px; margin-bottom: 25px; float: none; width: 100%; box-sizing: border-box; }' +
-                '.wiki-content-scroll img { max-width: 100%; height: auto; border-radius: 8px; }' +
+                /* Таблиці тепер наслідують розмір шрифту статті */
+                '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; display: block; overflow-x: auto; margin: 15px 0; border-collapse: collapse; font-size: inherit !important; }' + 
+                
+                '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
+                '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
+                /* Колір посилань змінено на світло-сірий для читабельності */
+                '.wiki-content-scroll a { color: #bbb; text-decoration: none; pointer-events: none; }' +
+                '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; color: #ccc; margin-bottom: 20px; box-sizing: border-box; }' +
+                '.wiki-content-scroll .infobox td, .wiki-content-scroll .infobox th { padding: 5px; border-bottom: 1px solid #333; vertical-align: top; }' +
+                '.wiki-content-scroll img { max-width: 100%; height: auto; border-radius: 5px; }' +
+                '.wiki-content-scroll table td, .wiki-content-scroll table th { border: 1px solid #444; padding: 8px; background: transparent !important; color: inherit !important; min-width: 100px; }' +
                 '.wiki-content-scroll .mw-empty-elt, .wiki-content-scroll .hatnote, .wiki-content-scroll .ambox, .wiki-content-scroll .navbox { display: none; }' +
+
+                '@media (max-width: 900px) {' +
+                    '.wiki-content-scroll .infobox { float: none !important; width: 100% !important; margin: 0 auto 20px auto !important; }' +
+                '}' +
+                '@media (min-width: 901px) {' +
+                    '.wiki-content-scroll .infobox { float: right; width: 320px; margin-left: 20px; }' +
+                '}' +
                 '</style>';
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
@@ -98,12 +107,12 @@
                 if (cachedResults.length > 0) _this.showMenu(cachedResults, movie.title || movie.name);
                 else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
             } else if (searchPromise) {
-                Lampa.Noty.show('Пошук у Wikidata...');
+                Lampa.Noty.show('Збір даних з Wikidata...');
                 searchPromise.done(function(results) {
                     if (results.length) _this.showMenu(results, movie.title || movie.name);
                     else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
                 }).fail(function() {
-                    Lampa.Noty.show('Помилка даних'); isOpened = false;
+                    Lampa.Noty.show('Помилка завантаження даних'); isOpened = false;
                 });
             } else {
                 _this.performSearch(movie, function(hasResults) {
@@ -117,6 +126,7 @@
             if (!movie || !movie.id) return $.Deferred().reject().promise();
             var _this = this;
             var def = $.Deferred();
+            
             var method = (movie.original_name || movie.name) ? 'tv' : 'movie';
             var mainType = method === 'tv' ? 'television series' : 'film';
             var tmdbKey = Lampa.TMDB.key();
@@ -126,7 +136,13 @@
                 dataType: 'json',
                 success: function(extResp) {
                     var mainQId = extResp.wikidata_id;
-                    if (!mainQId) { cachedResults = []; if (callback) callback(false); def.reject(); return; }
+                    
+                    if (!mainQId) {
+                        cachedResults = [];
+                        if (callback) callback(false);
+                        def.reject();
+                        return;
+                    }
 
                     $.ajax({
                         url: 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + mainQId + '&props=claims&format=json&origin=*',
@@ -158,7 +174,15 @@
                             extractQIds('P138', 'named after');
                             extractQIds('P179', 'part of the series');
 
-                            var uniqueQIds = targets.map(function(t) { return t.qId; }).filter(function(v, i, a) { return a.indexOf(v) === i; });
+                            if (targets.length === 0) {
+                                cachedResults = [];
+                                if (callback) callback(false);
+                                def.reject();
+                                return;
+                            }
+
+                            var qIdList = targets.map(function(t) { return t.qId; });
+                            var uniqueQIds = qIdList.filter(function(item, pos) { return qIdList.indexOf(item) == pos; });
 
                             $.ajax({
                                 url: 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + uniqueQIds.join('|') + '&props=sitelinks&format=json&origin=*',
@@ -166,37 +190,63 @@
                                 success: function(siteResp) {
                                     var finalResults = [];
                                     var entities = siteResp.entities || {};
+
                                     targets.forEach(function(t) {
                                         var entity = entities[t.qId];
                                         if (entity && entity.sitelinks) {
-                                            var link = entity.sitelinks.ukwiki || entity.sitelinks.enwiki;
-                                            if (link) {
+                                            if (entity.sitelinks.ukwiki) {
                                                 finalResults.push({
                                                     typeTitle: t.type,
-                                                    title: link.title,
-                                                    lang: entity.sitelinks.ukwiki ? 'ua' : 'en',
-                                                    lang_icon: entity.sitelinks.ukwiki ? '🇺🇦' : '🇺🇸',
-                                                    key: link.title
+                                                    title: entity.sitelinks.ukwiki.title,
+                                                    lang: 'ua',
+                                                    lang_icon: '🇺🇦',
+                                                    key: entity.sitelinks.ukwiki.title
+                                                });
+                                            } else if (entity.sitelinks.enwiki) {
+                                                finalResults.push({
+                                                    typeTitle: t.type,
+                                                    title: entity.sitelinks.enwiki.title,
+                                                    lang: 'en',
+                                                    lang_icon: '🇺🇸',
+                                                    key: entity.sitelinks.enwiki.title
                                                 });
                                             }
                                         }
                                     });
+
                                     cachedResults = finalResults;
                                     if (callback) callback(finalResults.length > 0);
                                     def.resolve(finalResults);
                                 },
-                                error: function() { def.reject(); }
+                                error: function() {
+                                    cachedResults = [];
+                                    if (callback) callback(false);
+                                    def.reject();
+                                }
                             });
+                        },
+                        error: function() {
+                            cachedResults = [];
+                            if (callback) callback(false);
+                            def.reject();
                         }
                     });
+                },
+                error: function() {
+                    cachedResults = [];
+                    if (callback) callback(false);
+                    def.reject();
                 }
             });
-            return def.promise();
+
+            searchPromise = def.promise();
+            return searchPromise;
         };
 
         this.showMenu = function(items, movieTitle) {
             var _this = this;
             var current_controller = Lampa.Controller.enabled().name;
+            
             var menu = $('<div class="wiki-select-container"><div class="wiki-select-body">' +
                             '<div style="font-size: 1.4em; margin-bottom: 20px; color: #fff; border-bottom: 1px solid #333; padding-bottom: 10px;">Wikipedia: ' + movieTitle + '</div>' +
                             '<div class="wiki-items-list"></div></div></div>');
@@ -207,7 +257,7 @@
                                 '<div class="wiki-item__info">' +
                                     '<div class="wiki-item__type">' + item.typeTitle + '</div>' +
                                     '<div class="wiki-item__title">' + item.title + '</div>' +
-                                '</div>' +
+                                </div>' +
                             '</div>');
                 el.on('hover:enter click', function() {
                     menu.remove();
@@ -227,6 +277,7 @@
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
                     if (index > 0) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index - 1], menu);
+                        /* Прокрутка вгору для ТВ */
                         var list = menu.find('.wiki-items-list');
                         var focusItem = menu.find('.wiki-item.focus');
                         if (focusItem.position().top < 50) list.scrollTop(list.scrollTop() - 100);
@@ -236,6 +287,7 @@
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
                     if (index < items.length - 1) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
+                        /* Прокрутка вниз для ТВ */
                         var list = menu.find('.wiki-items-list');
                         var focusItem = menu.find('.wiki-item.focus');
                         if (focusItem.position().top > list.height() - 100) list.scrollTop(list.scrollTop() + 100);
@@ -247,6 +299,7 @@
                     Lampa.Controller.toggle(current_controller); 
                 }
             });
+
             Lampa.Controller.toggle('wiki_menu');
         };
 
@@ -259,6 +312,7 @@
                                 '<div class="wiki-content-scroll">' +
                                     '<div class="wiki-loader">Завантаження...</div>' +
                                 '</div></div></div>');
+
             $('body').append(viewer);
 
             var closeViewer = function() {
@@ -267,28 +321,48 @@
                 Lampa.Controller.toggle(prev_controller);
             };
 
+            viewer.find('.wiki-close-btn').on('click hover:enter', function(e) {
+                e.preventDefault();
+                closeViewer();
+            });
+
             Lampa.Controller.add('wiki_viewer', {
                 toggle: function() {
                     Lampa.Controller.collectionSet(viewer);
                     Lampa.Controller.collectionFocus(viewer.find('.wiki-close-btn')[0], viewer);
                 },
-                up: function() { viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() - 150); },
-                down: function() { viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() + 150); },
+                up: function() { 
+                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() - 100); 
+                },
+                down: function() { 
+                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() + 100); 
+                },
                 back: closeViewer
             });
+
             Lampa.Controller.toggle('wiki_viewer');
 
+            var apiUrl = 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key);
+
             $.ajax({
-                url: 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key),
+                url: apiUrl,
+                timeout: 15000,
                 success: function(htmlContent) {
-                    htmlContent = htmlContent.replace(/src="\/\//g, 'src="https://').replace(/href="\//g, 'href="https://wikipedia.org/').replace(/style="[^"]*"/g, "").replace(/bgcolor="[^"]*"/g, "");
+                    htmlContent = htmlContent.replace(/src="\/\//g, 'src="https://');
+                    htmlContent = htmlContent.replace(/href="\//g, 'href="https://wikipedia.org/');
+                    htmlContent = htmlContent.replace(/style="[^"]*"/g, ""); 
+                    htmlContent = htmlContent.replace(/bgcolor="[^"]*"/g, "");
+                    
                     var contentDiv = viewer.find('.wiki-content-scroll');
                     contentDiv.html(htmlContent);
                     contentDiv.find('script, style, link').remove();
                 },
-                error: function() { viewer.find('.wiki-loader').text('Помилка завантаження'); }
+                error: function() {
+                    viewer.find('.wiki-loader').text('Не вдалося завантажити статтю');
+                }
             });
         };
     }
+
     if (window.Lampa) window.wiki_info = new WikiInfoPlugin().init();
 })();
