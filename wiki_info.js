@@ -180,8 +180,8 @@
                             // Актори, перші 5 (P161)
                             extractQIds('P161', 'cast member', 5);
 
-                            // Актори озвучення, перші 3 (P2438)
-                            extractQIds('P2438', 'voice actor', 3);
+                            // Актори озвучення, перші 3 (P725)
+                            extractQIds('P725', 'voice actor', 3);
                             
                             // Режисер (P57)
                             extractQIds('P57', 'director');
