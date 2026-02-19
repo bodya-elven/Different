@@ -43,11 +43,11 @@
                 '.wiki-icon-img { width: 1.6em; height: 1.6em; object-fit: contain; margin-right: 5px; filter: grayscale(100%) brightness(2); } ' +
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-select-body { width: 90%; max-width: 800px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
+                '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }' +
                 '.wiki-item { padding: 12px 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
-                '.wiki-item__lang { font-size: 1.5em; width: 40px; text-align: center; }' +
+                '.wiki-item__lang { font-size: 1.5em; width: 35px; text-align: center; }' +
                 '.wiki-item__info { display: flex; flex-direction: column; flex: 1; }' +
                 '.wiki-item__type { font-size: 0.95em; color: #999; margin-bottom: 2px; text-transform: none; }' + 
                 '.wiki-item__title { font-size: 1.25em; color: #fff; font-weight: 500; }' + 
@@ -59,15 +59,17 @@
                 '.wiki-close-btn { width: 50px; height: 50px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 28px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-close-btn.focus { border-color: #fff; background: #555; outline: none; }' +
                 
-                /* Колір тексту змінено на #b0b0b0 (м'якший світло-сірий) */
-                '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #b0b0b0; line-height: 1.6; font-size: 1.3em; -webkit-overflow-scrolling: touch; }' +
+                /* Висвітлення основного тексту статті */
+                '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #efefef; line-height: 1.6; font-size: 1.3em; -webkit-overflow-scrolling: touch; }' +
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
                 
+                /* Таблиці наслідують розмір шрифту */
                 '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; display: block; overflow-x: auto; margin: 15px 0; border-collapse: collapse; font-size: inherit !important; }' + 
+                
                 '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
                 '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
-                /* Колір посилань змінено на ще світліший сірий #888 */
-                '.wiki-content-scroll a { color: #888 !important; text-decoration: none; pointer-events: none; }' +
+                /* Висвітлення посилань */
+                '.wiki-content-scroll a { color: #aaa !important; text-decoration: none; pointer-events: none; }' +
                 '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; color: #ccc; margin-bottom: 20px; box-sizing: border-box; }' +
                 '.wiki-content-scroll .infobox td, .wiki-content-scroll .infobox th { padding: 5px; border-bottom: 1px solid #333; vertical-align: top; }' +
                 '.wiki-content-scroll img { max-width: 100%; height: auto; border-radius: 5px; }' +
@@ -275,7 +277,6 @@
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
                     if (index > 0) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index - 1], menu);
-                        /* Прокрутка вгору для ТВ */
                         var list = menu.find('.wiki-items-list');
                         var focusItem = menu.find('.wiki-item.focus');
                         if (focusItem.position().top < 50) list.scrollTop(list.scrollTop() - 100);
@@ -285,7 +286,6 @@
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
                     if (index < items.length - 1) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
-                        /* Прокрутка вниз для ТВ */
                         var list = menu.find('.wiki-items-list');
                         var focusItem = menu.find('.wiki-item.focus');
                         if (focusItem.position().top > list.height() - 100) list.scrollTop(list.scrollTop() + 100);
@@ -330,25 +330,34 @@
                     Lampa.Controller.collectionFocus(viewer.find('.wiki-close-btn')[0], viewer);
                 },
                 up: function() { 
-                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() - 150); 
+                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() - 100); 
                 },
                 down: function() { 
-                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() + 150); 
+                    viewer.find('.wiki-content-scroll').scrollTop(viewer.find('.wiki-content-scroll').scrollTop() + 100); 
                 },
                 back: closeViewer
             });
 
             Lampa.Controller.toggle('wiki_viewer');
 
+            var apiUrl = 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key);
+
             $.ajax({
-                url: 'https://' + (lang === 'ua' ? 'uk' : 'en') + '.wikipedia.org/api/rest_v1/page/html/' + encodeURIComponent(key),
+                url: apiUrl,
+                timeout: 15000,
                 success: function(htmlContent) {
-                    htmlContent = htmlContent.replace(/src="\/\//g, 'src="https://').replace(/href="\//g, 'href="https://wikipedia.org/').replace(/style="[^"]*"/g, "").replace(/bgcolor="[^"]*"/g, "");
+                    htmlContent = htmlContent.replace(/src="\/\//g, 'src="https://');
+                    htmlContent = htmlContent.replace(/href="\//g, 'href="https://wikipedia.org/');
+                    htmlContent = htmlContent.replace(/style="[^"]*"/g, ""); 
+                    htmlContent = htmlContent.replace(/bgcolor="[^"]*"/g, "");
+                    
                     var contentDiv = viewer.find('.wiki-content-scroll');
                     contentDiv.html(htmlContent);
                     contentDiv.find('script, style, link').remove();
                 },
-                error: function() { viewer.find('.wiki-loader').text('Помилка завантаження'); }
+                error: function() {
+                    viewer.find('.wiki-loader').text('Не вдалося завантажити статтю');
+                }
             });
         };
     }
