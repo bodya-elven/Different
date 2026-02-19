@@ -43,10 +43,12 @@
                 '.wiki-icon-img { width: 1.6em; height: 1.6em; object-fit: contain; margin-right: 5px; filter: grayscale(100%) brightness(2); } ' +
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
-                '.wiki-select-body { width: 95%; max-width: 1000px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
+                '.wiki-select-body { width: 95%; max-width: 900px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 80vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
                 
-                '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; }' +
-                '.wiki-item { padding: 12px 15px; margin: 8px 5px; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; box-sizing: border-box; }' +
+                /* Використовуємо GRID для колонок - це надійніше для ТБ */
+                '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; scroll-behavior: smooth; display: grid; grid-template-columns: repeat(auto-fill, minmax(400px, 1fr)); gap: 10px; padding: 5px; }' +
+                
+                '.wiki-item { padding: 12px 15px; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; box-sizing: border-box; }' +
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
                 '.wiki-item__lang { font-size: 1.5em; width: 40px; text-align: center; }' +
                 '.wiki-item__info { display: flex; flex-direction: column; flex: 1; overflow: hidden; }' +
@@ -64,17 +66,14 @@
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
                 '.wiki-content-scroll h2 { border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; color: #fff; }' +
                 '.wiki-content-scroll p { margin-bottom: 1.2em; text-align: justify; }' +
-                '.wiki-content-scroll a { color: #bbb; text-decoration: none; pointer-events: none; }' +
-                '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; margin: 20px 0; border-collapse: collapse; display: block; overflow-x: auto; font-size: inherit !important; }' +
+                /* Посилання сірого кольору */
+                '.wiki-content-scroll a { color: #bbb !important; text-decoration: none; pointer-events: none; }' +
+                /* Таблиці великого розміру */
+                '.wiki-content-scroll table { background: #1a1a1a !important; color: #ccc !important; width: 100% !important; margin: 20px 0; border-collapse: collapse; display: block; overflow-x: auto; font-size: 1.0em !important; }' +
                 '.wiki-content-scroll table td, .wiki-content-scroll table th { border: 1px solid #444; padding: 10px; }' +
                 '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; padding: 15px; margin-bottom: 25px; width: 100%; box-sizing: border-box; }' +
                 '.wiki-content-scroll img { max-width: 100%; height: auto; border-radius: 8px; }' +
                 '.wiki-content-scroll .mw-empty-elt, .wiki-content-scroll .hatnote, .wiki-content-scroll .ambox, .wiki-content-scroll .navbox { display: none; }' +
-
-                '@media (min-width: 1100px) {' +
-                    '.wiki-items-list { display: flex; flex-wrap: wrap; align-content: flex-start; }' +
-                    '.wiki-item { width: calc(50% - 15px); }' +
-                '}' +
                 '</style>';
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
@@ -230,8 +229,7 @@
                     if (index > 0) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index - 1], menu);
                         var list = menu.find('.wiki-items-list');
-                        var focusItem = menu.find('.wiki-item.focus');
-                        if (focusItem.position().top < 20) list.scrollTop(list.scrollTop() - 100);
+                        list.scrollTop(list.scrollTop() - 80);
                     }
                 },
                 down: function() {
@@ -239,8 +237,7 @@
                     if (index < items.length - 1) {
                         Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
                         var list = menu.find('.wiki-items-list');
-                        var focusItem = menu.find('.wiki-item.focus');
-                        if (focusItem.position().top > list.height() - 100) list.scrollTop(list.scrollTop() + 100);
+                        list.scrollTop(list.scrollTop() + 80);
                     }
                 },
                 back: function() {
