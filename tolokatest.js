@@ -1,14 +1,19 @@
- (function () {
+(function () {
     'use strict';
 
     var plugin_name = 'Toloka Dub Badges';
+    
+    // Налаштування черги
+    var maxConcurrent = 2; // Максимальна кількість одночасних запитів
+    var activeRequests = 0; // Поточна кількість активних запитів
+    var requestQueue = []; // Сама черга завдань
 
-    // 1. Додаємо красивий стиль для наших бейджів
+    // Додаємо стилі для бейджів
     var css = `
         .toloka-badge {
             display: inline-flex;
             align-items: center;
-            background: rgba(46, 125, 50, 0.8); /* Темно-зелений колір */
+            background: rgba(46, 125, 50, 0.8);
             color: #fff;
             padding: 3px 8px;
             border-radius: 4px;
@@ -27,18 +32,14 @@
     `;
     $('head').append('<style>' + css + '</style>');
 
-    // 2. Функція, яка "витягує" назви студій з HTML-коду Толоки
+    // Функція пошуку студій у тексті
     function extractStudios(html) {
         var studios = [];
-        // Шукаємо рядок типу "переклад: багатоголосий закадровий | InariDuB"
         var regex = /переклад:.*?\|\s*([^<\n\r]+)/g;
         var match;
 
         while ((match = regex.exec(html)) !== null) {
-            // Очищаємо від випадкових HTML тегів, якщо вони є
             var name = match[1].replace(/<\/?[^>]+(>|$)/g, "").trim();
-            
-            // Запобігаємо дублям (якщо 10 доріжок від однієї студії)
             if (name && name.length > 0 && name.length < 40 && !studios.includes(name)) {
                 studios.push(name);
             }
@@ -46,76 +47,92 @@
         return studios;
     }
 
-    // 3. Основна функція обробки кожного торрента в списку
+    // Головний контролер черги
+    function processQueue() {
+        // Якщо черга порожня або ліміт запитів вичерпано, чекаємо
+        if (requestQueue.length === 0 || activeRequests >= maxConcurrent) {
+            return;
+        }
+
+        // Беремо завдання з черги та збільшуємо лічильник активних запитів
+        activeRequests++;
+        var task = requestQueue.shift();
+
+        var network = new Lampa.Reguest();
+        network.timeout(5000); 
+
+        network.native('https://toloka.to/t' + task.topicId, function (html) {
+            task.loadingBadge.remove();
+            var studios = extractStudios(html);
+            
+            if (studios.length > 0) {
+                studios.forEach(function(studio) {
+                    task.badgeContainer.append('<span class="toloka-badge">🎤 UKR - ' + studio + '</span>');
+                });
+            }
+            
+            // Звільняємо слот і запускаємо наступний запит із невеличкою затримкою
+            activeRequests--;
+            setTimeout(processQueue, 500); 
+
+        }, function (a, c) {
+            task.loadingBadge.text('❌ Помилка');
+            setTimeout(function() { task.loadingBadge.remove(); }, 3000);
+            
+            // Навіть у разі помилки звільняємо слот
+            activeRequests--;
+            setTimeout(processQueue, 500); 
+        }, false, {
+            dataType: 'text'
+        });
+        
+        // Одразу намагаємося запустити ще один запит (щоб їх було 2)
+        processQueue(); 
+    }
+
+    // Обробка окремого торрента в списку
     function processTorrentItem(item_dom, torrent_data) {
-        // Перевіряємо, чи це Толока
         var tracker = (torrent_data.tracker || '').toLowerCase();
         if (tracker.indexOf('toloka') === -1) return;
 
-        // Шукаємо посилання на роздачу в даних парсера (Jackett/TorrServe)
         var url = torrent_data.details || torrent_data.url || torrent_data.magnet || '';
-        
-        // Витягуємо ID теми (наприклад, з https://toloka.to/t123456)
         var idMatch = url.match(/t(\d+)/) || url.match(/viewtopic\.php\?t=(\d+)/);
         if (!idMatch) return; 
         
         var topicId = idMatch[1];
         
-        // Захист від повторного малювання бейджів на одному й тому ж елементі
         if (item_dom.find('.toloka-badge-container').length > 0) return;
         
-        // Створюємо контейнер для бейджів і додаємо під інфо-панеллю
         var badgeContainer = $('<div class="toloka-badge-container"></div>');
         item_dom.find('.torrent-item__info').after(badgeContainer);
 
-        // Показуємо статус завантаження (можна закоментувати, якщо дратує)
-        var loadingBadge = $('<span class="toloka-badge" style="background: #555;">⏳ Шукаю озвучку...</span>');
+        var loadingBadge = $('<span class="toloka-badge" style="background: #555;">⏳ Шукаю...</span>');
         badgeContainer.append(loadingBadge);
 
-        // Робимо фоновий запит на сторінку Толоки
-        var network = new Lampa.Reguest();
-        network.timeout(5000); 
-
-        network.native('https://toloka.to/t' + topicId, function (html) {
-            loadingBadge.remove(); // Прибираємо значок завантаження
-            var studios = extractStudios(html);
-            
-            if (studios.length > 0) {
-                studios.forEach(function(studio) {
-                    // Малюємо фінальний бейдж
-                    badgeContainer.append('<span class="toloka-badge">🎤 UKR - ' + studio + '</span>');
-                });
-            } else {
-                // Якщо студій не знайдено (наприклад, чистий оригінал)
-                // badgeContainer.append('<span class="toloka-badge" style="background: #444;">Тільки оригінал / Не вказано</span>');
-            }
-        }, function (a, c) {
-            // У разі помилки (наприклад, Толока лежить)
-            loadingBadge.text('❌ Помилка');
-            setTimeout(function() { loadingBadge.remove(); }, 3000);
-        }, false, {
-            dataType: 'text'
+        // Додаємо завдання в чергу
+        requestQueue.push({
+            topicId: topicId,
+            badgeContainer: badgeContainer,
+            loadingBadge: loadingBadge
         });
+
+        // "Штурхаємо" чергу, щоб вона почала працювати
+        processQueue();
     }
 
-    // 4. Слідкуємо за появою нових торрентів на екрані
+    // Відстеження появи нових елементів на екрані
     var observer = new MutationObserver(function(mutations) {
         mutations.forEach(function(mutation) {
             if (mutation.addedNodes && mutation.addedNodes.length > 0) {
                 $(mutation.addedNodes).each(function() {
                     var el = $(this);
-                    // Якщо з'явився новий рядок торрента
                     if (el.hasClass('torrent-item')) {
-                        // Робимо невеличку затримку, щоб Lampa встигла "прив'язати" дані до DOM-елемента
                         setTimeout(function() {
                             var rawElem = el[0];
-                            var tData = rawElem.data || rawElem.parsed_data; // Дані від парсера
-                            
-                            // Якщо парсер не віддав трекер явно, шукаємо в тексті інтерфейсу
+                            var tData = rawElem.data || rawElem.parsed_data; 
                             var trackerNameDom = el.find('.torrent-item__tracker, .torrent-item__source').text().toLowerCase();
                             
                             if (tData) {
-                                // Якщо tracker не вказаний в data, підкинемо з DOM
                                 if (!tData.tracker) tData.tracker = trackerNameDom;
                                 processTorrentItem(el, tData);
                             }
@@ -126,7 +143,7 @@
         });
     });
 
-    // Запускаємо спостерігач після повного завантаження Lampa
+    // Ініціалізація
     Lampa.Listener.follow('app', function (e) {
         if (e.type == 'ready') {
             observer.observe(document.body, { childList: true, subtree: true });
