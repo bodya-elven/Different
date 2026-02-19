@@ -44,7 +44,7 @@
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
                 /* max-height та overflow додано для прокрутки списку */
-                '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 70vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
+                '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 85vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }' +
                 '.wiki-item { padding: 12px 15px; margin: 8px 0; background: #252525; border-radius: 8px; display: flex; align-items: center; gap: 15px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-item.focus { border-color: #fff; background: #333; outline: none; }' +
@@ -60,12 +60,12 @@
                 '.wiki-close-btn { width: 45px; height: 45px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; border: 2px solid transparent; cursor: pointer; }' +
                 '.wiki-close-btn.focus { border-color: #fff; background: #555; outline: none; }' +
                 
-                /* Шрифт статті збільшено на два кроки (з 1.1em до 1.3em) */
+                /* Шрифт статті */
                 '.wiki-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #d0d0d0; line-height: 1.6; font-size: 1.3em; -webkit-overflow-scrolling: touch; }' +
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
                 
-                /* Текст у таблицях залишаємо стандартним за замовчуванням браузера або специфічним стилем Lampa */
-                '.wiki-content-scroll table { font-size: 0.85em !important; }' + 
+                /* Текст у таблицях */
+                '.wiki-content-scroll table { font-size: inherit !important; }' + 
                 
                 '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
                 '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
@@ -276,18 +276,28 @@
                 },
                 up: function() {
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
-                    if (index > 0) Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index - 1], menu);
+                    if (index > 0) {
+                        Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index - 1], menu);
+                        
+                        /* Додаткова прокрутка вгору */
+                        var list = menu.find('.wiki-items-list');
+                        var focusItem = menu.find('.wiki-item.focus');
+                        if (focusItem.length && focusItem.position().top < 50) {
+                            list.scrollTop(list.scrollTop() - 100);
+                        }
+                    }
                 },
                 down: function() {
                     var index = menu.find('.wiki-item').index(menu.find('.wiki-item.focus'));
-                    if (index < items.length - 1) Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
-                    
-                    /* Додаткова прокрутка для ТВ при русі вниз */
-                    var focusItem = menu.find('.wiki-item.focus');
-                    if (focusItem.length) {
+                    if (index < items.length - 1) {
+                        Lampa.Controller.collectionFocus(menu.find('.wiki-item')[index + 1], menu);
+                        
+                        /* Додаткова прокрутка вниз */
                         var list = menu.find('.wiki-items-list');
-                        var top = focusItem.position().top;
-                        if (top > list.height() - 100) list.scrollTop(list.scrollTop() + 100);
+                        var focusItem = menu.find('.wiki-item.focus');
+                        if (focusItem.length && focusItem.position().top > list.height() - 100) {
+                            list.scrollTop(list.scrollTop() + 100);
+                        }
                     }
                 },
                 back: function() {
