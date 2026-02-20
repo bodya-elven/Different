@@ -6,7 +6,7 @@
 
     var manifest = {
         type: "other",
-        version: "1.2.0",
+        version: "1.2.1",
         name: "AI Search",
         description: "Розумний пошук фільмів з інтеграцією у вкладки пошуку",
         component: "ai_search"
@@ -110,10 +110,12 @@
         var model = Lampa.Storage.get('ai_search_model') || 'google/gemini-2.0-flash-lite-preview-02-05:free';
         var limit = Lampa.Storage.get('ai_search_limit') || 15;
 
-        var prompt = 'Запит: "' + query + '"\n' +
-            'Запропонуй рівно ' + limit + ' фільмів/серіалів.\n' +
-            'Формат СУВОРО JSON: {"recommendations":[{"title":"Назва","year":2023}]}\n' +
-            'ТОЛЬКО JSON, без жодного тексту.';
+        // Покращений промпт без використання системного response_format
+        var prompt = 'Дій як професійний кінокритик. Користувач шукає: "' + query + '".\n' +
+            'Знайди рівно ' + limit + ' найкращих фільмів або серіалів, які ідеально підходять під цей запит.\n' +
+            'ВАЖЛИВО: Ти ПОВИНЕН повернути результат ВИКЛЮЧНО у форматі JSON. Жодного іншого тексту, привітань чи пояснень.\n' +
+            'Структура JSON має бути такою:\n' +
+            '{"recommendations": [{"title": "Оригінальна назва", "year": 2020}]}';
 
         return new Promise(function(resolve) {
             $.ajax({
@@ -131,14 +133,22 @@
                     messages: [
                         { role: "system", content: "Ти кіноексперт. Відповідай ТІЛЬКИ валідним JSON." },
                         { role: "user", content: prompt }
-                    ],
-                    response_format: { type: "json_object" } 
+                    ]
                 }),
                 success: function(response) {
                     if (response && response.choices && response.choices.length > 0) {
                         var rawText = response.choices[0].message.content;
+                        console.log("Відповідь ШІ:", rawText); // Пишемо в консоль те, що віддав ШІ
+                        
                         var parsed = parseJsonFromResponse(rawText);
-                        resolve(extractRecommendations(parsed));
+                        var recs = extractRecommendations(parsed);
+                        
+                        if (recs.length > 0) {
+                            resolve(recs);
+                        } else {
+                            Lampa.Noty.show('ШІ відповів, але не зміг згенерувати правильний список (див. консоль)');
+                            resolve([]);
+                        }
                     } else {
                         resolve([]);
                     }
@@ -171,8 +181,7 @@
 
             askAI(query).then(function(recs) {
                 if (!recs || recs.length === 0) {
-                    Lampa.Noty.show('AI нічого не знайшов або сталася помилка.');
-                    return oncomplite([]);
+                    return oncomplite([]); // Lampa сама напише "За цим запитом AI нічого не рекомендує"
                 }
 
                 Lampa.Noty.show('Завантаження постерів...');
@@ -228,12 +237,10 @@
 
     // --- ГОЛОВНА ЛОГІКА ІНІЦІАЛІЗАЦІЇ ---
     function startPlugin() {
-        // Додаємо вкладку пошуку
         if (Lampa.Search) {
             Lampa.Search.addSource(AiSearchSource);
         }
 
-        // Налаштування меню
         Lampa.SettingsApi.addComponent({
             component: 'ai_search',
             name: 'AI Search',
@@ -294,7 +301,7 @@
     }
 
     if (window.appready) {
-        setTimeout(startPlugin, 500); // Таймут потрібен, щоб Lampa.Search встиг завантажитись
+        setTimeout(startPlugin, 500); 
     } else {
         Lampa.Listener.follow('app', function (e) { 
             if (e.type === 'ready') setTimeout(startPlugin, 500); 
