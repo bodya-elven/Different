@@ -6,13 +6,13 @@
 
     var manifest = {
         type: "other",
-        version: "1.3.3",
+        version: "1.3.4",
         name: "AI Search (Gemini)",
-        description: "Розумний пошук фільмів через Google Gemini 1.5",
+        description: "Розумний пошук фільмів через Google Gemini",
         component: "ai_search"
     };
 
-    // --- РОЗУМНИЙ ПАРСЕР ---
+    // --- РОЗУМНИЙ ПАРСЕР (знайде JSON у будь-якому тексті) ---
     function parseJsonFromResponse(response) {
         if (!response || typeof response !== 'string') return null;
         response = response.trim();
@@ -111,28 +111,25 @@
         var limit = parseInt(Lampa.Storage.get('ai_search_limit')) || 15;
 
         if (apiKey.indexOf('sk-') === 0) {
-            Lampa.Noty.show('Помилка: Це ключ від OpenRouter! Отримайте ключ в Google AI Studio (починається з AIza...)');
+            Lampa.Noty.show('Помилка: Це ключ від OpenRouter! Потрібен ключ Google (AIza...)');
             return Promise.resolve([]);
         }
 
-        // ЖОРСТКА ОЧИСТКА: Видаляємо всі неанглійські букви, пробіли, лапки. Залишаємо тільки a-z, 0-9, крапку та дефіс.
+        // Очистка та підстановка найстабільнішої версії
         var model = rawModel.replace(/[^a-zA-Z0-9.\-]/g, '');
-        
-        // Якщо після очистки нічого не залишилось, використовуємо гарантовано правильний дефолт
-        if (!model) {
-            model = 'gemini-1.5-flash';
+        if (!model || model === 'gemini-1.5-flash') {
+            model = 'gemini-1.5-flash-latest';
         }
 
         var prompt = 'Дій як професійний кінокритик. Користувач шукає: "' + query + '".\n' +
             'Знайди рівно ' + limit + ' найкращих фільмів або серіалів, які ідеально підходять під цей запит.\n' +
+            'ВАЖЛИВО: Поверни результат ВИКЛЮЧНО у форматі JSON без жодного іншого тексту.\n' +
             'Структура має бути такою:\n' +
             '{"recommendations": [{"title": "Оригінальна назва або назва українською", "year": 2020}]}';
 
         return new Promise(function(resolve) {
             var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
             
-            console.log("Відправка запиту до моделі:", model); // Лог для перевірки
-
             $.ajax({
                 url: apiUrl,
                 type: 'POST',
@@ -140,13 +137,11 @@
                 headers: {
                     'Content-Type': 'application/json'
                 },
+                // Прибрали проблемний generationConfig
                 data: JSON.stringify({
                     contents: [{
                         parts: [{ text: prompt }]
-                    }],
-                    generationConfig: {
-                        responseMimeType: "application/json"
-                    }
+                    }]
                 }),
                 success: function(response) {
                     if (response && response.candidates && response.candidates.length > 0) {
@@ -159,7 +154,7 @@
                         if (recs.length > 0) {
                             resolve(recs);
                         } else {
-                            Lampa.Noty.show('Gemini відповів, але не зміг згенерувати правильний список.');
+                            Lampa.Noty.show('Gemini відповів текстом замість списку. Спробуйте ще раз.');
                             resolve([]);
                         }
                     } else {
@@ -169,15 +164,13 @@
                 error: function(jqXHR, textStatus) {
                     var status = jqXHR.status;
                     if (textStatus === 'timeout') {
-                        Lampa.Noty.show('Помилка: Gemini думає занадто довго (таймаут).');
+                        Lampa.Noty.show('Помилка: Gemini думає занадто довго.');
                     } else if (status === 400) {
-                        Lampa.Noty.show('Помилка 400: Неправильний формат запиту або ключа.');
+                        Lampa.Noty.show('Помилка 400: Неправильний формат запиту.');
                     } else if (status === 403) {
-                        Lampa.Noty.show('Помилка 403: Доступ заборонено. Перевірте API ключ.');
+                        Lampa.Noty.show('Помилка 403: Доступ заборонено (перевірте ключ).');
                     } else if (status === 404) {
-                        Lampa.Noty.show('Помилка 404: Модель "' + model + '" не знайдено. Перевірте консоль.');
-                    } else if (status === 429) {
-                        Lampa.Noty.show('Помилка 429: Перевищено ліміт запитів до Gemini.');
+                        Lampa.Noty.show('Помилка 404: Модель не підтримується. Див. консоль.');
                     } else {
                         Lampa.Noty.show('Помилка сервера: ' + status);
                     }
@@ -295,11 +288,11 @@
             param: { type: 'button', component: 'ai_search_model_btn' },
             field: { 
                 name: 'Модель', 
-                description: Lampa.Storage.get('ai_search_model') || 'gemini-1.5-flash (За замовчуванням)' 
+                description: Lampa.Storage.get('ai_search_model') || 'gemini-1.5-flash-latest' 
             },
             onChange: function () {
                 Lampa.Input.edit({
-                    title: 'Назва моделі (залиште пустим для стандарту)',
+                    title: 'Назва моделі (пусто = за замовчуванням)',
                     value: Lampa.Storage.get('ai_search_model', ''),
                     free: true,
                     nosave: true
