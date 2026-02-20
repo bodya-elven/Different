@@ -6,9 +6,9 @@
 
     var manifest = {
         type: "other",
-        version: "1.3.1",
+        version: "1.3.2",
         name: "AI Search (Gemini)",
-        description: "Розумний пошук фільмів через Google Gemini",
+        description: "Розумний пошук фільмів через Google Gemini 1.5",
         component: "ai_search"
     };
 
@@ -45,7 +45,7 @@
         var items = parsedData.recommendations || parsedData.movies || parsedData.items || parsedData.results || [];
         if (!Array.isArray(items)) items = [];
 
-        var limit = Lampa.Storage.get('ai_search_limit') || 15;
+        var limit = parseInt(Lampa.Storage.get('ai_search_limit')) || 15;
         for (var i = 0; i < items.length && recommendations.length < limit; i++) {
             var item = items[i];
             if (!item || typeof item !== "object") continue;
@@ -107,17 +107,16 @@
     // --- ЗАПИТ ДО GEMINI API ---
     function askAI(query) {
         var apiKey = (Lampa.Storage.get('ai_search_api_key') || '').trim();
-        var rawModel = Lampa.Storage.get('ai_search_model') || 'gemini-2.0-flash';
-        var limit = Lampa.Storage.get('ai_search_limit') || 15;
+        var rawModel = Lampa.Storage.get('ai_search_model') || 'gemini-1.5-flash';
+        var limit = parseInt(Lampa.Storage.get('ai_search_limit')) || 15;
 
-        // Перевірка на старий ключ від OpenRouter
         if (apiKey.indexOf('sk-') === 0) {
-            Lampa.Noty.show('Помилка: Ви використовуєте ключ OpenRouter. Потрібен ключ Google (починається з AIza...)');
+            Lampa.Noty.show('Помилка: Ви використовуєте ключ OpenRouter. Потрібен ключ Google (AIza...)');
             return Promise.resolve([]);
         }
 
-        // Очищення назви моделі, якщо користувач вставив зайве
-        var model = rawModel.replace('models/', '').trim();
+        // Жорстка очистка назви моделі
+        var model = rawModel.replace('models/', '').replace(/\s+/g, '').trim();
 
         var prompt = 'Дій як професійний кінокритик. Користувач шукає: "' + query + '".\n' +
             'Знайди рівно ' + limit + ' найкращих фільмів або серіалів, які ідеально підходять під цей запит.\n' +
@@ -289,16 +288,16 @@
             param: { type: 'button', component: 'ai_search_model_btn' },
             field: { 
                 name: 'Модель', 
-                description: Lampa.Storage.get('ai_search_model', 'gemini-2.0-flash') 
+                description: Lampa.Storage.get('ai_search_model', 'gemini-1.5-flash') 
             },
             onChange: function () {
                 Lampa.Input.edit({
                     title: 'Назва моделі Gemini',
-                    value: Lampa.Storage.get('ai_search_model', 'gemini-2.0-flash'),
+                    value: Lampa.Storage.get('ai_search_model', 'gemini-1.5-flash'),
                     free: true,
                     nosave: true
                 }, function (new_val) {
-                    Lampa.Storage.set('ai_search_model', new_val.trim());
+                    Lampa.Storage.set('ai_search_model', new_val.replace(/\s+/g, '').trim());
                     Lampa.Settings.update(); 
                 });
             }
