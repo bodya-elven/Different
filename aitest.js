@@ -6,27 +6,121 @@
 
     var manifest = {
         type: "other",
-        version: "1.0.4",
+        version: "1.1.0",
         name: "AI Search",
-        description: "Розумний пошук фільмів через AI (OpenRouter)",
+        description: "Розумний пошук фільмів з інтеграцією TMDB",
         component: "ai_search"
     };
 
+    // --- УТИЛІТИ З НОВОГО ПЛАГІНА ---
+    
+    // Розумний парсер (витягує JSON, навіть якщо ШІ додав зайвий текст)
+    function parseJsonFromResponse(response) {
+        if (!response || typeof response !== 'string') return null;
+        response = response.trim();
+
+        var codeBlockStart = response.indexOf("```");
+        if (codeBlockStart !== -1) {
+            var contentStart = codeBlockStart + 3;
+            if (response.substring(contentStart, contentStart + 4).toLowerCase() === "json") contentStart += 4;
+            while (contentStart < response.length && /[\s\n\r]/.test(response[contentStart])) contentStart++;
+            var codeBlockEnd = response.indexOf("```", contentStart);
+            if (codeBlockEnd !== -1) {
+                try { return JSON.parse(response.substring(contentStart, codeBlockEnd).trim()); } catch (e) {}
+            }
+        }
+
+        var braceCount = 0, jsonStart = -1, jsonEnd = -1;
+        for (var i = 0; i < response.length; i++) {
+            if (response[i] === '{') { if (jsonStart === -1) jsonStart = i; braceCount++; }
+            else if (response[i] === '}') { braceCount--; if (braceCount === 0 && jsonStart !== -1) { jsonEnd = i; break; } }
+        }
+        if (jsonStart !== -1 && jsonEnd !== -1) {
+            try { return JSON.parse(response.substring(jsonStart, jsonEnd + 1)); } catch (e) {}
+        }
+        return null;
+    }
+
+    // Витягування масиву рекомендацій
+    function extractRecommendations(parsedData) {
+        var recommendations = [];
+        if (!parsedData) return recommendations;
+        var items = parsedData.recommendations || parsedData.movies || parsedData.items || parsedData.results || [];
+        if (!Array.isArray(items)) items = [];
+
+        var limit = Lampa.Storage.get('ai_search_limit') || 15;
+        for (var i = 0; i < items.length && recommendations.length < limit; i++) {
+            var item = items[i];
+            if (!item || typeof item !== "object") continue;
+            var rec = {
+                title: item.title || item.name || item.film || '',
+                year: parseInt(item.year || item.release_year || item.date || '0') || null
+            };
+            if (rec.title && rec.title.trim()) recommendations.push(rec);
+        }
+        return recommendations;
+    }
+
+    // Пошук реальних фільмів у базі TMDB
+    function fetchTmdbData(recommendations, callback) {
+        var results = [];
+        var processed = 0;
+        var limit = recommendations.length;
+        
+        if (limit === 0) return callback([]);
+
+        var request = new Lampa.Reguest(); // Системний мережевий клас Lampa
+
+        function checkDone() {
+            processed++;
+            if (processed >= limit) callback(results);
+        }
+
+        recommendations.forEach(function(item) {
+            if (!item.title) return checkDone();
+            
+            var url = Lampa.TMDB.api("search/multi?query=" + encodeURIComponent(item.title) + "&api_key=" + Lampa.TMDB.key() + "&language=uk-UA");
+            
+            request.silent(url, function (data) {
+                if (data && data.results && data.results.length > 0) {
+                    var best = data.results[0];
+                    // Спроба знайти точний збіг за роком випуску
+                    if (item.year) {
+                        for (var i = 0; i < data.results.length; i++) {
+                            var r = data.results[i];
+                            var year = (r.release_date || r.first_air_date || '').substring(0, 4);
+                            if (year && parseInt(year) === parseInt(item.year)) { best = r; break; }
+                        }
+                    }
+                    if (best.media_type === 'movie' || best.media_type === 'tv') {
+                        results.push({
+                            title: (best.title || best.name) + (item.year ? ' (' + item.year + ')' : ''),
+                            id: best.id,
+                            type: best.media_type
+                        });
+                    }
+                }
+                checkDone();
+            }, checkDone);
+        });
+    }
+
+    // --- ГОЛОВНА ЛОГІКА ПЛАГІНА ---
+
     function startPlugin() {
-        // 1. Реєстрація компонента в Налаштуваннях
+        // Налаштування (безпечний варіант)
         Lampa.SettingsApi.addComponent({
             component: 'ai_search',
             name: 'AI Search',
             icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><path d="M11 8v6"></path><path d="M8 11h6"></path></svg>'
         });
 
-        // 2. Безпечне створення полів (використовуємо type: 'button')
         Lampa.SettingsApi.addParam({
             component: 'ai_search',
-            param: { name: 'ai_search_api_key', type: 'button' },
+            param: { type: 'button', component: 'ai_search_key_btn' },
             field: { 
                 name: 'API ключ OpenRouter', 
-                description: Lampa.Storage.get('ai_search_api_key') ? 'Ключ встановлено (натисніть, щоб змінити)' : 'Не встановлено (натисніть, щоб ввести)'
+                description: Lampa.Storage.get('ai_search_api_key') ? 'Ключ встановлено' : 'Не встановлено (натисніть, щоб ввести)'
             },
             onChange: function () {
                 Lampa.Input.edit({
@@ -36,22 +130,22 @@
                     nosave: true
                 }, function (new_val) {
                     Lampa.Storage.set('ai_search_api_key', new_val.trim());
-                    Lampa.Settings.update(); // Оновлюємо інтерфейс налаштувань
+                    Lampa.Settings.update();
                 });
             }
         });
 
         Lampa.SettingsApi.addParam({
             component: 'ai_search',
-            param: { name: 'ai_search_model', type: 'button' },
+            param: { type: 'button', component: 'ai_search_model_btn' },
             field: { 
                 name: 'Модель AI', 
-                description: Lampa.Storage.get('ai_search_model', 'qwen/qwen-2.5-72b-instruct:free') 
+                description: Lampa.Storage.get('ai_search_model', 'google/gemini-2.0-flash-lite-preview-02-05:free') 
             },
             onChange: function () {
                 Lampa.Input.edit({
-                    title: 'Модель AI',
-                    value: Lampa.Storage.get('ai_search_model', 'qwen/qwen-2.5-72b-instruct:free'),
+                    title: 'Введіть назву моделі',
+                    value: Lampa.Storage.get('ai_search_model', 'google/gemini-2.0-flash-lite-preview-02-05:free'),
                     free: true,
                     nosave: true
                 }, function (new_val) {
@@ -66,26 +160,14 @@
             param: {
                 name: 'ai_search_limit',
                 type: 'select',
-                values: { 5: '5', 10: '10', 15: '15', 20: '20', 25: '25', 30: '30' },
+                values: { 5: '5', 10: '10', 15: '15', 20: '20' },
                 default: 15
             },
             field: { name: 'Кількість результатів', description: 'Скільки варіантів показувати' },
-            onChange: function (val) {
-                Lampa.Storage.set('ai_search_limit', val);
-            }
+            onChange: function (val) { Lampa.Storage.set('ai_search_limit', val); }
         });
 
-        Lampa.SettingsApi.addParam({
-            component: 'ai_search',
-            param: { name: 'ai_search_clear_cache', type: 'button' },
-            field: { name: 'Очистити кеш', description: 'Натисніть для видалення тимчасових даних' },
-            onChange: function () {
-                Lampa.Storage.set('ai_search_cache', {});
-                Lampa.Noty.show('Кеш успішно очищено');
-            }
-        });
-
-        // 3. Додавання кнопки в головне (ліве) меню
+        // Додавання кнопки в головне меню
         if (!$('.menu__item.ai-search-btn').length) {
             var btn = $('<div class="menu__item selector ai-search-btn">' +
                 '<div class="menu__icons">' +
@@ -95,41 +177,47 @@
             '</div>');
 
             btn.on('hover:enter', function () {
+                var apiKey = Lampa.Storage.get('ai_search_api_key');
+                if (!apiKey) {
+                    Lampa.Noty.show('Спочатку введіть API ключ у Налаштуваннях!');
+                    return;
+                }
+
                 Lampa.Input.edit({
                     title: 'Що хочете подивитися?',
                     value: '',
                     free: true,
                     nosave: true
-                }, function (value) {
-                    if (value) {
-                        Lampa.Noty.show('AI шукає варіанти...');
+                }, function (query) {
+                    if (query) {
+                        Lampa.Noty.show('AI генерує підбірку (може зайняти до 30с)...');
                         
-                        askAI(value).then(function(movies) {
-                            if (movies && movies.length > 0) {
-                                var items = movies.map(function(title) {
-                                    return {
-                                        title: title,
-                                        search_query: title
-                                    };
-                                });
-
-                                Lampa.Select.show({
-                                    title: 'AI рекомендує:',
-                                    items: items,
-                                    onSelect: function (item) {
-                                        Lampa.Activity.push({
-                                            url: '',
-                                            title: 'Пошук',
-                                            component: 'search',
-                                            query: item.search_query
+                        askAI(query).then(function(recs) {
+                            if (recs && recs.length > 0) {
+                                Lampa.Noty.show('Пошук постерів у базі...');
+                                
+                                fetchTmdbData(recs, function(tmdbResults) {
+                                    if (tmdbResults.length > 0) {
+                                        Lampa.Select.show({
+                                            title: 'AI рекомендує:',
+                                            items: tmdbResults,
+                                            onSelect: function (item) {
+                                                // ВАУ-ефект: одразу відкриваємо картку фільму!
+                                                Lampa.Activity.push({
+                                                    url: '',
+                                                    title: item.title,
+                                                    component: 'full',
+                                                    id: item.id,
+                                                    method: item.type,
+                                                    source: 'tmdb'
+                                                });
+                                            },
+                                            onBack: function () { Lampa.Controller.toggle('menu'); }
                                         });
-                                    },
-                                    onBack: function () {
-                                        Lampa.Controller.toggle('menu');
+                                    } else {
+                                        Lampa.Noty.show('AI знайшов фільми, але їх немає у базі TMDB.');
                                     }
                                 });
-                            } else if (movies && movies.length === 0) {
-                                Lampa.Noty.show('AI нічого не знайшов. Спробуйте змінити запит.');
                             }
                         });
                     }
@@ -140,26 +228,23 @@
         }
     }
 
-    // 4. Логіка запиту до OpenRouter через jQuery AJAX
+    // Запит до OpenRouter з примусом до JSON
     function askAI(query) {
         var apiKey = Lampa.Storage.get('ai_search_api_key');
-        var model = Lampa.Storage.get('ai_search_model') || 'qwen/qwen-2.5-72b-instruct:free';
+        var model = Lampa.Storage.get('ai_search_model') || 'google/gemini-2.0-flash-lite-preview-02-05:free';
         var limit = Lampa.Storage.get('ai_search_limit') || 15;
 
-        if (!apiKey) {
-            Lampa.Noty.show('Помилка: API ключ не знайдено в Налаштуваннях');
-            return Promise.resolve(null);
-        }
-
-        var prompt = 'Користувач хоче подивитися: "' + query + '". ' +
-            'Знайди ' + limit + ' назв фільмів або серіалів, які найбільше підходять під опис. ' +
-            'Поверни ТІЛЬКИ список назв, кожна назва з нового рядка, без нумерації, без років та без жодного зайвого тексту.';
+        // Строгий промпт, як у плагіні-прикладі
+        var prompt = 'Запит: "' + query + '"\n' +
+            'Запропонуй рівно ' + limit + ' фільмів/серіалів.\n' +
+            'Формат СУВОРО JSON: {"recommendations":[{"title":"Назва","year":2023}]}\n' +
+            'ТОЛЬКО JSON, без жодного тексту.';
 
         return new Promise(function(resolve) {
             $.ajax({
                 url: 'https://openrouter.ai/api/v1/chat/completions',
                 type: 'POST',
-                timeout: 15000, // 15 секунд таймаут
+                timeout: 60000, // 60 секунд на "подумати"
                 headers: {
                     'Authorization': 'Bearer ' + apiKey,
                     'Content-Type': 'application/json',
@@ -168,48 +253,43 @@
                 },
                 data: JSON.stringify({
                     model: model,
-                    messages: [{ role: 'user', content: prompt }]
+                    messages: [
+                        { role: "system", content: "Ти кіноексперт. Відповідай ТІЛЬКИ валідним JSON." },
+                        { role: "user", content: prompt }
+                    ],
+                    response_format: { type: "json_object" } // Змушуємо OpenRouter віддати JSON
                 }),
                 success: function(response) {
-                    console.log('AI Response успішний:', response);
                     if (response && response.choices && response.choices.length > 0) {
                         var rawText = response.choices[0].message.content;
-                        var movies = rawText.split('\n')
-                            .map(function(s) { return s.trim().replace(/^[-*•]\s*/, '').replace(/^\d+[\.)]\s*/, ''); })
-                            .filter(function(s) { return s.length > 0; });
-                        resolve(movies);
+                        var parsed = parseJsonFromResponse(rawText);
+                        var recs = extractRecommendations(parsed);
+                        
+                        if (recs.length > 0) {
+                            resolve(recs);
+                        } else {
+                            Lampa.Noty.show('Помилка: ШІ не зміг сформувати список.');
+                            resolve([]);
+                        }
                     } else {
+                        Lampa.Noty.show('Порожня відповідь від сервера.');
                         resolve([]);
                     }
                 },
-                error: function(jqXHR, textStatus, errorThrown) {
-                    // Виводимо максимально детальну помилку в консоль
-                    console.error('--- Помилка AI Search ---');
-                    console.error('Статус:', textStatus);
-                    console.error('Код помилки HTTP:', jqXHR.status);
-                    console.error('Текст відповіді сервера:', jqXHR.responseText);
-                    console.error('Помилка (Thrown):', errorThrown);
-                    console.error('-------------------------');
+                error: function(jqXHR, textStatus) {
+                    var status = jqXHR.status;
+                    if (textStatus === 'timeout') Lampa.Noty.show('Помилка: ШІ думає занадто довго.');
+                    else if (status === 429) Lampa.Noty.show('Помилка 429: Сервер AI перевантажений.');
+                    else Lampa.Noty.show('Помилка ' + status + '. Див. консоль.');
                     
-                    Lampa.Noty.show('Помилка: ' + (jqXHR.status ? jqXHR.status : textStatus) + ' (див. консоль)');
                     resolve(null);
                 }
             });
         });
     }
 
-    // 5. Запуск
-    if (window.appready) {
-        startPlugin();
-    } else {
-        Lampa.Listener.follow('app', function (e) {
-            if (e.type === 'ready') {
-                startPlugin();
-            }
-        });
-    }
+    if (window.appready) startPlugin();
+    else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') startPlugin(); });
 
-    if (Lampa.Manifest) {
-        Lampa.Manifest.plugins = manifest;
-    }
+    if (Lampa.Manifest) Lampa.Manifest.plugins = manifest;
 })();
