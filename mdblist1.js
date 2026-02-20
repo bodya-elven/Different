@@ -125,21 +125,19 @@
     monochromeIcons: false
   };
 
-  var BASE_ICON = 'https://raw.githubusercontent.com/ko3ik/LMP/main/wwwroot/';
-  
-  // Вбудовані SVG іконки
-  var SVG_TRAKT = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath fill='%23ed1c24' d='M128 200L16 88v48l112 112 112-112V88z'/%3E%3C/svg%3E";
-  var SVG_LETTERBOXD = "data:image/svg+xml;charset=utf-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Ccircle cx='64' cy='128' r='32' fill='%2300E054'/%3E%3Ccircle cx='128' cy='128' r='32' fill='%2340BCF4'/%3E%3Ccircle cx='192' cy='128' r='32' fill='%23FF8000'/%3E%3C/svg%3E";
+  // Твоє зовнішнє посилання на папку з іконками
+  var ICONS_BASE_URL = 'https://bodya-elven.github.io/different/icons/';
 
   var ICONS = {
-    imdb: BASE_ICON + 'imdb.png',
-    tmdb: BASE_ICON + 'tmdb.png',
-    metacritic: BASE_ICON + 'metascore.png',
-    rotten_good: BASE_ICON + 'RottenTomatoes.png',
-    rotten_bad: BASE_ICON + 'RottenBad.png',
-    popcorn: BASE_ICON + 'PopcornGood.png',
-    trakt: SVG_TRAKT, 
-    letterboxd: SVG_LETTERBOXD
+    imdb: ICONS_BASE_URL + 'imdb.svg',
+    tmdb: ICONS_BASE_URL + 'tmdb.svg',
+    trakt: ICONS_BASE_URL + 'trakt.svg',
+    letterboxd: ICONS_BASE_URL + 'letterboxd.svg',
+    metacritic: ICONS_BASE_URL + 'metacritic.svg',
+    rotten_good: ICONS_BASE_URL + 'rt.svg',
+    rotten_bad: ICONS_BASE_URL + 'rt-bad.svg',
+    popcorn: ICONS_BASE_URL + 'popcorn.svg',
+    popcorn_bad: ICONS_BASE_URL + 'popcorn-bad.svg' // Додано для майбутньої перевірки глядацького рейтингу
   };
 
   var pluginStyles = "<style>" +
