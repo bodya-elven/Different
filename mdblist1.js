@@ -148,6 +148,10 @@
     ".loading-dots__dot:nth-child(2) { animation-delay: -0.16s; }" +
     "@keyframes loading-dots-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.6; } 40% { transform: translateY(-0.5em); opacity: 1; } }" +
 
+    ".full-start__rate .source--name img:not(:first-child) { display: none !important; }" +
+    ".full-start__rate .source--name { background: none !important; position: relative; display: inline-flex; align-items: center; justify-content: center; }" +
+    ".full-start__rate .source--name img { position: relative; z-index: 2; display: block !important; }" +
+
     ":root{" +
     "  --lmp-h-imdb:22px; --lmp-h-mc:22px; --lmp-h-rt:24px;" +
     "  --lmp-h-popcorn:24px; --lmp-h-tmdb:24px;" +
