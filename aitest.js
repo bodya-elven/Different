@@ -6,9 +6,9 @@
 
     var manifest = {
         type: "other",
-        version: "1.2.1",
-        name: "AI Search",
-        description: "Розумний пошук фільмів з інтеграцією у вкладки пошуку",
+        version: "1.3.0",
+        name: "AI Search (Gemini)",
+        description: "Розумний пошук фільмів через Google Gemini",
         component: "ai_search"
     };
 
@@ -104,41 +104,42 @@
         });
     }
 
-    // --- ЗАПИТ ДО OPENROUTER ---
+    // --- ЗАПИТ ДО GEMINI API ---
     function askAI(query) {
         var apiKey = Lampa.Storage.get('ai_search_api_key');
-        var model = Lampa.Storage.get('ai_search_model') || 'google/gemini-2.0-flash-lite-preview-02-05:free';
+        var model = Lampa.Storage.get('ai_search_model') || 'gemini-1.5-flash';
         var limit = Lampa.Storage.get('ai_search_limit') || 15;
 
-        // Покращений промпт без використання системного response_format
         var prompt = 'Дій як професійний кінокритик. Користувач шукає: "' + query + '".\n' +
             'Знайди рівно ' + limit + ' найкращих фільмів або серіалів, які ідеально підходять під цей запит.\n' +
-            'ВАЖЛИВО: Ти ПОВИНЕН повернути результат ВИКЛЮЧНО у форматі JSON. Жодного іншого тексту, привітань чи пояснень.\n' +
-            'Структура JSON має бути такою:\n' +
-            '{"recommendations": [{"title": "Оригінальна назва", "year": 2020}]}';
+            'Структура має бути такою:\n' +
+            '{"recommendations": [{"title": "Оригінальна назва або назва українською", "year": 2020}]}';
 
         return new Promise(function(resolve) {
+            // Формуємо URL саме для Google Gemini API
+            var apiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/' + model + ':generateContent?key=' + apiKey;
+
             $.ajax({
-                url: 'https://openrouter.ai/api/v1/chat/completions',
+                url: apiUrl,
                 type: 'POST',
-                timeout: 60000, 
+                timeout: 30000, // Gemini відповідає швидко, 30 сек достатньо
                 headers: {
-                    'Authorization': 'Bearer ' + apiKey,
-                    'Content-Type': 'application/json',
-                    'HTTP-Referer': 'https://github.com/lampa-app',
-                    'X-Title': 'Lampa AI Search'
+                    'Content-Type': 'application/json'
                 },
+                // Тіло запиту за стандартом Google AI
                 data: JSON.stringify({
-                    model: model,
-                    messages: [
-                        { role: "system", content: "Ти кіноексперт. Відповідай ТІЛЬКИ валідним JSON." },
-                        { role: "user", content: prompt }
-                    ]
+                    contents: [{
+                        parts: [{ text: prompt }]
+                    }],
+                    generationConfig: {
+                        responseMimeType: "application/json" // Примушуємо віддавати чистий JSON
+                    }
                 }),
                 success: function(response) {
-                    if (response && response.choices && response.choices.length > 0) {
-                        var rawText = response.choices[0].message.content;
-                        console.log("Відповідь ШІ:", rawText); // Пишемо в консоль те, що віддав ШІ
+                    if (response && response.candidates && response.candidates.length > 0) {
+                        // Витягуємо текст з відповіді Gemini
+                        var rawText = response.candidates[0].content.parts[0].text;
+                        console.log("Відповідь Gemini:", rawText); 
                         
                         var parsed = parseJsonFromResponse(rawText);
                         var recs = extractRecommendations(parsed);
@@ -146,7 +147,7 @@
                         if (recs.length > 0) {
                             resolve(recs);
                         } else {
-                            Lampa.Noty.show('ШІ відповів, але не зміг згенерувати правильний список (див. консоль)');
+                            Lampa.Noty.show('Gemini відповів, але не зміг згенерувати правильний список.');
                             resolve([]);
                         }
                     } else {
@@ -155,9 +156,20 @@
                 },
                 error: function(jqXHR, textStatus) {
                     var status = jqXHR.status;
-                    if (textStatus === 'timeout') Lampa.Noty.show('Помилка: ШІ думає занадто довго (таймаут).');
-                    else if (status === 429) Lampa.Noty.show('Помилка 429: Сервер AI перевантажений.');
-                    else if (status === 404) Lampa.Noty.show('Помилка 404: Модель не знайдено.');
+                    if (textStatus === 'timeout') {
+                        Lampa.Noty.show('Помилка: Gemini думає занадто довго (таймаут).');
+                    } else if (status === 400) {
+                        Lampa.Noty.show('Помилка 400: Неправильний API ключ Gemini або запит.');
+                    } else if (status === 403) {
+                        Lampa.Noty.show('Помилка 403: Доступ заборонено (перевірте ключ).');
+                    } else if (status === 404) {
+                        Lampa.Noty.show('Помилка 404: Модель ' + model + ' не знайдено.');
+                    } else if (status === 429) {
+                        Lampa.Noty.show('Помилка 429: Перевищено ліміт запитів до Gemini.');
+                    } else {
+                        Lampa.Noty.show('Помилка сервера: ' + status);
+                    }
+                    console.error('Помилка Gemini API:', jqXHR.responseText);
                     resolve(null);
                 }
             });
@@ -173,15 +185,15 @@
 
             var apiKey = Lampa.Storage.get('ai_search_api_key');
             if (!apiKey) {
-                Lampa.Noty.show('Введіть API ключ OpenRouter у Налаштуваннях!');
+                Lampa.Noty.show('Введіть API ключ Gemini у Налаштуваннях!');
                 return oncomplite([]);
             }
 
-            Lampa.Noty.show('AI генерує підбірку (зачекайте)...');
+            Lampa.Noty.show('Gemini генерує підбірку (зачекайте)...');
 
             askAI(query).then(function(recs) {
                 if (!recs || recs.length === 0) {
-                    return oncomplite([]); // Lampa сама напише "За цим запитом AI нічого не рекомендує"
+                    return oncomplite([]); 
                 }
 
                 Lampa.Noty.show('Завантаження постерів...');
@@ -192,7 +204,6 @@
                         return oncomplite([]);
                     }
 
-                    // Форматуємо результати для відмальовки карток Lampa
                     var formattedResults = tmdbResults.map(function(item) {
                         return {
                             id: item.id,
@@ -243,20 +254,20 @@
 
         Lampa.SettingsApi.addComponent({
             component: 'ai_search',
-            name: 'AI Search',
-            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line><path d="M11 8v6"></path><path d="M8 11h6"></path></svg>'
+            name: 'AI Search (Gemini)',
+            icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"></circle><path d="M12 16v-4"></path><path d="M12 8h.01"></path></svg>'
         });
 
         Lampa.SettingsApi.addParam({
             component: 'ai_search',
             param: { type: 'button', component: 'ai_search_key_btn' },
             field: { 
-                name: 'API ключ OpenRouter', 
-                description: Lampa.Storage.get('ai_search_api_key') ? 'Ключ встановлено' : 'Не встановлено'
+                name: 'API ключ Gemini', 
+                description: Lampa.Storage.get('ai_search_api_key') ? 'Ключ встановлено' : 'Отримати в Google AI Studio'
             },
             onChange: function () {
                 Lampa.Input.edit({
-                    title: 'API ключ OpenRouter',
+                    title: 'API ключ Gemini',
                     value: Lampa.Storage.get('ai_search_api_key', ''),
                     free: true,
                     nosave: true
@@ -271,13 +282,13 @@
             component: 'ai_search',
             param: { type: 'button', component: 'ai_search_model_btn' },
             field: { 
-                name: 'Модель AI', 
-                description: Lampa.Storage.get('ai_search_model', 'google/gemini-2.0-flash-lite-preview-02-05:free') 
+                name: 'Модель', 
+                description: Lampa.Storage.get('ai_search_model', 'gemini-1.5-flash') 
             },
             onChange: function () {
                 Lampa.Input.edit({
-                    title: 'Назва моделі',
-                    value: Lampa.Storage.get('ai_search_model', 'google/gemini-2.0-flash-lite-preview-02-05:free'),
+                    title: 'Назва моделі Gemini',
+                    value: Lampa.Storage.get('ai_search_model', 'gemini-1.5-flash'),
                     free: true,
                     nosave: true
                 }, function (new_val) {
