@@ -115,7 +115,7 @@
       return null;
     };
   }
-   /*
+  /*
   |==========================================================================
   | КОНФІГУРАЦІЯ ТА ЗМІННІ
   |==========================================================================
@@ -156,7 +156,7 @@
     "body.lmp-enh--icon-left .lmp-custom-rate { flex-direction: row-reverse; }" +
     "body.lmp-enh--icon-left .lmp-custom-rate > div:first-child { margin-left: 0.4em; margin-right: 0; }" +
 
-    /* ГОЛОСИ: Додано відступ зверху та мінімальну висоту */
+    /* ГОЛОСИ */
     ".lmp-rate-votes { font-size: 0.52em; opacity: 0.6; margin-top: 0.1em; display: block; line-height: 1; text-align: center; }" +
 
     /* МАСШТАБУВАННЯ СТАЛИМИ ЗНАЧЕННЯМИ (px) */
@@ -187,9 +187,9 @@
 
     "body.lmp-enh--rate-border .full-start__rate{ border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 0.3em; box-sizing: border-box; }" +
 
-    /* СТРУКТУРА ПЛИТКИ ТА ВІДСТУП ВІД НАТИВНИХ ТЕГІВ (13+, 4k) */
+    /* СТРУКТУРА ПЛИТКИ */
     ".full-start-new__rate-line .full-start__rate { margin-right: 0.4em !important; display: flex; flex-direction: row; align-items: center; justify-content: center; min-width: unset !important; height: auto !important; }" +
-    ".full-start-new__rate-line .full-start__rate:last-child { margin-right: 1.2em !important; }" + /* Відступ перед нативними блоками */
+    ".full-start-new__rate-line .full-start__rate:last-child { margin-right: 0 !important; }" +
     ".full-start__rate .source--name { display:inline-flex; align-items:center; justify-content:center; margin: 0 0.1em; }" +
 
     ".full-start-new__rate-line.lmp-is-loading-ratings > :not(#lmp-search-loader)," +
@@ -218,6 +218,7 @@
   var __lmpRateLineObs = null;
   var currentRatingsData = null;
   var __lmpLastReqToken = null;
+
 
   function getCardType(card) {
     var type = card.media_type || card.type;
@@ -479,7 +480,6 @@
       return { id: s.id, name: s.name, enabled: s.enabled, icon: extra.icon, class: extra.class };
     });
     
-    // Розрахунок зміщення: 1 крок = 2 пікселі
     var logoInput = parseInt(Lampa.Storage.get('ratings_logo_scale_val', '0'), 10);
     var textInput = parseInt(Lampa.Storage.get('ratings_text_scale_val', '0'), 10);
 
@@ -521,10 +521,11 @@
     var lines = document.querySelectorAll('.full-start-new__rate-line');
     var totalEm = (0.4 + cfg.gapStep * 0.1);
     lines.forEach(function(line) {
-      for (var i = 0; i < line.children.length; i++) line.children[i].style.setProperty('margin-right', totalEm + 'em', 'important');
-      // Встановлюємо відступ останньому нашому елементу перед 13+
-      if (line.querySelector('.lmp-custom-rate:last-of-type')) {
-          line.querySelector('.lmp-custom-rate:last-of-type').style.setProperty('margin-right', '1.2em', 'important');
+      for (var i = 0; i < line.children.length; i++) {
+        line.children[i].style.setProperty('margin-right', totalEm + 'em', 'important');
+      }
+      if (line.lastElementChild) {
+        line.lastElementChild.style.setProperty('margin-right', '0', 'important');
       }
     });
 
@@ -624,4 +625,3 @@
   refreshConfigFromStorage();
   if (!window.combined_ratings_plugin) startPlugin();
 })();
-
