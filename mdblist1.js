@@ -162,8 +162,8 @@
     ".lmp-custom-rate .source--name img { display: block !important; position: relative; z-index: 2; color: transparent; object-fit: contain; height: calc(22px + var(--lmp-logo-offset)) !important; }" +
     "body:not(.lmp-enh--mono) .lmp-custom-rate .source--name img { filter: drop-shadow(0px 0px 4px rgba(0,0,0,0.8)); }" +
     
-    /* ІКОНКИ Ч/Б (Жорсткий контраст + Білий контур для захисту на темному фоні) */
-    "body.lmp-enh--mono .lmp-custom-rate .source--name img { filter: grayscale(100%) contrast(1000%) drop-shadow(1px 0px 0px #fff) drop-shadow(-1px 0px 0px #fff) drop-shadow(0px 1px 0px #fff) drop-shadow(0px -1px 0px #fff); }" +
+    /* ІКОНКИ Ч/Б (Жорсткий контраст + звичайна темна тінь) */
+    "body.lmp-enh--mono .lmp-custom-rate .source--name img { filter: grayscale(100%) contrast(1000%) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" +
 
     /* ТЕКСТ */
     ".lmp-custom-rate .rate--text-block { display: flex; align-items: baseline; text-shadow: 0 0 5px rgba(0,0,0,1), 0 0 2px rgba(0,0,0,0.8); }" +
