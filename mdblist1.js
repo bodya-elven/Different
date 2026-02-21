@@ -137,7 +137,7 @@
     rotten_good: ICONS_BASE_URL + 'rt.svg',
     rotten_bad: ICONS_BASE_URL + 'rt-bad.svg',
     popcorn: ICONS_BASE_URL + 'popcorn.svg',
-    popcorn_bad: ICONS_BASE_URL + 'popcorn-bad.svg' // Додано для майбутньої перевірки глядацького рейтингу
+    popcorn_bad: ICONS_BASE_URL + 'popcorn-bad.svg'
   };
 
   var pluginStyles = "<style>" +
@@ -148,13 +148,19 @@
     ".loading-dots__dot:nth-child(2) { animation-delay: -0.16s; }" +
     "@keyframes loading-dots-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.6; } 40% { transform: translateY(-0.5em); opacity: 1; } }" +
 
+    /* ФІКСИ ІКОНОК (Дублікати та розмір TMDB) */
     ".full-start__rate .source--name img:not(:first-child) { display: none !important; }" +
     ".full-start__rate .source--name { background: none !important; position: relative; display: inline-flex; align-items: center; justify-content: center; }" +
     ".full-start__rate .source--name img { position: relative; z-index: 2; display: block !important; }" +
+    ".rate--tmdb .source--name img { transform: scale(0.9); }" +
+
+    /* РОЗТАШУВАННЯ ІКОНКИ (Зліва чи справа) */
+    "body.lmp-enh--icon-left .lmp-custom-rate { flex-direction: row-reverse; }" +
+    "body.lmp-enh--icon-left .lmp-custom-rate > div:first-child { margin-left: 0.3em; margin-right: 0; }" +
 
     ":root{" +
     "  --lmp-h-imdb:22px; --lmp-h-mc:22px; --lmp-h-rt:24px;" +
-    "  --lmp-h-popcorn:24px; --lmp-h-tmdb:20px;" +
+    "  --lmp-h-popcorn:24px; --lmp-h-tmdb:20px;" + /* TMDB зменшено до 20px */
     "  --lmp-h-trakt:22px; --lmp-h-letterboxd:22px;" +
     "}" +
 
@@ -184,12 +190,12 @@
     "@media (max-width: 600px){" +
     "  .full-start-new__rate-line{flex-wrap:wrap;}" +
     "  .full-start__rate{ margin-right:.25em !important; margin-bottom:.25em; font-size:16px; min-width:unset; }" +
-    "  :root{ --lmp-h-imdb:14px; --lmp-h-mc:14px; --lmp-h-rt:16px; --lmp-h-popcorn:16px; --lmp-h-tmdb:16px; --lmp-h-trakt:14px; --lmp-h-letterboxd:14px; }" +
+    "  :root{ --lmp-h-imdb:14px; --lmp-h-mc:14px; --lmp-h-rt:16px; --lmp-h-popcorn:16px; --lmp-h-tmdb:14px; --lmp-h-trakt:14px; --lmp-h-letterboxd:14px; }" +
     "  .loading-dots-container{font-size:.8em; padding:.4em .8em;}" +
     "}" +
     "@media (max-width: 360px){" +
     "  .full-start__rate{font-size:14px;}" +
-    "  :root{ --lmp-h-imdb:12px; --lmp-h-mc:12px; --lmp-h-rt:14px; --lmp-h-popcorn:14px; --lmp-h-tmdb:14px; --lmp-h-trakt:12px; --lmp-h-letterboxd:12px; }" +
+    "  :root{ --lmp-h-imdb:12px; --lmp-h-mc:12px; --lmp-h-rt:14px; --lmp-h-popcorn:14px; --lmp-h-tmdb:12px; --lmp-h-trakt:12px; --lmp-h-letterboxd:12px; }" +
     "}" +
 
     "body.lmp-enh--rate-border .full-start__rate{ border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 0.3em; box-sizing: border-box; }" +
@@ -200,6 +206,7 @@
   var RCFG_DEFAULT = {
     ratings_mdblist_key: (LMP_ENH_CONFIG.apiKeys.mdblist || ''),
     ratings_cache_days: '3',
+    ratings_icon_position: 'right', /* Дефолт: іконка справа */
     ratings_bw_logos: false,
     ratings_logo_offset: 0,
     ratings_font_offset: 0,
@@ -398,7 +405,6 @@
   |==========================================================================
   */
 
-  // Базовий список рейтингів (Виправлені ID для Rotten Tomatoes та Metacritic)
   var DEFAULT_SOURCES_ORDER = [
     { id: 'imdb', name: 'IMDb', enabled: true },
     { id: 'tmdb', name: 'TMDB', enabled: true },
@@ -416,7 +422,6 @@
     var savedConfig = Lampa.Storage.get('ratings_sources_config', null);
     
     if (savedConfig && Array.isArray(savedConfig)) {
-      // Міграція для старих некоректних ID, якщо вони вже встигли зберегтися в пам'ять
       savedConfig.forEach(function(s) {
         if (s.id === 'rt') s.id = 'rottentomatoes';
         if (s.id === 'mc') s.id = 'metacritic';
@@ -430,7 +435,7 @@
       'tmdb': { icon: ICONS.tmdb, class: 'rate--tmdb' },
       'trakt': { icon: ICONS.trakt, class: 'rate--trakt' },
       'letterboxd': { icon: ICONS.letterboxd, class: 'rate--letterboxd' },
-      'rottentomatoes': { class: 'rate--rt' }, // Іконка визначається динамічно (свіжий/гнилий)
+      'rottentomatoes': { class: 'rate--rt' }, 
       'popcorn': { icon: ICONS.popcorn, class: 'rate--popcorn' },
       'metacritic': { icon: ICONS.metacritic, class: 'rate--mc' }
     };
@@ -449,6 +454,7 @@
     return {
       mdblistKey: Lampa.Storage.get('ratings_mdblist_key', RCFG_DEFAULT.ratings_mdblist_key),
       cacheDays: parseIntDef('ratings_cache_days', parseInt(RCFG_DEFAULT.ratings_cache_days)),
+      iconPos: Lampa.Storage.get('ratings_icon_position', RCFG_DEFAULT.ratings_icon_position), /* Зчитуємо позицію іконки */
       bwLogos: !!Lampa.Storage.field('ratings_bw_logos', RCFG_DEFAULT.ratings_bw_logos),
       logoOffset: parseIntDef('ratings_logo_offset', RCFG_DEFAULT.ratings_logo_offset),
       fontOffset: parseIntDef('ratings_font_offset', RCFG_DEFAULT.ratings_font_offset),
@@ -470,8 +476,17 @@
 
   function applyStylesToAll() {
     var cfg = getCfg();
+    
+    // Застосовуємо монохром та рамку
     cfg.bwLogos ? $('body').addClass('lmp-enh--mono') : $('body').removeClass('lmp-enh--mono');
     cfg.rateBorder ? $('body').addClass('lmp-enh--rate-border') : $('body').removeClass('lmp-enh--rate-border');
+    
+    // Застосовуємо позицію іконки
+    if (cfg.iconPos === 'left') {
+      $('body').addClass('lmp-enh--icon-left');
+    } else {
+      $('body').removeClass('lmp-enh--icon-left');
+    }
     
     var tiles = document.querySelectorAll('.full-start__rate');
     var rgba = 'rgba(' + cfg.badgeTone + ',' + cfg.badgeTone + ',' + cfg.badgeTone + ',' + cfg.badgeAlpha + ')';
@@ -594,13 +609,25 @@
     Lampa.SettingsApi.addParam({
       component: 'lmp_ratings',
       param: { type: 'button', name: 'lmp_edit_sources_btn' },
-      field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів (IMDb, TMDB, Trakt та ін.)' },
+      field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів' },
       onChange: function() { openSourcesEditor(); },
       onRender: function() {}
     });
 
+    Lampa.SettingsApi.addParam({ 
+      component: 'lmp_ratings', 
+      param: { 
+        name: 'ratings_icon_position', 
+        type: 'select', 
+        values: { 'right': 'Справа від цифри (Стандарт)', 'left': 'Зліва від цифри' }, 
+        "default": RCFG_DEFAULT.ratings_icon_position 
+      }, 
+      field: { name: 'Розташування іконки', description: 'З якого боку від оцінки буде знаходитись логотип джерела.' }, 
+      onRender: function() {} 
+    });
+
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_cache_days', type: 'input', values: '', "default": RCFG_DEFAULT.ratings_cache_days }, field: { name: 'Термін зберігання кешу', description: 'Кількість днів (наприклад: 3).' }, onRender: function() {} });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити кеш рейтингів', description: 'Примусово видалити всі збережені рейтинги з пам\'яті пристрою.' }, onChange: function() { lmpRatingsClearCache(); }, onRender: function() {} });
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити кеш рейтингів', description: 'Примусово видалити всі збережені рейтинги.' }, onChange: function() { lmpRatingsClearCache(); }, onRender: function() {} });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_bw_logos }, field: { name: 'Ч/Б логотипи' }, onRender: function() {} });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_rate_border }, field: { name: 'Рамка плиток рейтингів' }, onRender: function() {} });
