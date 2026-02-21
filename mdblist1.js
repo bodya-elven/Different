@@ -125,7 +125,6 @@
     monochromeIcons: false
   };
 
-  // Твоє зовнішнє посилання на папку з іконками
   var ICONS_BASE_URL = 'https://bodya-elven.github.io/different/icons/';
 
   var ICONS = {
@@ -148,21 +147,36 @@
     ".loading-dots__dot:nth-child(2) { animation-delay: -0.16s; }" +
     "@keyframes loading-dots-bounce { 0%, 80%, 100% { transform: translateY(0); opacity: 0.6; } 40% { transform: translateY(-0.5em); opacity: 1; } }" +
 
-    /* ФІКСИ ІКОНОК (Дублікати та розмір TMDB) */
+    /* ФІКСИ ІКОНОК */
     ".full-start__rate .source--name img:not(:first-child) { display: none !important; }" +
     ".full-start__rate .source--name { background: none !important; position: relative; display: inline-flex; align-items: center; justify-content: center; }" +
     ".full-start__rate .source--name img { position: relative; z-index: 2; display: block !important; }" +
     ".rate--tmdb .source--name img { transform: scale(0.9); }" +
 
-    /* РОЗТАШУВАННЯ ІКОНКИ (Зліва чи справа) */
+    /* РОЗТАШУВАННЯ ІКОНКИ */
     "body.lmp-enh--icon-left .lmp-custom-rate { flex-direction: row-reverse; }" +
     "body.lmp-enh--icon-left .lmp-custom-rate > div:first-child { margin-left: 0.3em; margin-right: 0; }" +
 
+    /* ГОЛОСИ */
+    ".lmp-rate-votes { font-size: 0.55em; opacity: 0.6; margin-top: -0.1em; display: block; line-height: 1; }" +
+
+    /* МАШТАБУВАННЯ ЧЕРЕЗ КАЛЬКУЛЯЦІЮ */
     ":root{" +
-    "  --lmp-h-imdb:22px; --lmp-h-mc:22px; --lmp-h-rt:24px;" +
-    "  --lmp-h-popcorn:24px; --lmp-h-tmdb:20px;" + /* TMDB зменшено до 20px */
-    "  --lmp-h-trakt:22px; --lmp-h-letterboxd:22px;" +
+    "  --lmp-logo-scale: 1.0;" +
+    "  --lmp-text-scale: 1.0;" +
+    "  --lmp-h-imdb: 22px; --lmp-h-mc: 22px; --lmp-h-rt: 24px;" +
+    "  --lmp-h-popcorn: 24px; --lmp-h-tmdb: 20px;" +
+    "  --lmp-h-trakt: 22px; --lmp-h-letterboxd: 22px;" +
     "}" +
+
+    ".full-start__rate { font-size: calc(23px * var(--lmp-text-scale)) !important; }" +
+    ".rate--imdb .source--name img { height: calc(var(--lmp-h-imdb) * var(--lmp-logo-scale)); }" +
+    ".rate--mc .source--name img { height: calc(var(--lmp-h-mc) * var(--lmp-logo-scale)); }" +
+    ".rate--rt .source--name img { height: calc(var(--lmp-h-rt) * var(--lmp-logo-scale)); }" +
+    ".rate--popcorn .source--name img { height: calc(var(--lmp-h-popcorn) * var(--lmp-logo-scale)); }" +
+    ".rate--tmdb .source--name img { height: calc(var(--lmp-h-tmdb) * var(--lmp-logo-scale)); }" +
+    ".rate--trakt .source--name img { height: calc(var(--lmp-h-trakt) * var(--lmp-logo-scale)); }" +
+    ".rate--letterboxd .source--name img { height: calc(var(--lmp-h-letterboxd) * var(--lmp-logo-scale)); }" +
 
     "body:not(.lmp-enh--mono) .full-start__rate.rating--green  { color: #2ecc71; }" +
     "body:not(.lmp-enh--mono) .full-start__rate.rating--blue   { color: #60a5fa; }" +
@@ -170,33 +184,14 @@
     "body:not(.lmp-enh--mono) .full-start__rate.rating--red    { color: #ef4444; }" +
     "body.lmp-enh--mono .rating--green, body.lmp-enh--mono .rating--blue, body.lmp-enh--mono .rating--orange, body.lmp-enh--mono .rating--red, body.lmp-enh--mono .full-start__rate { color: inherit !important; }" +
 
-    ".full-start-new__rate-line .full-start__rate { margin-right: 0.3em !important; }" +
+    ".full-start-new__rate-line .full-start__rate { margin-right: 0.3em !important; display: flex; flex-direction: column; align-items: center; justify-content: center; }" +
     ".full-start-new__rate-line .full-start__rate:last-child { margin-right: 0 !important; }" +
 
     ".full-start-new__rate-line.lmp-is-loading-ratings > :not(#lmp-search-loader)," +
     ".full-start__rate-line.lmp-is-loading-ratings > :not(#lmp-search-loader) { opacity: 0 !important; pointer-events: none !important; transition: opacity 0.15s; }" +
 
-    ".rate--imdb .source--name img{height:var(--lmp-h-imdb);}" +
-    ".rate--mc .source--name img{height:var(--lmp-h-mc);}" +
-    ".rate--rt .source--name img{height:var(--lmp-h-rt);}" +
-    ".rate--popcorn .source--name img{height:var(--lmp-h-popcorn);}" +
-    ".rate--tmdb .source--name img{height:var(--lmp-h-tmdb);}" +
-    ".rate--trakt .source--name img{height:var(--lmp-h-trakt);}" +
-    ".rate--letterboxd .source--name img{height:var(--lmp-h-letterboxd);}" +
-
-    ".full-start__rate .source--name{ display:inline-flex; align-items:center; justify-content:center; }" +
+    ".full-start__rate .source--name { display:inline-flex; align-items:center; justify-content:center; }" +
     ".settings-param__descr,.settings-param__subtitle{white-space:pre-line;}" +
-
-    "@media (max-width: 600px){" +
-    "  .full-start-new__rate-line{flex-wrap:wrap;}" +
-    "  .full-start__rate{ margin-right:.25em !important; margin-bottom:.25em; font-size:16px; min-width:unset; }" +
-    "  :root{ --lmp-h-imdb:14px; --lmp-h-mc:14px; --lmp-h-rt:16px; --lmp-h-popcorn:16px; --lmp-h-tmdb:14px; --lmp-h-trakt:14px; --lmp-h-letterboxd:14px; }" +
-    "  .loading-dots-container{font-size:.8em; padding:.4em .8em;}" +
-    "}" +
-    "@media (max-width: 360px){" +
-    "  .full-start__rate{font-size:14px;}" +
-    "  :root{ --lmp-h-imdb:12px; --lmp-h-mc:12px; --lmp-h-rt:14px; --lmp-h-popcorn:14px; --lmp-h-tmdb:12px; --lmp-h-trakt:12px; --lmp-h-letterboxd:12px; }" +
-    "}" +
 
     "body.lmp-enh--rate-border .full-start__rate{ border: 1px solid rgba(255, 255, 255, 0.45); border-radius: 0.3em; box-sizing: border-box; }" +
     "</style>";
@@ -204,12 +199,13 @@
   var RATING_CACHE_KEY = 'lmp_enh_rating_cache';
 
   var RCFG_DEFAULT = {
-    ratings_mdblist_key: (LMP_ENH_CONFIG.apiKeys.mdblist || ''),
+    ratings_mdblist_key: '',
     ratings_cache_days: '3',
-    ratings_icon_position: 'right', /* Дефолт: іконка справа */
+    ratings_icon_position: 'right',
+    ratings_show_votes: true,
+    ratings_logo_scale_val: '1', // Це "0" у виборі користувача
+    ratings_text_scale_val: '1',
     ratings_bw_logos: false,
-    ratings_logo_offset: 0,
-    ratings_font_offset: 0,
     ratings_badge_alpha: 0.15,
     ratings_badge_tone: 0,
     ratings_gap_step: 0,
@@ -405,6 +401,7 @@
   |==========================================================================
   */
 
+  // Базовий список рейтингів (Виправлені ID)
   var DEFAULT_SOURCES_ORDER = [
     { id: 'imdb', name: 'IMDb', enabled: true },
     { id: 'tmdb', name: 'TMDB', enabled: true },
@@ -454,10 +451,11 @@
     return {
       mdblistKey: Lampa.Storage.get('ratings_mdblist_key', RCFG_DEFAULT.ratings_mdblist_key),
       cacheDays: parseIntDef('ratings_cache_days', parseInt(RCFG_DEFAULT.ratings_cache_days)),
-      iconPos: Lampa.Storage.get('ratings_icon_position', RCFG_DEFAULT.ratings_icon_position), /* Зчитуємо позицію іконки */
+      iconPos: Lampa.Storage.get('ratings_icon_position', RCFG_DEFAULT.ratings_icon_position),
+      logoScale: parseFloatDef('ratings_logo_scale_val', 1.0),
+      textScale: parseFloatDef('ratings_text_scale_val', 1.0),
+      showVotes: !!Lampa.Storage.field('ratings_show_votes', RCFG_DEFAULT.ratings_show_votes),
       bwLogos: !!Lampa.Storage.field('ratings_bw_logos', RCFG_DEFAULT.ratings_bw_logos),
-      logoOffset: parseIntDef('ratings_logo_offset', RCFG_DEFAULT.ratings_logo_offset),
-      fontOffset: parseIntDef('ratings_font_offset', RCFG_DEFAULT.ratings_font_offset),
       badgeAlpha: parseFloatDef('ratings_badge_alpha', RCFG_DEFAULT.ratings_badge_alpha),
       badgeTone: parseIntDef('ratings_badge_tone', RCFG_DEFAULT.ratings_badge_tone),
       gapStep: parseIntDef('ratings_gap_step', RCFG_DEFAULT.ratings_gap_step),
@@ -477,24 +475,18 @@
   function applyStylesToAll() {
     var cfg = getCfg();
     
-    // Застосовуємо монохром та рамку
+    // Передаємо коефіцієнти масштабування в CSS
+    document.documentElement.style.setProperty('--lmp-logo-scale', cfg.logoScale);
+    document.documentElement.style.setProperty('--lmp-text-scale', cfg.textScale);
+
     cfg.bwLogos ? $('body').addClass('lmp-enh--mono') : $('body').removeClass('lmp-enh--mono');
     cfg.rateBorder ? $('body').addClass('lmp-enh--rate-border') : $('body').removeClass('lmp-enh--rate-border');
-    
-    // Застосовуємо позицію іконки
-    if (cfg.iconPos === 'left') {
-      $('body').addClass('lmp-enh--icon-left');
-    } else {
-      $('body').removeClass('lmp-enh--icon-left');
-    }
+    cfg.iconPos === 'left' ? $('body').addClass('lmp-enh--icon-left') : $('body').removeClass('lmp-enh--icon-left');
     
     var tiles = document.querySelectorAll('.full-start__rate');
     var rgba = 'rgba(' + cfg.badgeTone + ',' + cfg.badgeTone + ',' + cfg.badgeTone + ',' + cfg.badgeAlpha + ')';
     
     tiles.forEach(function(tile) {
-      var prev = tile.style.fontSize; tile.style.fontSize = '';
-      var basePx = parseFloat(getComputedStyle(tile).fontSize) || 23;
-      tile.style.fontSize = Math.max(1, basePx + cfg.fontOffset) + 'px';
       tile.style.background = rgba;
       if (tile.firstElementChild) tile.firstElementChild.style.background = rgba;
     });
@@ -506,12 +498,8 @@
       if (line.lastElementChild) line.lastElementChild.style.setProperty('margin-right', '0', 'important');
     });
 
-    var scale = (28 + cfg.logoOffset) / 28; if (scale < 0.1) scale = 0.1;
-    var logos = document.querySelectorAll('.full-start__rate .source--name img');
-    logos.forEach(function(img) {
-      var cssVar = '--lmp-h-' + (img.closest('.full-start__rate').className.match(/rate--([a-z]+)/) || [])[1];
-      var baseH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue(cssVar)) || 24;
-      img.style.height = Math.max(1, baseH * scale) + 'px';
+    // Монохром для іконок
+    document.querySelectorAll('.full-start__rate .source--name img').forEach(function(img) {
       img.style.filter = cfg.bwLogos ? 'grayscale(100%)' : '';
     });
   }
@@ -586,6 +574,7 @@
         
         setTimeout(function() {
           if (typeof currentRatingsData !== 'undefined' && currentRatingsData) {
+            // Викликаємо функцію з Частини 4 (поки що стару)
             insertRatings(currentRatingsData);
             applyStylesToAll();
           }
@@ -615,19 +604,26 @@
     });
 
     Lampa.SettingsApi.addParam({ 
-      component: 'lmp_ratings', 
-      param: { 
-        name: 'ratings_icon_position', 
-        type: 'select', 
-        values: { 'right': 'Справа від цифри (Стандарт)', 'left': 'Зліва від цифри' }, 
-        "default": RCFG_DEFAULT.ratings_icon_position 
-      }, 
-      field: { name: 'Розташування іконки', description: 'З якого боку від оцінки буде знаходитись логотип джерела.' }, 
-      onRender: function() {} 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_logo_scale_val', type: 'select', values: { '0.7': '-2 (Крихітний)', '0.85': '-1 (Маленький)', '1.0': '0 (Стандарт)', '1.2': '+1 (Великий)', '1.4': '+2 (Максимальний)' }, "default": '1.0' }, 
+        field: { name: 'Розмір логотипів', description: 'Збільшення або зменшення іконок джерел.' }, 
+        onRender: function() {} 
     });
 
+    Lampa.SettingsApi.addParam({ 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_text_scale_val', type: 'select', values: { '0.7': '-2 (Крихітний)', '0.85': '-1 (Маленький)', '1.0': '0 (Стандарт)', '1.2': '+1 (Великий)', '1.4': '+2 (Максимальний)' }, "default": '1.0' }, 
+        field: { name: 'Розмір тексту рейтингу', description: 'Збільшення або зменшення цифр оцінки.' }, 
+        onRender: function() {} 
+    });
+
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_show_votes', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_show_votes }, field: { name: 'Кількість голосів', description: 'Показувати кількість тих, хто проголосував.' }, onRender: function() {} });
+
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_icon_position', type: 'select', values: { 'right': 'Справа від цифри', 'left': 'Зліва від цифри' }, "default": RCFG_DEFAULT.ratings_icon_position }, field: { name: 'Розташування іконки', description: 'З якого боку від оцінки буде знаходитись логотип.' }, onRender: function() {} });
+
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_cache_days', type: 'input', values: '', "default": RCFG_DEFAULT.ratings_cache_days }, field: { name: 'Термін зберігання кешу', description: 'Кількість днів (наприклад: 3).' }, onRender: function() {} });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити кеш рейтингів', description: 'Примусово видалити всі збережені рейтинги.' }, onChange: function() { lmpRatingsClearCache(); }, onRender: function() {} });
+
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити кеш рейтингів', description: 'Примусово видалити всі збережені рейтинги з пам\'яті.' }, onChange: function() { lmpRatingsClearCache(); }, onRender: function() {} });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_bw_logos }, field: { name: 'Ч/Б логотипи' }, onRender: function() {} });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_rate_border }, field: { name: 'Рамка плиток рейтингів' }, onRender: function() {} });
@@ -639,6 +635,7 @@
     var _set = Lampa.Storage.set;
     Lampa.Storage.set = function(k, v) {
       var out = _set.apply(this, arguments);
+      // Уникаємо нескінченного циклу при збереженні конфігу сортування
       if (typeof k === 'string' && k.indexOf('ratings_') === 0 && k !== 'ratings_sources_config') {
         setTimeout(function(){ if(currentRatingsData) insertRatings(currentRatingsData); applyStylesToAll(); }, 150);
       }
