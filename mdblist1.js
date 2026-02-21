@@ -115,6 +115,7 @@
       return null;
     };
   }
+
   /*
   |==========================================================================
   | КОНФІГУРАЦІЯ ТА ЗМІННІ
@@ -159,26 +160,20 @@
     /* ГОЛОСИ */
     ".lmp-rate-votes { font-size: 0.55em; opacity: 0.6; margin-top: -0.1em; display: block; line-height: 1; }" +
 
-    /* МАСШТАБУВАННЯ ЧЕРЕЗ ВІДНОСНІ ОДИНИЦІ (em) */
+    /* СТАБІЛЬНІ РОЗМІРИ ІКОНОК */
     ":root{" +
-    "  --lmp-logo-scale: 1.0;" +
-    "  --lmp-text-scale: 1.0;" +
-    "  --lmp-h-imdb: 1.0em; --lmp-h-mc: 1.0em; --lmp-h-rt: 1.1em;" +
-    "  --lmp-h-popcorn: 1.1em; --lmp-h-tmdb: 0.9em;" +
-    "  --lmp-h-trakt: 1.0em; --lmp-h-letterboxd: 1.0em;" +
+    "  --lmp-h-imdb: 22px; --lmp-h-mc: 22px; --lmp-h-rt: 24px;" +
+    "  --lmp-h-popcorn: 24px; --lmp-h-tmdb: 20px;" +
+    "  --lmp-h-trakt: 22px; --lmp-h-letterboxd: 22px;" +
     "}" +
 
-    /* 1em — це нативний розмір тексту, який Lampa видає для даного пристрою */
-    ".lmp-custom-rate { font-size: calc(1em * var(--lmp-text-scale)) !important; }" +
-    
-    /* Іконки масштабуються відносно розміру тексту + власного множника */
-    ".rate--imdb .source--name img { height: calc(var(--lmp-h-imdb) * var(--lmp-logo-scale)); }" +
-    ".rate--mc .source--name img { height: calc(var(--lmp-h-mc) * var(--lmp-logo-scale)); }" +
-    ".rate--rt .source--name img { height: calc(var(--lmp-h-rt) * var(--lmp-logo-scale)); }" +
-    ".rate--popcorn .source--name img { height: calc(var(--lmp-h-popcorn) * var(--lmp-logo-scale)); }" +
-    ".rate--tmdb .source--name img { height: calc(var(--lmp-h-tmdb) * var(--lmp-logo-scale)); }" +
-    ".rate--trakt .source--name img { height: calc(var(--lmp-h-trakt) * var(--lmp-logo-scale)); }" +
-    ".rate--letterboxd .source--name img { height: calc(var(--lmp-h-letterboxd) * var(--lmp-logo-scale)); }" +
+    ".rate--imdb .source--name img { height: var(--lmp-h-imdb); }" +
+    ".rate--mc .source--name img { height: var(--lmp-h-mc); }" +
+    ".rate--rt .source--name img { height: var(--lmp-h-rt); }" +
+    ".rate--popcorn .source--name img { height: var(--lmp-h-popcorn); }" +
+    ".rate--tmdb .source--name img { height: var(--lmp-h-tmdb); }" +
+    ".rate--trakt .source--name img { height: var(--lmp-h-trakt); }" +
+    ".rate--letterboxd .source--name img { height: var(--lmp-h-letterboxd); }" +
 
     /* КОЛЬОРИ ТА РАМКИ */
     "body:not(.lmp-enh--mono) .full-start__rate.rating--green  { color: #2ecc71; }" +
@@ -205,10 +200,8 @@
   var RCFG_DEFAULT = {
     ratings_mdblist_key: '',
     ratings_cache_days: '3',
-    ratings_icon_left: false,
+    ratings_icon_position: 'right',
     ratings_show_votes: true,
-    ratings_logo_scale_val: '0', 
-    ratings_text_scale_val: '0',
     ratings_bw_logos: false,
     ratings_badge_alpha: 0.15,
     ratings_badge_tone: 0,
@@ -314,7 +307,7 @@
       callback(res);
     }
   }
- 
+
   /*
   |==========================================================================
   | РЕНДЕР РЕЙТИНГІВ
@@ -347,7 +340,7 @@
     cleanupRtgInjected(render);
 
     var cfg = getCfg();
-    var elementsToInsert = []; // Збираємо всі плитки в масив, щоб потім вставити всі разом
+    var elementsToInsert = [];
 
     cfg.sourcesConfig.forEach(function(src) {
       if (!src.enabled || !data[src.id]) return;
@@ -382,7 +375,7 @@
       elementsToInsert.push(cont);
     });
 
-    // Вставляємо всі зібрані рейтинги НА ПОЧАТОК рядка (перед 13+, Випущено, 4K)
+    // Вставляємо всі зібрані рейтинги НА ПОЧАТОК рядка
     if (elementsToInsert.length > 0) {
         rateLine.prepend(elementsToInsert);
     }
@@ -442,8 +435,6 @@
   | НАЛАШТУВАННЯ ТА СТИЛІ
   |==========================================================================
   */
-
-  // Базовий список рейтингів (Виправлені ID)
   var DEFAULT_SOURCES_ORDER = [
     { id: 'imdb', name: 'IMDb', enabled: true },
     { id: 'tmdb', name: 'TMDB', enabled: true },
@@ -494,8 +485,6 @@
       mdblistKey: Lampa.Storage.get('ratings_mdblist_key', RCFG_DEFAULT.ratings_mdblist_key),
       cacheDays: parseIntDef('ratings_cache_days', parseInt(RCFG_DEFAULT.ratings_cache_days)),
       iconPos: Lampa.Storage.get('ratings_icon_position', RCFG_DEFAULT.ratings_icon_position),
-      logoScale: parseFloatDef('ratings_logo_scale_val', 1.0),
-      textScale: parseFloatDef('ratings_text_scale_val', 1.0),
       showVotes: !!Lampa.Storage.field('ratings_show_votes', RCFG_DEFAULT.ratings_show_votes),
       bwLogos: !!Lampa.Storage.field('ratings_bw_logos', RCFG_DEFAULT.ratings_bw_logos),
       badgeAlpha: parseFloatDef('ratings_badge_alpha', RCFG_DEFAULT.ratings_badge_alpha),
@@ -516,10 +505,6 @@
 
   function applyStylesToAll() {
     var cfg = getCfg();
-    
-    // Передаємо коефіцієнти масштабування в CSS
-    document.documentElement.style.setProperty('--lmp-logo-scale', cfg.logoScale);
-    document.documentElement.style.setProperty('--lmp-text-scale', cfg.textScale);
 
     cfg.bwLogos ? $('body').addClass('lmp-enh--mono') : $('body').removeClass('lmp-enh--mono');
     cfg.rateBorder ? $('body').addClass('lmp-enh--rate-border') : $('body').removeClass('lmp-enh--rate-border');
@@ -616,7 +601,6 @@
         
         setTimeout(function() {
           if (typeof currentRatingsData !== 'undefined' && currentRatingsData) {
-            // Викликаємо функцію з Частини 4 (поки що стару)
             insertRatings(currentRatingsData);
             applyStylesToAll();
           }
@@ -643,20 +627,6 @@
       field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів' },
       onChange: function() { openSourcesEditor(); },
       onRender: function() {}
-    });
-
-    Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
-        param: { name: 'ratings_logo_scale_val', type: 'select', values: { '0.7': '-2 (Крихітний)', '0.85': '-1 (Маленький)', '1.0': '0 (Стандарт)', '1.2': '+1 (Великий)', '1.4': '+2 (Максимальний)' }, "default": '1.0' }, 
-        field: { name: 'Розмір логотипів', description: 'Збільшення або зменшення іконок джерел.' }, 
-        onRender: function() {} 
-    });
-
-    Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
-        param: { name: 'ratings_text_scale_val', type: 'select', values: { '0.7': '-2 (Крихітний)', '0.85': '-1 (Маленький)', '1.0': '0 (Стандарт)', '1.2': '+1 (Великий)', '1.4': '+2 (Максимальний)' }, "default": '1.0' }, 
-        field: { name: 'Розмір тексту рейтингу', description: 'Збільшення або зменшення цифр оцінки.' }, 
-        onRender: function() {} 
     });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_show_votes', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_show_votes }, field: { name: 'Кількість голосів', description: 'Показувати кількість тих, хто проголосував.' }, onRender: function() {} });
