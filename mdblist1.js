@@ -154,7 +154,7 @@
 
     ":root{" +
     "  --lmp-h-imdb:22px; --lmp-h-mc:22px; --lmp-h-rt:24px;" +
-    "  --lmp-h-popcorn:24px; --lmp-h-tmdb:24px;" +
+    "  --lmp-h-popcorn:24px; --lmp-h-tmdb:20px;" +
     "  --lmp-h-trakt:22px; --lmp-h-letterboxd:22px;" +
     "}" +
 
