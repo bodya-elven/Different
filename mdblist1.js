@@ -163,8 +163,8 @@
 
     /* СТАБІЛЬНІ РОЗМІРИ ІКОНОК */
     ":root{" +
-    "  --lmp-h-imdb: 22px; --lmp-h-mc: 22px; --lmp-h-rt: 24px;" +
-    "  --lmp-h-popcorn: 24px; --lmp-h-tmdb: 18px; --lmp-h-mdblist: 22px;" +
+    "  --lmp-h-imdb: 22px; --lmp-h-mc: 22px; --lmp-h-rt: 22px;" +
+    "  --lmp-h-popcorn: 22px; --lmp-h-tmdb: 22px; --lmp-h-mdblist: 22px;" +
     "  --lmp-h-trakt: 22px; --lmp-h-letterboxd: 22px; --lmp-h-mal: 22px;" +
     "}" +
     ".lmp-rate-imdb .source--name img { height: var(--lmp-h-imdb) !important; }" +
