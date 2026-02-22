@@ -172,8 +172,8 @@
     "}" +
 
     /* Індивідуально для IMDB */
-    "body.lmp-enh--mono .lmp-rate-imdb .source--name { position: relative; border: none; overflow: visible; }" +
-    "body.lmp-enh--mono .lmp-rate-imdb .source--name::after { content: ''; position: absolute; top: 1.5px; bottom: 1.5px; left: 1.5px; right: 1.5px; box-sizing: border-box; border: 1.5px solid #fff; border-radius: 4px; pointer-events: none; z-index: 5; }" +
+    "body.lmp-enh--mono .lmp-rate-imdb .source--name { position: relative; border: none; overflow: hidden; border-radius: 4px; }" +
+    "body.lmp-enh--mono .lmp-rate-imdb .source--name::after { content: ''; position: absolute; top: 0; bottom: 0; left: 0; right: 0; box-shadow: inset 0 0 0 1.5px #fff; border-radius: 4px; pointer-events: none; z-index: 5; }" +
     "body.lmp-enh--mono .lmp-rate-imdb .source--name img { filter: invert(1) grayscale(100%) contrast(1000%) !important; }" +
     
     /* Індивідуально для MDBList */
