@@ -167,16 +167,13 @@
     "body.lmp-enh--mono .lmp-custom-rate .source--name img { filter: grayscale(100%) contrast(1000%) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" +
     
     /* Томати (СВІЖИЙ) */
-    "body.lmp-enh--mono .lmp-rate-rottentomatoes .source--name img[src$='rt.svg'] { filter: grayscale(100%) invert(1) contrast(1000%) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" + 
-
-    /* Томати (ГНИЛИЙ) */
-    "body.lmp-enh--mono .lmp-rate-rottentomatoes .source--name img[src$='rt-bad.svg'] { filter: brightness(0) invert(1) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" +
+    "body.lmp-enh--mono .lmp-rate-rottentomatoes .source--name img[src$='rt.svg'] { filter: grayscale(100%) brightness(0.6) contrast(2000%) invert(1) !important; }" + 
 
     /* Індивідуально для IMDB */
-    "body.lmp-enh--mono .lmp-rate-imdb .source--name img { filter: invert(1) grayscale(100%) contrast(1000%) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" +
+    "body.lmp-enh--mono .lmp-rate-imdb .source--name img { filter: invert(1) grayscale(100%) contrast(1000%) drop-shadow(0px 0px 1px #fff) !important; }" +
     
     /* Індивідуально для MDBList */
-    "body.lmp-enh--mono .lmp-rate-mdblist .source--name img { filter: grayscale(100%) brightness(0.7) contrast(1000%) drop-shadow(0px 0px 4px rgba(0,0,0,0.8)) !important; }" +
+    "body.lmp-enh--mono .lmp-rate-mdblist .source--name img { filter: grayscale(100%) brightness(0.7) contrast(1000%) !important; }" +
 
     /* ТЕКСТ */
     ".lmp-custom-rate .rate--text-block { display: flex; align-items: baseline; text-shadow: 0 0 5px rgba(0,0,0,1), 0 0 2px rgba(0,0,0,0.8); }" +
