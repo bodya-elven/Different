@@ -40,19 +40,17 @@
                 '.my-studios-style .card { width: 16.666% !important; margin-bottom: 15px !important; padding: 0 6px !important; }' +
             '}' +
             '.my-studios-style .card__view { padding-bottom: 60% !important; border-radius: 12px !important; }' +
-            '.my-studios-style .card__img { object-fit: cover !important; }' +
+            '.my-studios-style .card__img { object-fit: contain !important; background: #111; }' +
             '.my-studios-style .card__title { ' +
                 'display: -webkit-box !important; ' +
-                '-webkit-line-clamp: 3 !important; ' + 
+                '-webkit-line-clamp: 2 !important; ' + 
                 '-webkit-box-orient: vertical !important; ' +
                 'overflow: hidden !important; ' +
                 'white-space: normal !important; ' +
-                'text-align: left !important; ' +
+                'text-align: center !important; ' +
                 'line-height: 1.2 !important; ' +
-                'max-height: 3.6em !important; ' + 
-                'padding-top: 2px !important; ' + 
+                'padding-top: 4px !important; ' + 
                 'margin-top: 0 !important; ' +
-                'text-overflow: ellipsis !important; ' +
             '}' +
             '.my-studios-style .card__age, .my-studios-style .card__textbox { display: none !important; }' +
             '</style>';
@@ -160,8 +158,17 @@
                         if (imgSrc && imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc;
                         var videoUrl = linkEl.getAttribute('href');
                         if (videoUrl && videoUrl.indexOf('http') !== 0) videoUrl = siteBaseUrl + (videoUrl.indexOf('/') === 0 ? '' : '/') + videoUrl;
-                        var previewUrl = videoPreviewEl ? videoPreviewEl.getAttribute('src') : '';
+                        
+                        var previewUrl = '';
+                        if (videoPreviewEl) {
+                            previewUrl = videoPreviewEl.getAttribute('data-src') || videoPreviewEl.getAttribute('src') || '';
+                            if (!previewUrl) {
+                                var sourceEl = videoPreviewEl.querySelector('source');
+                                if (sourceEl) previewUrl = sourceEl.getAttribute('data-src') || sourceEl.getAttribute('src') || '';
+                            }
+                        }
                         if (previewUrl && previewUrl.indexOf('//') === 0) previewUrl = 'https:' + previewUrl;
+                        
                         results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: videoUrl, picture: imgSrc, img: imgSrc, preview: previewUrl });
                     }
                 }
@@ -185,9 +192,13 @@
                         else if (imgSrc && imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
                         var videoUrl = linkEl.getAttribute('href');
                         if (videoUrl && videoUrl.indexOf('http') !== 0) videoUrl = siteBaseUrl + (videoUrl.indexOf('/') === 0 ? '' : '/') + videoUrl;
+                        
                         var previewUrl = imgEl ? (imgEl.getAttribute('data-preview') || '') : '';
+                        if (!previewUrl && linkEl) previewUrl = linkEl.getAttribute('data-preview') || '';
+                        
                         if (previewUrl && previewUrl.indexOf('//') === 0) previewUrl = 'https:' + previewUrl;
                         else if (previewUrl && previewUrl.indexOf('/') === 0) previewUrl = siteBaseUrl + previewUrl;
+                        
                         results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: videoUrl, picture: imgSrc, img: imgSrc, preview: previewUrl });
                     }
                 }
@@ -290,7 +301,7 @@
                                 } else if (a.action === 'studios') {
                                     Lampa.Activity.push({ url: cleanLDomain + '/channels', title: 'Студії', component: 'pluginx_comp', site: 'lenkino', is_folder_list: true, folder_type: 'spn', page: 1 });
                                 } else if (a.action === 'popular_menu') {
-                                    var isLCategory = baseLUrl !== cleanLDomain && baseLUrl.indexOf('/search/') === -1 && baseLUrl.indexOf('/channels/') === -1 && baseLUrl.indexOf('/categories') === -1;
+                                    var isLCategory = baseLUrl !== cleanLDomain && baseLUrl.indexOf('/search/') === -1 && baseLUrl.indexOf('/channels') === -1 && baseLUrl.indexOf('/categories') === -1;
                                     var lPopularItems = [];
                                     if (isLCategory) {
                                         lPopularItems.push({ title: 'Кращі (Топ)', url: baseLUrl + '-top' });
@@ -362,9 +373,11 @@
                     if (window.Lampa && window.Lampa.Noty) window.Lampa.Noty.show('Помилка фільтра: ' + e.message);
                 }
             };
-
             comp.onRight = comp.filter.bind(comp);
+
             comp.cardRender = function (card, element, events) {
+                var $el = $(element);
+                
                 if (card.is_folder) {
                     events.onEnter = function () {
                         Lampa.Activity.push({ url: card.url, title: card.name, component: 'pluginx_comp', site: currentSite, page: 1 });
@@ -413,12 +426,12 @@
                                 var parser = new DOMParser();
                                 var doc = parser.parseFromString(htmlText, 'text/html');
                                 var menuItems = [];
-                                
                                 var modelElements = doc.querySelectorAll('.grd-mdl a');
                                 for (var m = 0; m < modelElements.length; m++) {
-                                    menuItems.push({ title: modelElements[m].innerText.trim(), action: 'direct_link', url: modelElements[m].getAttribute('href') });
+                                    var modHref = modelElements[m].getAttribute('href');
+                                    if(modHref) menuItems.push({ title: modelElements[m].innerText.trim(), action: 'direct_link', url: modHref });
                                 }
-                                menuItems.push({ title: 'Схожі відео', action: 'similar' });
+                                menuItems.push({ title: 'Категорії / Студії', action: 'categories' }, { title: 'Схожі відео', action: 'similar' });
                                 
                                 Lampa.Select.show({
                                     title: 'Дії',
@@ -428,6 +441,23 @@
                                             Lampa.Activity.push({ url: element.url, title: 'Схожі', component: 'pluginx_comp', site: 'lenkino', page: 1, is_related: true });
                                         } else if (a.action === 'direct_link') {
                                             Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: 'lenkino', page: 1 });
+                                        } else if (a.action === 'categories') {
+                                            var subItems = [];
+                                            var subEls = doc.querySelectorAll('.vid-cat a');
+                                            for (var i = 0; i < subEls.length; i++) {
+                                                var cHref = subEls[i].getAttribute('href');
+                                                if (cHref) subItems.push({ title: subEls[i].innerText.trim(), url: cHref });
+                                            }
+                                            if (subItems.length > 0) {
+                                                Lampa.Select.show({
+                                                    title: 'Категорії / Студії',
+                                                    items: subItems,
+                                                    onSelect: function (item) { Lampa.Activity.push({ url: item.url, title: item.title, component: 'pluginx_comp', site: 'lenkino', page: 1 }); },
+                                                    onBack: function () { events.onMenu(); }
+                                                });
+                                            } else {
+                                                if (window.Lampa && window.Lampa.Noty) window.Lampa.Noty.show('Дані не знайдено');
+                                            }
                                         }
                                     },
                                     onBack: function () { Lampa.Controller.toggle('content'); }
@@ -440,9 +470,13 @@
                                 var menuItems = [];
                                 var modelElements = doc.querySelectorAll('.video-categories.video-models a');
                                 for (var m = 0; m < modelElements.length; m++) {
-                                    menuItems.push({ title: modelElements[m].innerText.trim(), action: 'direct_link', url: modelElements[m].getAttribute('href') });
+                                    var modHref = modelElements[m].getAttribute('href');
+                                    if (modHref) {
+                                        if (modHref.indexOf('http') !== 0) modHref = PORNO365_DOMAIN + (modHref.indexOf('/') === 0 ? '' : '/') + modHref;
+                                        menuItems.push({ title: modelElements[m].innerText.trim(), action: 'direct_link', url: modHref });
+                                    }
                                 }
-                                menuItems.push({ title: 'Схожі відео', action: 'similar' });
+                                menuItems.push({ title: 'Категорії та Теги', action: 'categories' }, { title: 'Схожі відео', action: 'similar' });
                                 Lampa.Select.show({
                                     title: 'Дії',
                                     items: menuItems,
@@ -451,6 +485,24 @@
                                             Lampa.Activity.push({ url: element.url, title: 'Схожі', component: 'pluginx_comp', site: 'porno365', page: 1, is_related: true });
                                         } else if (a.action === 'direct_link') {
                                             Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: 'porno365', page: 1 });
+                                        } else {
+                                            var subItems = [];
+                                            var subEls = doc.querySelectorAll('.video-categories:not(.video-models) a, .video-tags a');
+                                            for (var i = 0; i < subEls.length; i++) {
+                                                var cHref = subEls[i].getAttribute('href');
+                                                if (cHref) {
+                                                    if (cHref.indexOf('http') !== 0) cHref = PORNO365_DOMAIN + (cHref.indexOf('/') === 0 ? '' : '/') + cHref;
+                                                    subItems.push({ title: subEls[i].innerText.trim(), url: cHref });
+                                                }
+                                            }
+                                            if (subItems.length > 0) {
+                                                Lampa.Select.show({
+                                                    title: 'Категорії / Теги',
+                                                    items: subItems,
+                                                    onSelect: function (item) { Lampa.Activity.push({ url: item.url, title: item.title, component: 'pluginx_comp', site: 'porno365', page: 1 }); },
+                                                    onBack: function () { events.onMenu(); }
+                                                });
+                                            }
                                         }
                                     },
                                     onBack: function () { Lampa.Controller.toggle('content'); }
@@ -459,6 +511,7 @@
                         }
                     };
 
+                    // Фокус для ТБ
                     var originalOnFocus = events.onFocus;
                     events.onFocus = function (target, card_data) {
                         if (originalOnFocus) originalOnFocus(target, card_data);
@@ -469,6 +522,37 @@
                             }, 1000);
                         }
                     };
+
+                    // Мишка для ПК
+                    $el.on('mouseenter', function() {
+                        hidePreview();
+                        if (card.preview) {
+                            previewTimeout = setTimeout(function () {
+                                showPreview($el, card.preview);
+                            }, 800);
+                        }
+                    }).on('mouseleave', function() {
+                        hidePreview();
+                    });
+
+                    // Тач для мобільних (тривалий натиск 0.6 сек)
+                    var touchTimer;
+                    var isScrolling = false;
+                    $el.on('touchstart', function() {
+                        isScrolling = false;
+                        hidePreview();
+                        if (card.preview) {
+                            touchTimer = setTimeout(function() {
+                                if (!isScrolling) showPreview($el, card.preview);
+                            }, 600);
+                        }
+                    }).on('touchmove', function() {
+                        isScrolling = true;
+                        clearTimeout(touchTimer);
+                        hidePreview();
+                    }).on('touchend touchcancel', function() {
+                        clearTimeout(touchTimer);
+                    });
                 }
             };
             return comp;
@@ -521,9 +605,7 @@
 
             Lampa.Listener.follow('activity', function(e) {
                 if (e.type == 'start') currentActivity = e.object;
-                
                 try { if (typeof hidePreview === 'function') hidePreview(); } catch (err) {}
-                
                 clearTimeout(hideTimeout);
                 hideTimeout = setTimeout(function() {
                     if (currentActivity && currentActivity.component !== 'pluginx_comp') filterBtn.hide();
