@@ -52,6 +52,19 @@
             }
         }
 
+        function showPreview(element, src) {
+            var previewContainer = $('<div class="sisi-video-preview" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;overflow:hidden;z-index:2;background:#000;"><video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>');
+            var videoEl = previewContainer.find('video')[0];
+            videoEl.src = src;
+            $(element).find('.card__view').append(previewContainer);
+            activePreviewNode = previewContainer;
+            
+            var playPromise = videoEl.play();
+            if (playPromise !== undefined) {
+                playPromise.catch(function(){});
+            }
+        }
+
         function CustomCatalog(object) {
             var comp = new Lampa.InteractionCategory(object);
             var currentSite = object.site || 'porno365';
@@ -311,8 +324,7 @@
                             },
                             onBack: function () { Lampa.Controller.toggle('content'); }
                         });
-                    }
-                    else {
+                    } else {
                         var currentUrl = (object.url || MY_CATALOG_DOMAIN).replace(/\/+$/, '');
                         if (currentUrl.indexOf('/search/?q=') !== -1) {
                             currentUrl = currentUrl.replace('/search/?q=', '/search/');
@@ -530,27 +542,62 @@
                     }
                 };
 
+                // 1. Стандартний фокус для телевізора (пульт)
                 var originalOnFocus = events.onFocus;
                 events.onFocus = function (target, card_data) {
                     if (originalOnFocus) originalOnFocus(target, card_data);
-                    
                     hidePreview();
                     if (card.preview) {
                         previewTimeout = setTimeout(function () {
-                            var $el = $(element);
-                            var previewContainer = $('<div class="sisi-video-preview" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;overflow:hidden;z-index:2;background:#000;"><video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>');
-                            var videoEl = previewContainer.find('video')[0];
-                            videoEl.src = card.preview;
-                            $el.find('.card__view').append(previewContainer);
-                            activePreviewNode = previewContainer;
-                            
-                            var playPromise = videoEl.play();
-                            if (playPromise !== undefined) {
-                                playPromise.catch(function(){});
-                            }
+                            showPreview(element, card.preview);
                         }, 1000);
                     }
                 };
+
+                // 2. Для ПК (мишка) та Телефонів (тапи)
+                var startY = 0;
+                var isTouching = false;
+
+                element.on('mouseenter', function() {
+                    if (isTouching) return;
+                    hidePreview();
+                    if (card.preview) {
+                        previewTimeout = setTimeout(function () {
+                            showPreview(element, card.preview);
+                        }, 800);
+                    }
+                }).on('mouseleave', function() {
+                    if (!isTouching) hidePreview();
+                });
+
+                element.on('touchstart', function(e) {
+                    if (e.originalEvent && e.originalEvent.touches) {
+                        startY = e.originalEvent.touches[0].clientY;
+                    }
+                    isTouching = true;
+                    hidePreview();
+                    if (card.preview) {
+                        previewTimeout = setTimeout(function () {
+                            if (isTouching) showPreview(element, card.preview);
+                        }, 500); // 0.5 сек для швидкого прев'ю на телефоні
+                    }
+                });
+
+                element.on('touchmove', function(e) {
+                    if (e.originalEvent && e.originalEvent.touches) {
+                        var moveY = e.originalEvent.touches[0].clientY;
+                        if (Math.abs(moveY - startY) > 10) { // Якщо палець зсунувся
+                            isTouching = false;
+                            hidePreview();
+                        }
+                    }
+                });
+
+                element.on('touchend touchcancel', function() {
+                    isTouching = false;
+                    hidePreview();
+                });
+
             };
             return comp;
         }
