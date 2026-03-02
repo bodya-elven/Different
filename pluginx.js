@@ -32,7 +32,7 @@
                 'text-overflow: ellipsis !important; ' +
             '}' +
             '.my-youtube-style .card__age, .my-youtube-style .card__textbox { display: none !important; }' +
-            '.pluginx-sep { font-size: 0.7em !important; opacity: 0.5; pointer-events: none; text-align: center; padding: 12px 0 5px 0 !important; text-transform: uppercase; letter-spacing: 2px; color: #fff; }' +
+            '.pluginx-sep { font-size: 0.75em !important; opacity: 0.5; pointer-events: none; text-align: center; padding: 12px 0 6px 0 !important; text-transform: uppercase; letter-spacing: 2px; color: #fff; border: none !important; }' +
             '</style>';
         $('body').append(css);
 
@@ -160,6 +160,7 @@
                     items.push({ title: 'Сортування', is_sep: true });
                     var b3 = curUrl.split('?')[0].replace(/\/popular\/week$/, '').replace(/\/popular\/month$/, '').replace(/\/popular\/year$/, '').replace(/\/popular$/, '').replace(/\/+$/, '');
                     var isH = (b3 === cleanD), isC = (b3.indexOf('/categories/') !== -1), isT = (b3.indexOf('/tags/') !== -1), isM = (b3.indexOf('/models/') !== -1);
+                    
                     items.push({ title: 'Нові', url: b3 });
                     if (isT || isM) {
                         items.push({ title: 'Топ переглядів', url: b3 + '/popular' });
@@ -292,5 +293,16 @@
         }
     }
 
-    if (window.Lampa) { startPlugin(); addMenu(); } else { Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') { startPlugin(); addMenu(); } }); }
+    if (window.Lampa) {
+        startPlugin();
+        addMenu();
+    }
+    
+    Lampa.Listener.follow('app', function (e) {
+        if (e.type == 'ready') {
+            startPlugin();
+            addMenu();
+        }
+    });
+    
 })();
