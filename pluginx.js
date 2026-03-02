@@ -11,16 +11,15 @@
         var css = '<style>' +
             '.my-youtube-style { padding: 0 !important; }' +
             '@media screen and (max-width: 580px) {' +
-                '.my-youtube-style .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
-                '.my-youtube-style.is-studios .card { width: 50% !important; }' + // 2 колонки для студій на моб
-                '.my-youtube-style .card__title { font-size: 12px !important; }' +
+                '.my-youtube-style .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
+                '.my-youtube-style.is-studios .card { width: 50% !important; }' +
             '}' +
             '@media screen and (min-width: 581px) {' +
                 '.my-youtube-style .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
-                '.my-youtube-style.is-studios .card { width: 16.66% !important; }' + // 6 колонок для студій на ТВ
+                '.my-youtube-style.is-studios .card { width: 16.66% !important; }' +
             '}' +
             '.my-youtube-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
-            '.my-youtube-style.is-studios .card__view { padding-bottom: 75% !important; background: #fff !important; }' + // 4:3 для студій
+            '.my-youtube-style.is-studios .card__view { padding-bottom: 75% !important; background: #fff !important; }' +
             '.my-youtube-style .card__img { object-fit: cover !important; }' +
             '.my-youtube-style.is-studios .card__img { object-fit: contain !important; padding: 10px; }' +
             '.my-youtube-style .card__title { ' +
@@ -29,7 +28,7 @@
                 'line-height: 1.2 !important; margin-top: 5px !important; text-overflow: ellipsis !important; ' +
             '}' +
             '.my-youtube-style .card__age, .my-youtube-style .card__textbox { display: none !important; }' +
-            '.pluginx-sep { font-size: 0.75em !important; opacity: 0.5; pointer-events: none; text-align: center; padding: 12px 0 6px 0 !important; text-transform: uppercase; letter-spacing: 2px; color: #fff; }' +
+            '.pluginx-sep { font-size: 0.75em !important; opacity: 0.5; pointer-events: none; text-align: center; padding: 12px 0 6px 0 !important; text-transform: uppercase; letter-spacing: 2px; color: #fff; border: none !important; }' +
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '.studio-count { font-size: 0.8em; color: #aaa; margin-top: 2px; display: block; }' +
             '</style>';
@@ -52,7 +51,6 @@
             target.find('.card__view').append(pr); activePreviewNode = pr;
             var p = pr.find('video')[0].play(); if (p !== undefined) p.catch(function(){});
         }
-
         function CustomCatalog(object) {
             var comp = new Lampa.InteractionCategory(object);
             var currentSite = object.site || 'porno365';
@@ -64,6 +62,7 @@
                 if (isAndroid) network.native(url, function (res) { onSuccess(typeof res === 'object' ? JSON.stringify(res) : res); }, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
                 else network.silent(url, onSuccess, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
             }
+
             function parseCards365(doc, siteBaseUrl, isRelated) {
                 var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
                 var elements = doc.querySelectorAll(sel), results = [];
@@ -95,19 +94,8 @@
                         else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
                         var vUrl = linkEl.getAttribute('href');
                         if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
-                        
-                        var label = titleEl.innerText.trim();
                         var countText = timeEl ? timeEl.innerText.trim().replace('видео', 'відео') : '';
-                        
-                        results.push({ 
-                            name: label, 
-                            video_count: countText, 
-                            url: vUrl, 
-                            picture: img, 
-                            img: img, 
-                            is_studio: isStudios,
-                            preview: imgEl ? (imgEl.getAttribute('data-preview') || '') : ''
-                        });
+                        results.push({ name: titleEl.innerText.trim(), video_count: countText, url: vUrl, picture: img, img: img, is_studio: isStudios, preview: imgEl ? (imgEl.getAttribute('data-preview') || '') : '' });
                     }
                 }
                 return results;
@@ -122,7 +110,7 @@
                     var isStudios = target.indexOf('/channels') !== -1;
                     var res = (currentSite === 'lenkino') ? parseCardsLenkino(doc, LENKINO_DOMAIN.replace(/\/+$/, '')) : parseCards365(doc, PORNO365_DOMAIN.replace(/\/+$/, ''), object.is_related);
                     if (res.length > 0) { 
-                        _this.build({ results: res, collection: true, total_pages: isStudios ? 50 : 50, page: 1 }); 
+                        _this.build({ results: res, collection: true, total_pages: 50, page: 1 }); 
                         var r = _this.render().addClass('my-youtube-style');
                         if (isStudios) r.addClass('is-studios');
                     } else { _this.empty(); }
@@ -175,9 +163,10 @@
                                 Lampa.Controller.toggle('content');
                             });
                         } else if (a.action === 'categories' || a.action === 'studios') {
-                            smartRequest(cleanD + (a.action === 'categories' ? '/categories' : '/channels'), function(html) {
+                            if (a.action === 'studios') { Lampa.Activity.push({ url: cleanD + '/channels', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 }); return; }
+                            smartRequest(cleanD + '/categories', function(html) {
                                 var parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
-                                var sel = (currentSite === 'lenkino') ? (a.action === 'categories' ? '.grd-cat a' : '.len_pucl') : '.categories-list-div a';
+                                var sel = (currentSite === 'lenkino') ? '.grd-cat a' : '.categories-list-div a';
                                 var links = doc.querySelectorAll(sel), sub = [];
                                 for (var i = 0; i < links.length; i++) {
                                     var href = links[i].getAttribute('href'), title = links[i].getAttribute('title') || links[i].innerText.trim();
@@ -202,13 +191,12 @@
                     hidePreview();
                     if (element.is_studio) { Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: currentSite, page: 1 }); return; }
                     smartRequest(element.url, function(html) {
-                        var str = []; 
+                        var u = html.match(/video_url:[\t ]+'([^']+)'/), a = html.match(/video_alt_url:[\t ]+'([^']+)'/);
                         if (currentSite === 'lenkino') {
-                            var u = html.match(/video_url:[\t ]+'([^']+)'/), a = html.match(/video_alt_url:[\t ]+'([^']+)'/);
                             var pD = { title: element.name, url: (a && a[1] ? a[1] : (u ? u[1] : '')), headers: { 'Referer': 'https://wes.lenkino.adult/', 'User-Agent': 'Mozilla/5.0' } };
                             if (pD.url) { Lampa.Player.play(pD); Lampa.Player.playlist([pD]); }
                         } else {
-                            var doc = new DOMParser().parseFromString(html, 'text/html'), q = doc.querySelectorAll('.quality_chooser a');
+                            var doc = new DOMParser().parseFromString(html, 'text/html'), q = doc.querySelectorAll('.quality_chooser a'), str = [];
                             for (var j = 0; j < q.length; j++) if (q[j].getAttribute('href')) str.push({ title: q[j].innerText.trim(), url: q[j].getAttribute('href') });
                             if (str.length > 0) { Lampa.Player.play({ title: element.name, url: str[str.length-1].url, quality: str }); }
                         }
