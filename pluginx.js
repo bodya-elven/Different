@@ -444,6 +444,16 @@
                             var studioElements = doc.querySelectorAll('.vid-aut a, .itm-aut a, .grd-spn a');
                             for (var s = 0; s < studioElements.length; s++) {
                                 var sTitle = studioElements[s].innerText.trim();
+                                // Очищення від подвійної назви та зайвих пробілів
+                                if (sTitle) {
+                                    var parts = sTitle.split(/\s+/);
+                                    if (parts.length >= 2 && parts.length % 2 === 0) {
+                                        var half = parts.length / 2;
+                                        if (parts.slice(0, half).join(' ') === parts.slice(half).join(' ')) {
+                                            sTitle = parts.slice(0, half).join(' ');
+                                        }
+                                    }
+                                }
                                 var isDuplicate = menuItems.some(function(item) { return item.title === sTitle; });
                                 if (!isDuplicate && sTitle) {
                                     menuItems.push({ title: sTitle, action: 'direct_link', url: studioElements[s].getAttribute('href') });
@@ -451,14 +461,7 @@
                             }
                             
                             menuItems.push({ title: 'Категорії', action: 'categories' });
-
-                            // Пошук саме тематично схожих відео за параметром mode_related:3
-                            var similarBtn = doc.querySelector('.rel-mnu a[data-parameters*="mode_related:3"]');
-                            if (similarBtn && similarBtn.getAttribute('href')) {
-                                menuItems.push({ title: 'Схожі відео (Топ)', action: 'similar', url: similarBtn.getAttribute('href') });
-                            } else {
-                                menuItems.push({ title: 'Схожі відео', action: 'similar', url: element.url });
-                            }
+                            menuItems.push({ title: 'Схожі відео', action: 'similar', url: element.url });
                             
                             Lampa.Select.show({
                                 title: 'Дії',
@@ -570,8 +573,6 @@
                 '                <rect x="7" y="16" width="24" height="3" rx="1.5" fill="currentColor"></rect>\n' +
                 '                <rect x="7" y="25" width="24" height="3" rx="1.5" fill="currentColor"></rect>\n' +
                 '                <circle cx="13.5" cy="17.5" r="3.5" fill="currentColor"></circle>\n' +
-                '                <circle cx="23.5" cy="26.5" r="3.5" fill="currentColor"></circle>\n' +
-                '                <circle cx="21.5" cy="9.5" r="3.5" fill="currentColor"></circle>\n' +
                 '            </svg>\n' +
                 '        </div>');
 
