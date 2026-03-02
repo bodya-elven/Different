@@ -32,7 +32,7 @@
                 'text-overflow: ellipsis !important; ' +
             '}' +
             '.my-youtube-style .card__age, .my-youtube-style .card__textbox { display: none !important; }' +
-            '.pluginx-separator { font-size: 0.7em !important; opacity: 0.6; pointer-events: none; padding: 12px 0 5px 0 !important; text-align: center; text-transform: uppercase; letter-spacing: 1px; color: #fff; }' +
+            'div[data-is-separator="true"] { font-size: 0.7em !important; opacity: 0.5; pointer-events: none; text-align: center; padding: 10px 0 !important; text-transform: uppercase; letter-spacing: 2px; }' +
             '</style>';
         $('body').append(css);
 
@@ -59,8 +59,7 @@
             videoEl.src = src;
             target.find('.card__view').append(previewContainer);
             activePreviewNode = previewContainer;
-            var playPromise = videoEl.play();
-            if (playPromise !== undefined) playPromise.catch(function(){});
+            var p = videoEl.play(); if (p !== undefined) p.catch(function(){});
         }
 
         function CustomCatalog(object) {
@@ -69,8 +68,8 @@
 
             function smartRequest(url, onSuccess, onError) {
                 var network = new Lampa.Reguest();
-                var isAndroid = typeof window !== 'undefined' && window.Lampa && window.Lampa.Platform && typeof window.Lampa.Platform.is === 'function' && window.Lampa.Platform.is('android');
                 var headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" };
+                var isAndroid = typeof window !== 'undefined' && window.Lampa && window.Lampa.Platform && window.Lampa.Platform.is('android');
                 if (isAndroid) {
                     network.native(url, function (res) { onSuccess(typeof res === 'object' ? JSON.stringify(res) : res); }, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
                 } else {
@@ -78,129 +77,134 @@
                 }
             }
             function parseCards365(doc, siteBaseUrl, isRelated) {
-                var selector = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
-                var elements = doc.querySelectorAll(selector);
-                var results = [];
+                var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
+                var elements = doc.querySelectorAll(sel), results = [];
                 for (var i = 0; i < elements.length; i++) {
-                    var el = elements[i], linkEl = el.querySelector('a.image'), titleEl = el.querySelector('a.image p, .title'), imgEl = el.querySelector('img'), timeEl = el.querySelector('.duration'), videoPreviewEl = el.querySelector('video'); 
+                    var el = elements[i], linkEl = el.querySelector('a.image'), titleEl = el.querySelector('a.image p, .title'), imgEl = el.querySelector('img'), timeEl = el.querySelector('.duration'), vP = el.querySelector('video');
                     if (linkEl && titleEl) {
-                        var imgSrc = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
-                        if (imgSrc && imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc;
-                        var videoUrl = linkEl.getAttribute('href');
-                        if (videoUrl && videoUrl.indexOf('http') !== 0) videoUrl = siteBaseUrl + (videoUrl.indexOf('/') === 0 ? '' : '/') + videoUrl;
-                        var previewUrl = videoPreviewEl ? videoPreviewEl.getAttribute('src') : '';
-                        if (previewUrl && previewUrl.indexOf('//') === 0) previewUrl = 'https:' + previewUrl;
-                        results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: videoUrl, picture: imgSrc, img: imgSrc, preview: previewUrl });
+                        var img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
+                        if (img && img.indexOf('//') === 0) img = 'https:' + img;
+                        var vUrl = linkEl.getAttribute('href');
+                        if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
+                        var pUrl = vP ? vP.getAttribute('src') : '';
+                        if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
+                        results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: vUrl, picture: img, img: img, preview: pUrl });
                     }
                 }
                 return results;
             }
 
             function parseCardsLenkino(doc, siteBaseUrl) {
-                var listBlock = doc.querySelector('#list_videos_videos_list');
-                var elements = listBlock ? listBlock.querySelectorAll('.item') : doc.querySelectorAll('.grd-vid .item, #list_videos_videos_list_items .item');
-                if (elements.length === 0) elements = doc.querySelectorAll('.item'); 
+                var list = doc.querySelector('#list_videos_videos_list');
+                var elements = list ? list.querySelectorAll('.item') : doc.querySelectorAll('.grd-vid .item, #list_videos_videos_list_items .item');
+                if (elements.length === 0) elements = doc.querySelectorAll('.item');
                 var results = [];
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i], linkEl = el.querySelector('a'), titleEl = el.querySelector('.itm-tit'), imgEl = el.querySelector('img.lzy') || el.querySelector('img'), timeEl = el.querySelector('.itm-dur');
                     if (linkEl && titleEl) {
-                        var imgSrc = imgEl ? (imgEl.getAttribute('data-srcset') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                        if (imgSrc && imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc;
-                        else if (imgSrc && imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
-                        var videoUrl = linkEl.getAttribute('href');
-                        if (videoUrl && videoUrl.indexOf('http') !== 0) videoUrl = siteBaseUrl + (videoUrl.indexOf('/') === 0 ? '' : '/') + videoUrl;
-                        var previewUrl = imgEl ? (imgEl.getAttribute('data-preview') || '') : '';
-                        if (previewUrl && previewUrl.indexOf('//') === 0) previewUrl = 'https:' + previewUrl;
-                        else if (previewUrl && previewUrl.indexOf('/') === 0) previewUrl = siteBaseUrl + previewUrl;
-                        results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: videoUrl, picture: imgSrc, img: imgSrc, preview: previewUrl });
+                        var img = imgEl ? (imgEl.getAttribute('data-srcset') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
+                        if (img && img.indexOf('//') === 0) img = 'https:' + img;
+                        else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
+                        var vUrl = linkEl.getAttribute('href');
+                        if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
+                        var pUrl = imgEl ? (imgEl.getAttribute('data-preview') || '') : '';
+                        if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
+                        else if (pUrl && pUrl.indexOf('/') === 0) pUrl = siteBaseUrl + pUrl;
+                        results.push({ name: titleEl.innerText.trim() + (timeEl ? ' (' + timeEl.innerText.trim() + ')' : ''), url: vUrl, picture: img, img: img, preview: pUrl });
                     }
                 }
                 return results;
             }
 
             comp.create = function () {
-                var _this = this;
-                this.activity.loader(true);
-                var targetUrl = object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN);
-                if (currentSite === 'lenkino') {
-                    targetUrl = targetUrl.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1);
-                }
-                smartRequest(targetUrl, function (htmlText) {
-                    var parser = new DOMParser(), doc = parser.parseFromString(htmlText, 'text/html');
-                    var results = (currentSite === 'lenkino') ? parseCardsLenkino(doc, LENKINO_DOMAIN.replace(/\/+$/, '')) : parseCards365(doc, PORNO365_DOMAIN.replace(/\/+$/, ''), object.is_related);
-                    if (results.length > 0) {
-                        _this.build({ results: results, collection: true, total_pages: 50, page: 1 });
-                        _this.render().addClass('my-youtube-style');
-                    } else { _this.empty(); }
+                var _this = this; this.activity.loader(true);
+                var target = object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN);
+                if (currentSite === 'lenkino') target = target.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1);
+                smartRequest(target, function (html) {
+                    var parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
+                    var res = (currentSite === 'lenkino') ? parseCardsLenkino(doc, LENKINO_DOMAIN.replace(/\/+$/, '')) : parseCards365(doc, PORNO365_DOMAIN.replace(/\/+$/, ''), object.is_related);
+                    if (res.length > 0) { _this.build({ results: res, collection: true, total_pages: 50, page: 1 }); _this.render().addClass('my-youtube-style'); } else { _this.empty(); }
                 }, this.empty.bind(this));
             };
 
             comp.nextPageReuest = function (object, resolve, reject) {
                 if (object.is_related) return reject();
-                var baseUrl = (object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN)).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
-                var pageUrl = (currentSite === 'lenkino') ? baseUrl + '/page/' + object.page : baseUrl + (baseUrl.indexOf('?') !== -1 ? '&' : '/') + object.page;
-                smartRequest(pageUrl, function (htmlText) {
-                    var parser = new DOMParser(), doc = parser.parseFromString(htmlText, 'text/html');
-                    var results = (currentSite === 'lenkino') ? parseCardsLenkino(doc, LENKINO_DOMAIN.replace(/\/+$/, '')) : parseCards365(doc, PORNO365_DOMAIN.replace(/\/+$/, ''), false);
-                    if (results.length > 0) resolve({ results: results, collection: true, total_pages: 50, page: object.page });
-                    else reject();
+                var base = (object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN)).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
+                var url = (currentSite === 'lenkino') ? base + '/page/' + object.page : base + (base.indexOf('?') !== -1 ? '&' : '/') + object.page;
+                smartRequest(url, function (html) {
+                    var parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
+                    var res = (currentSite === 'lenkino') ? parseCardsLenkino(doc, LENKINO_DOMAIN.replace(/\/+$/, '')) : parseCards365(doc, PORNO365_DOMAIN.replace(/\/+$/, ''), false);
+                    if (res.length > 0) resolve({ results: res, collection: true, total_pages: 50, page: object.page }); else reject();
                 }, reject);
             };
             comp.filter = function () {
-                try {
-                    var cleanDomain = (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN).replace(/\/+$/, '');
-                    var currentUrl = (object.url || cleanDomain).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
-                    var items = [{ title: 'Пошук', action: 'search' }, { title: 'Категорії', action: 'categories' }];
+                var cleanD = (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN).replace(/\/+$/, '');
+                var curUrl = (object.url || cleanD).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
+                var items = [{ title: 'Пошук', action: 'search' }, { title: 'Категорії', action: 'categories' }];
 
-                    if (currentSite === 'lenkino') {
-                        items.push({ title: 'Студії', action: 'studios' });
-                        items.push({ title: 'Сортування', css_class: 'pluginx-separator' });
-                        if (currentUrl.indexOf('/channels') !== -1) {
-                            var bS = cleanDomain + '/channels';
-                            items.push({ title: 'Кращі', url: bS }, { title: 'Нові', url: bS + '-new' }, { title: 'Популярні', url: bS + '-views' });
-                        } else {
-                            var bV = currentUrl.replace(/\/top-porno$/, '').replace(/\/hot-porno$/, '').replace(/-top$/, '');
-                            if (bV === cleanDomain) {
-                                items.push({ title: 'Нові', url: cleanDomain }, { title: 'Кращі', url: cleanDomain + '/top-porno' }, { title: 'Гарячі', url: cleanDomain + '/hot-porno' });
-                            } else {
-                                items.push({ title: 'Нові', url: bV }, { title: 'Кращі', url: bV + '-top' }, { title: 'Гарячі', url: bV });
-                            }
-                        }
+                if (currentSite === 'lenkino') {
+                    items.push({ title: 'Студії', action: 'studios' });
+                    items.push({ title: 'Сортування', is_sep: true });
+                    if (curUrl.indexOf('/channels') !== -1) {
+                        var bS = cleanD + '/channels';
+                        items.push({ title: 'Кращі', url: bS }, { title: 'Нові', url: bS + '-new' }, { title: 'Популярні', url: bS + '-views' });
                     } else {
-                        items.push({ title: 'Сортування', css_class: 'pluginx-separator' });
-                        var b3 = currentUrl.split('?')[0].replace(/\/popular\/week$/, '').replace(/\/popular\/month$/, '').replace(/\/popular\/year$/, '').replace(/\/popular$/, '').replace(/\/+$/, '');
-                        var isH = (b3 === cleanDomain), isC = (b3.indexOf('/categories/') !== -1);
-                        items.push({ title: 'Нові', url: b3 }, { title: 'Топ переглядів', url: b3 + '/popular' });
-                        if (isH || isC) {
-                            if (isH) items.push({ title: 'Топ переглядів (тиждень)', url: b3 + '/popular/week' });
-                            items.push({ title: 'Топ переглядів (місяць)', url: b3 + '/popular/month' }, { title: 'Топ переглядів (рік)', url: b3 + '/popular/year' });
+                        var bV = curUrl.replace(/\/top-porno$/, '').replace(/\/hot-porno$/, '').replace(/-top$/, '');
+                        if (bV === cleanD) {
+                            items.push({ title: 'Нові', url: cleanD }, { title: 'Кращі', url: cleanD + '/top-porno' }, { title: 'Гарячі', url: cleanD + '/hot-porno' });
+                        } else {
+                            items.push({ title: 'Нові', url: bV }, { title: 'Кращі', url: bV + '-top' }, { title: 'Гарячі', url: bV });
                         }
                     }
+                } else {
+                    items.push({ title: 'Сортування', is_sep: true });
+                    var b3 = curUrl.split('?')[0].replace(/\/popular\/week$/, '').replace(/\/popular\/month$/, '').replace(/\/popular\/year$/, '').replace(/\/popular$/, '').replace(/\/+$/, '');
+                    var isH = (b3 === cleanD), isC = (b3.indexOf('/categories/') !== -1), isT = (b3.indexOf('/tags/') !== -1), isM = (b3.indexOf('/models/') !== -1);
+                    
+                    items.push({ title: 'Нові', url: b3 });
+                    if (isT || isM) {
+                        items.push({ title: 'Топ переглядів', url: b3 + '/popular' });
+                    } else {
+                        items.push({ title: 'Топ переглядів', url: b3 + '/popular' });
+                        if (isH) items.push({ title: 'Топ переглядів (тиждень)', url: b3 + '/popular/week' });
+                        if (isH || isC) {
+                            items.push({ title: 'Топ переглядів (місяць)', url: b3 + '/popular/month' });
+                            items.push({ title: 'Топ переглядів (рік)', url: b3 + '/popular/year' });
+                        }
+                    }
+                }
 
-                    Lampa.Select.show({
-                        title: 'Навігація', items: items,
-                        onSelect: function (a) {
-                            if (a.action === 'search') {
-                                Lampa.Input.edit({ title: 'Пошук', value: '', free: true, nosave: true }, function(v) {
-                                    if (v) Lampa.Activity.push({ url: cleanDomain + (currentSite === 'lenkino' ? '/search/' : '/search/?q=') + encodeURIComponent(v), title: 'Пошук: ' + v, component: 'pluginx_comp', site: currentSite, page: 1 });
-                                    Lampa.Controller.toggle('content');
-                                });
-                            } else if (a.action === 'categories' || a.action === 'studios') {
-                                smartRequest(cleanDomain + (a.action === 'categories' ? '/categories' : '/channels'), function(html) {
-                                    var parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
-                                    var sel = (currentSite === 'lenkino') ? (a.action === 'categories' ? '.grd-cat a' : '.grd-spn a') : '.categories-list-div a';
-                                    var links = doc.querySelectorAll(sel), sub = [];
-                                    for (var i = 0; i < links.length; i++) {
-                                        var href = links[i].getAttribute('href'), title = links[i].getAttribute('title') || links[i].innerText.trim();
-                                        if (href) sub.push({ title: title, url: href.startsWith('http') ? href : cleanDomain + (href.startsWith('/') ? '' : '/') + href });
-                                    }
-                                    Lampa.Select.show({ title: a.title, items: sub, onSelect: function(s) { Lampa.Activity.push({ url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function() { comp.filter(); } });
-                                });
-                            } else if (a.url) { Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }
-                        },
-                        onBack: function () { Lampa.Controller.toggle('content'); }
-                    });
-                } catch (e) { console.log(e); }
+                Lampa.Select.show({
+                    title: 'Навігація', items: items,
+                    onRender: function(el) {
+                        $(el).find('.selector').each(function(i, item_el) {
+                            if (items[i] && items[i].is_sep) {
+                                $(item_el).attr('data-is-separator', 'true').removeClass('selector');
+                            }
+                        });
+                    },
+                    onSelect: function (a) {
+                        if (a.is_sep) return;
+                        if (a.action === 'search') {
+                            Lampa.Input.edit({ title: 'Пошук', value: '', free: true, nosave: true }, function(v) {
+                                if (v) Lampa.Activity.push({ url: cleanD + (currentSite === 'lenkino' ? '/search/' : '/search/?q=') + encodeURIComponent(v), title: 'Пошук: ' + v, component: 'pluginx_comp', site: currentSite, page: 1 });
+                                Lampa.Controller.toggle('content');
+                            });
+                        } else if (a.action === 'categories' || a.action === 'studios') {
+                            smartRequest(cleanD + (a.action === 'categories' ? '/categories' : '/channels'), function(html) {
+                                var parser = new DOMParser(), doc = parser.parseFromString(html, 'text/html');
+                                var sel = (currentSite === 'lenkino') ? (a.action === 'categories' ? '.grd-cat a' : '.grd-spn a') : '.categories-list-div a';
+                                var links = doc.querySelectorAll(sel), sub = [];
+                                for (var i = 0; i < links.length; i++) {
+                                    var href = links[i].getAttribute('href'), title = links[i].getAttribute('title') || links[i].innerText.trim();
+                                    if (href) sub.push({ title: title, url: href.startsWith('http') ? href : cleanD + (href.startsWith('/') ? '' : '/') + href });
+                                }
+                                Lampa.Select.show({ title: a.title, items: sub, onSelect: function(s) { Lampa.Activity.push({ url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function() { comp.filter(); } });
+                            });
+                        } else if (a.url) { Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }
+                    },
+                    onBack: function () { Lampa.Controller.toggle('content'); }
+                });
             };
             comp.onRight = comp.filter.bind(comp);
 
@@ -285,14 +289,9 @@
             var menu_item = $('<li class="menu__item selector" data-action="pluginx"><div class="menu__ico"><img src="https://bodya-elven.github.io/different/icons/pluginx.svg" width="24" height="24" style="filter: brightness(0) invert(1);" /></div><div class="menu__text">Каталоги X</div></li>');
             menu_item.on('hover:enter', function () { Lampa.Select.show({ title: 'Оберіть сайт', items: [{ title: 'Porno365', site: 'porno365' }, { title: 'Lenkino', site: 'lenkino' }], onSelect: function(a) { Lampa.Activity.push({ title: a.title, component: 'pluginx_comp', site: a.site, page: 1 }); }, onBack: function() { Lampa.Controller.toggle('menu'); } }); });
             var settings_item = menu_list.find('[data-action="settings"]');
-            settings_item.length ? menu_item.insertBefore(settings_item) : menu_list.append(menu_item);
+            if (settings_item.length) menu_item.insertBefore(settings_item); else menu_list.append(menu_item);
         }
     }
 
-    if (window.Lampa) {
-        startPlugin();
-        addMenu();
-    } else {
-        Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') { startPlugin(); addMenu(); } });
-    }
+    if (window.Lampa) { startPlugin(); addMenu(); } else { Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') { startPlugin(); addMenu(); } }); }
 })();
