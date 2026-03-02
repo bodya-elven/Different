@@ -12,14 +12,14 @@
             '.my-youtube-style { padding: 0 !important; }' +
             '@media screen and (max-width: 580px) {' +
                 '.my-youtube-style .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
-                '.my-youtube-style.is-studios .card { width: 50% !important; }' + 
+                '.my-youtube-style.is-studios .card { width: 50% !important; }' + /* Студії: 2 колонки моб */
             '}' +
             '@media screen and (min-width: 581px) {' +
                 '.my-youtube-style .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
-                '.my-youtube-style.is-studios .card { width: 16.666% !important; }' + 
+                '.my-youtube-style.is-studios .card { width: 16.666% !important; }' + /* Студії: 6 колонок ТБ */
             '}' +
             '.my-youtube-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
-            '.my-youtube-style.is-studios .card__view { padding-bottom: 75% !important; background: #fff !important; }' + 
+            '.my-youtube-style.is-studios .card__view { padding-bottom: 75% !important; background: #fff !important; }' + /* Студії: 4:3 */
             '.my-youtube-style .card__img { object-fit: cover !important; }' +
             '.my-youtube-style.is-studios .card__img { object-fit: contain !important; padding: 10px; }' +
             '.my-youtube-style .card__title { ' +
@@ -29,10 +29,6 @@
             '}' +
             '.my-youtube-style.is-studios .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: bold !important; margin-top: 5px !important; }' +
             '.my-youtube-style .card__age, .my-youtube-style .card__textbox { display: none !important; }' +
-            
-            /* ОНОВЛЕНИЙ РОЗДІЛЬНИК */
-            '.pluginx-sep { font-size: 0.85em !important; opacity: 0.5; pointer-events: none !important; text-align: left !important; padding: 10px 20px 5px 20px !important; text-transform: uppercase; letter-spacing: 1px; color: #fff; border: none !important; background: transparent !important; box-shadow: none !important; }' +
-            
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '.studio-count { font-size: 0.85em; color: #aaa; margin-top: 2px; display: block; text-align: center; }' +
             '</style>';
@@ -175,59 +171,90 @@
             comp.filter = function () {
                 var cleanD = (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN).replace(/\/+$/, '');
                 var curUrl = (object.url || cleanD).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
-                var items = [{ title: 'Пошук', action: 'search' }, { title: 'Категорії', action: 'categories' }];
+                
+                var items = [
+                    { title: 'Пошук', action: 'search' }, 
+                    { title: 'Категорії', action: 'categories' }
+                ];
+
+                var sortItems = [];
+                var currentSortTitle = 'Нові'; // Значення за замовчуванням
 
                 if (currentSite === 'lenkino') {
                     items.push({ title: 'Студії', action: 'studios' });
-                    items.push({ title: 'Сортування', is_sep: true }); // Наш неактивний роздільник
+                    
                     if (curUrl.indexOf('/channels') !== -1) {
                         var bS = cleanD + '/channels';
-                        items.push({ title: 'Кращі', url: bS }, { title: 'Нові', url: bS + '-new' }, { title: 'Популярні', url: bS + '-views' });
+                        sortItems.push({ title: 'Кращі', url: bS }, { title: 'Нові', url: bS + '-new' }, { title: 'Популярні', url: bS + '-views' });
+                        if (curUrl === bS + '-new') currentSortTitle = 'Нові';
+                        else if (curUrl === bS + '-views') currentSortTitle = 'Популярні';
+                        else currentSortTitle = 'Кращі';
                     } else {
                         var bV = curUrl.replace(/\/top-porno$/, '').replace(/\/hot-porno$/, '').replace(/-top$/, '');
                         if (bV === cleanD) {
-                            items.push({ title: 'Нові', url: cleanD }, { title: 'Кращі', url: cleanD + '/top-porno' }, { title: 'Гарячі', url: cleanD + '/hot-porno' });
+                            sortItems.push({ title: 'Нові', url: cleanD }, { title: 'Кращі', url: cleanD + '/top-porno' }, { title: 'Гарячі', url: cleanD + '/hot-porno' });
+                            if (curUrl.indexOf('/top-porno') !== -1) currentSortTitle = 'Кращі';
+                            else if (curUrl.indexOf('/hot-porno') !== -1) currentSortTitle = 'Гарячі';
+                            else currentSortTitle = 'Нові';
                         } else {
-                            items.push({ title: 'Нові', url: bV }, { title: 'Кращі', url: bV + '-top' }, { title: 'Гарячі', url: bV });
+                            sortItems.push({ title: 'Нові', url: bV }, { title: 'Кращі', url: bV + '-top' }, { title: 'Гарячі', url: bV });
+                            if (curUrl.indexOf('-top') !== -1) currentSortTitle = 'Кращі';
+                            else currentSortTitle = 'Нові';
                         }
                     }
                 } else {
-                    items.push({ title: 'Сортування', is_sep: true });
                     var b3 = curUrl.split('?')[0].replace(/\/popular\/week$/, '').replace(/\/popular\/month$/, '').replace(/\/popular\/year$/, '').replace(/\/popular$/, '').replace(/\/+$/, '');
                     var isH = (b3 === cleanD), isC = (b3.indexOf('/categories/') !== -1), isT = (b3.indexOf('/tags/') !== -1), isM = (b3.indexOf('/models/') !== -1);
                     
-                    items.push({ title: 'Нові', url: b3 });
+                    sortItems.push({ title: 'Нові', url: b3 });
                     if (isT || isM) {
-                        items.push({ title: 'Топ переглядів', url: b3 + '/popular' });
+                        sortItems.push({ title: 'Топ переглядів', url: b3 + '/popular' });
                     } else {
-                        items.push({ title: 'Топ переглядів', url: b3 + '/popular' });
-                        if (isH) items.push({ title: 'Топ переглядів (тиждень)', url: b3 + '/popular/week' });
+                        sortItems.push({ title: 'Топ переглядів', url: b3 + '/popular' });
+                        if (isH) sortItems.push({ title: 'Топ переглядів (тиждень)', url: b3 + '/popular/week' });
                         if (isH || isC) {
-                            items.push({ title: 'Топ переглядів (місяць)', url: b3 + '/popular/month' });
-                            items.push({ title: 'Топ переглядів (рік)', url: b3 + '/popular/year' });
+                            sortItems.push({ title: 'Топ переглядів (місяць)', url: b3 + '/popular/month' });
+                            sortItems.push({ title: 'Топ переглядів (рік)', url: b3 + '/popular/year' });
                         }
                     }
+                    
+                    if (curUrl.indexOf('/popular/week') !== -1) currentSortTitle = 'Топ переглядів (тиждень)';
+                    else if (curUrl.indexOf('/popular/month') !== -1) currentSortTitle = 'Топ переглядів (місяць)';
+                    else if (curUrl.indexOf('/popular/year') !== -1) currentSortTitle = 'Топ переглядів (рік)';
+                    else if (curUrl.indexOf('/popular') !== -1) currentSortTitle = 'Топ переглядів';
+                    else currentSortTitle = 'Нові';
                 }
 
+                // Додаємо пункт "Сортування" з підзаголовком поточного вибору
+                items.push({ 
+                    title: 'Сортування', 
+                    subtitle: currentSortTitle, 
+                    action: 'sort',
+                    sort_items: sortItems
+                });
+
                 Lampa.Select.show({
-                    title: 'Навігація', items: items,
-                    onRender: function(el) {
-                        $(el).find('.selector').each(function(i, item_el) {
-                            if (items[i] && items[i].is_sep) {
-                                // Забираємо клас selector, щоб елемент став неклікабельним підзаголовком
-                                $(item_el).removeClass('selector').addClass('pluginx-sep');
-                            }
-                        });
-                    },
+                    title: 'Навігація', 
+                    items: items,
                     onSelect: function (a) {
-                        if (a.is_sep) return; // Додатковий захист від кліків по роздільнику
                         if (a.action === 'search') {
                             Lampa.Input.edit({ title: 'Пошук', value: '', free: true, nosave: true }, function(v) {
                                 if (v) Lampa.Activity.push({ url: cleanD + (currentSite === 'lenkino' ? '/search/' : '/search/?q=') + encodeURIComponent(v), title: 'Пошук: ' + v, component: 'pluginx_comp', site: currentSite, page: 1 });
                                 Lampa.Controller.toggle('content');
                             });
+                        } else if (a.action === 'sort') {
+                            // Відкриваємо підменю сортування
+                            Lampa.Select.show({
+                                title: 'Сортування',
+                                items: a.sort_items,
+                                onSelect: function(s) {
+                                    Lampa.Activity.push({ url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1 });
+                                },
+                                onBack: function() {
+                                    comp.filter(); // Повертаємось до головного меню навігації
+                                }
+                            });
                         } else if (a.action === 'categories' || a.action === 'studios') {
-                            // Одразу переходимо в каталог студій
                             if (a.action === 'studios') {
                                 Lampa.Activity.push({ url: cleanD + '/channels', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
                                 return;
@@ -242,7 +269,7 @@
                                 }
                                 Lampa.Select.show({ title: a.title, items: sub, onSelect: function(s) { Lampa.Activity.push({ url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function() { comp.filter(); } });
                             });
-                        } else if (a.url) { Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }
+                        }
                     },
                     onBack: function () { Lampa.Controller.toggle('content'); }
                 });
@@ -251,7 +278,7 @@
             comp.onRight = comp.filter.bind(comp);
 
             comp.cardRender = function (card, element, events) {
-                // БЕЗПЕЧНЕ додавання лічильника відео (через jQuery)
+                // БЕЗПЕЧНЕ додавання лічильника (через jQuery)
                 if (element.is_studio && element.video_count) {
                     var info = $('<div class="studio-count">' + element.video_count + '</div>');
                     $(card).find('.card__title').after(info); 
