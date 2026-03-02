@@ -215,8 +215,9 @@
                         var str = []; 
                         if (currentSite === 'lenkino') {
                             var u = html.match(/video_url:[\t ]+'([^']+)'/), a = html.match(/video_alt_url:[\t ]+'([^']+)'/);
-                            if (u && u[1]) str.push({ title: 'Стандарт', url: u[1] });
-                            if (a && a[1]) str.push({ title: 'Основний (HD)', url: a[1] });
+                            var ref = '|Referer=https://wes.lenkino.adult/';
+                            if (u && u[1]) str.push({ title: 'Стандарт', url: u[1] + ref });
+                            if (a && a[1]) str.push({ title: 'Основний (HD)', url: a[1] + ref });
                         } else {
                             var doc = new DOMParser().parseFromString(html, 'text/html'), q = doc.querySelectorAll('.quality_chooser a');
                             for (var j = 0; j < q.length; j++) if (q[j].getAttribute('href')) str.push({ title: q[j].innerText.trim(), url: q[j].getAttribute('href') });
@@ -272,13 +273,34 @@
         (function() {
             var active_curr;
             var filter_btn = $('<div class="head__action head__settings selector"><svg height="36" viewBox="0 0 38 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1.5" y="1.5" width="35" height="33" rx="1.5" stroke="currentColor" stroke-width="3"></rect><rect x="7" y="8" width="24" height="3" rx="1.5" fill="currentColor"></rect><rect x="7" y="16" width="24" height="3" rx="1.5" fill="currentColor"></rect><rect x="7" y="25" width="24" height="3" rx="1.5" fill="currentColor"></rect><circle cx="13.5" cy="17.5" r="3.5" fill="currentColor"></circle><circle cx="23.5" cy="26.5" r="3.5" fill="currentColor"></circle><circle cx="21.5" cy="9.5" r="3.5" fill="currentColor"></circle></svg></div>');
-            filter_btn.hide().on('hover:enter click', function() { if (active_curr && active_curr.activity) { var c = (window.Lampa.Manifest.app_digital >= 300) ? active_curr.activity.component : active_curr.activity.component(); if (c.filter) c.filter(); } });
-            $('.head .open--search').length ? $('.head .open--search').before(filter_btn) : $('.head__actions').prepend(filter_btn);
+            
+            filter_btn.hide().on('hover:enter click', function() {
+                if (active_curr && active_curr.activity) {
+                    var c = (window.Lampa.Manifest && window.Lampa.Manifest.app_digital >= 300) ? active_curr.activity.component : active_curr.activity.component();
+                    if (c && c.filter) c.filter();
+                }
+            });
+
             Lampa.Listener.follow('activity', function(e) {
                 if (e.type == 'start') active_curr = e.object;
                 try { hidePreview(); } catch(h) {}
-                setTimeout(function() { if (active_curr && active_curr.component !== 'pluginx_comp') filter_btn.hide(); }, 1000);
-                if (e.type == 'start' && e.component == 'pluginx_comp') { filter_btn.show(); active_curr = e.object; }
+                
+                setTimeout(function() {
+                    if (active_curr && active_curr.component !== 'pluginx_comp') filter_btn.hide();
+                }, 1000);
+
+                if (e.type == 'start' && e.component == 'pluginx_comp') {
+                    // Якщо кнопки немає в DOM (Лампа перемалювала шапку) - додаємо знову
+                    if (!filter_btn.closest('body').length) {
+                        if ($('.head .open--search').length) {
+                            $('.head .open--search').before(filter_btn);
+                        } else {
+                            $('.head__actions').prepend(filter_btn);
+                        }
+                    }
+                    filter_btn.show();
+                    active_curr = e.object;
+                }
             });
         })();
     }
