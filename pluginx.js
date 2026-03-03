@@ -457,27 +457,14 @@
 
             comp.onRight = comp.filter.bind(comp);
             comp.cardRender = function (card, element, events) {
-                // Отримуємо чистий DOM-елемент картки (на випадок, якщо Лампа передала jQuery-об'єкт)
-                var cardEl = card instanceof jQuery ? card[0] : card;
-
-                // БЕЗПЕЧНИЙ БЕЙДЖ ТРИВАЛОСТІ: Вставляємо через чистий JavaScript (без jQuery)
+                // БЕЗПЕЧНИЙ БЕЙДЖ ТРИВАЛОСТІ: Вставляємо як звичайний HTML-рядок після картинки
                 if (element.duration && !element.is_grid) {
-                    var durationBadge = document.createElement('div');
-                    durationBadge.className = 'my-video-duration';
-                    durationBadge.innerText = element.duration;
-                    
-                    var targetView = cardEl.querySelector('.card__view');
-                    if (targetView) {
-                        targetView.appendChild(durationBadge);
-                    } else {
-                        cardEl.appendChild(durationBadge);
-                    }
+                    $(card).find('.card__img').after('<div class="my-video-duration">' + element.duration + '</div>');
                 }
 
                 if (element.is_grid) {
                     if (element.video_count) {
-                        var info = $('<div class="studio-count">' + element.video_count + '</div>');
-                        $(card).find('.card__title').after(info); 
+                        $(card).find('.card__title').after('<div class="studio-count">' + element.video_count + '</div>');
                     }
                 }
 
@@ -592,6 +579,7 @@
 
     function addMenu() {
         // --- ЗАЛІЗОБЕТОННЕ ВИПРАВЛЕННЯ ДЛЯ ТБ ---
+        // Видаляємо наш плагін з масиву прихованих пунктів меню
         if (window.Lampa && window.Lampa.Storage) {
             var hiddenMenu = window.Lampa.Storage.get('menu_hide');
             if (hiddenMenu && Array.isArray(hiddenMenu)) {
