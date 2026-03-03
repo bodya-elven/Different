@@ -20,15 +20,13 @@
             '}' +
             '.my-youtube-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; overflow: hidden !important; }' +
             
-            /* Білий фон для сіток */
             '.my-youtube-style.is-grid-cat .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
             '.my-youtube-style.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
             
-            /* ======== ПОВЕРНЕННЯ ФОКУСУ ДЛЯ ТБ ======== */
-            '.my-youtube-style .card.focus .card__view { box-shadow: 0 0 0 4px #ffffff, 0 15px 30px rgba(0,0,0,0.6) !important; transform: scale(1.04) !important; z-index: 10; position: relative; }' +
-            '.my-youtube-style .card.focus .card__title { color: #ffffff !important; font-weight: bold !important; }' +
-            /* ======================================== */
-
+            /* ВИПРАВЛЕНО: Фокус без зміни фізичних розмірів (щоб не ламати скрол Лампи) */
+            '.my-youtube-style .card.focus .card__view { box-shadow: 0 0 0 4px #ffffff !important; z-index: 10; }' +
+            '.my-youtube-style .card.focus .card__title { color: #ffffff !important; }' +
+            
             '.my-youtube-style .card__img { object-fit: cover !important; border-radius: 12px !important; }' +
             '.my-youtube-style.is-grid-cat .card__img, .my-youtube-style.is-models-grid .card__img { object-fit: cover !important; z-index: 2; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }' +
             
@@ -262,112 +260,6 @@
                 }
                 return results;
             }
-            function parseCategories(doc, siteBaseUrl, siteType) {
-                var results = [];
-                var sel = (siteType === 'lenkino') ? '.grd-cat a' : '.categories-list-div a';
-                var links = doc.querySelectorAll(sel);
-                for (var i = 0; i < links.length; i++) {
-                    var el = links[i];
-                    var title = el.getAttribute('title') || el.innerText.trim();
-                    var href = el.getAttribute('href');
-                    
-                    // ВИРІЗАЄМО пусті/непотрібні категорії
-                    var titleL = title.toLowerCase();
-                    if (titleL === 'экстра' || titleL === 'extra' || titleL.indexOf('aigenerator') !== -1 || (href && href.indexOf('aigenerator') !== -1)) {
-                        continue;
-                    }
-
-                    var imgEl = el.querySelector('img');
-                    var img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                    
-                    if (img && img.indexOf('//') === 0) img = 'https:' + img;
-                    else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
-
-                    if (href && title) {
-                        var vUrl = href.startsWith('http') ? href : siteBaseUrl + (href.startsWith('/') ? '' : '/') + href;
-                        results.push({ name: title, url: vUrl, picture: img, img: img, is_grid: true, no_img: !img });
-                    }
-                }
-                return results;
-            }
-
-            function parseModels(doc, siteBaseUrl, siteType) {
-                var results = [];
-                if (siteType === 'lenkino') {
-                    var elements = [];
-                    var topList = doc.querySelector('#list_models_top_models_list');
-                    var regList = doc.querySelector('#list_models_models_list');
-                    
-                    // Шукаємо просто .item, бо звичайні моделі не мають класу itm-crd
-                    if (topList) {
-                        var tops = topList.querySelectorAll('.item');
-                        for(var t=0; t<tops.length; t++) elements.push(tops[t]);
-                    }
-                    if (regList) {
-                        var regs = regList.querySelectorAll('.item');
-                        for(var r=0; r<regs.length; r++) elements.push(regs[r]);
-                    }
-                    if(elements.length === 0) {
-                        var all = doc.querySelectorAll('.item');
-                        for(var a=0; a<all.length; a++) {
-                            if (all[a].closest('.grd-mdl')) elements.push(all[a]);
-                        }
-                    }
-
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var linkEl = el.querySelector('a.len_pucl') || el.querySelector('a');
-                        var imgEl = el.querySelector('img.lzy') || el.querySelector('img');
-                        var titleEl = el.querySelector('.itm-tit');
-                        
-                        var liEls = el.querySelectorAll('.itm-opt li');
-                        var countText = '';
-                        for(var j=0; j<liEls.length; j++) {
-                            if(liEls[j].innerText.indexOf('видео') !== -1) {
-                                countText = liEls[j].innerText.trim().replace(/видео/gi, 'відео');
-                                break;
-                            }
-                        }
-
-                        if (linkEl && imgEl) {
-                            var title = titleEl ? titleEl.innerText.trim() : (imgEl.getAttribute('alt') || 'Модель');
-                            var href = linkEl.getAttribute('href');
-                            if (!href) continue;
-                            var img = imgEl.getAttribute('data-srcset') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
-                            
-                            if (img && img.indexOf('//') === 0) img = 'https:' + img;
-                            else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
-
-                            var vUrl = href.startsWith('http') ? href : siteBaseUrl + (href.startsWith('/') ? '' : '/') + href;
-                            results.push({ name: title, url: vUrl, picture: img, img: img, is_grid: true, is_model: true, video_count: countText, no_img: !img });
-                        }
-                    }
-                } else {
-                    var elements365 = doc.querySelectorAll('.item_model');
-                    for (var k = 0; k < elements365.length; k++) {
-                        var el365 = elements365[k];
-                        var linkEl365 = el365.querySelector('a');
-                        var nameEl = el365.querySelector('.model_eng_name');
-                        var countEl = el365.querySelector('.cnt_span');
-                        var imgEl365 = el365.querySelector('img');
-
-                        if (linkEl365 && imgEl365 && nameEl) {
-                            var title365 = nameEl.innerText.trim();
-                            var countText365 = countEl ? countEl.innerText.trim() + ' видео' : '';
-                            var href365 = linkEl365.getAttribute('href');
-                            var img365 = imgEl365.getAttribute('data-src') || imgEl365.getAttribute('src') || '';
-                            
-                            if (img365 && img365.indexOf('//') === 0) img365 = 'https:' + img365;
-                            else if (img365 && img365.indexOf('/') === 0) img365 = siteBaseUrl + img365;
-                            
-                            var vUrl365 = href365.startsWith('http') ? href365 : siteBaseUrl + (href365.startsWith('/') ? '' : '/') + href365;
-                            results.push({ name: title365, url: vUrl365, picture: img365, img: img365, is_grid: true, is_model: true, video_count: countText365, no_img: !img365 });
-                        }
-                    }
-                }
-                return results;
-            }
-
             comp.create = function () {
                 var _this = this; this.activity.loader(true);
                 var target = object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN);
@@ -379,7 +271,8 @@
                     var cleanD = (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN).replace(/\/+$/, '');
                     var targetPath = target.replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '');
                     
-                    var isStudios = currentSite === 'lenkino' && targetPath === '/channels';
+                    // ВИПРАВЛЕНО: Розпізнаємо всі варіанти сортування студій як каталог студій
+                    var isStudios = currentSite === 'lenkino' && (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
                     var isCategories = targetPath === '/categories';
                     
                     var isModels = false;
@@ -437,7 +330,7 @@
                     } else {
                         isModels = targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0;
                     }
-                    var isStudios = currentSite === 'lenkino' && targetPath === '/channels';
+                    var isStudios = currentSite === 'lenkino' && (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
                     var res = [];
 
                     if (isModels) {
@@ -472,6 +365,7 @@
                     
                     if (curUrl.indexOf('/channels') !== -1) {
                         var bS = cleanD + '/channels';
+                        // ВИПРАВЛЕНО: Правильні посилання для сортування студій Lenkino
                         sortItems.push({ title: 'Кращі', url: bS }, { title: 'Нові', url: bS + '-new' }, { title: 'Популярні', url: bS + '-views' });
                         if (curUrl === bS + '-new') currentSortTitle = 'Нові';
                         else if (curUrl === bS + '-views') currentSortTitle = 'Популярні';
@@ -691,6 +585,19 @@
     }
 
     function addMenu() {
+        // --- ВИПРАВЛЕННЯ: Примусово дістаємо пункт меню з прихованих на ТБ ---
+        if (window.Lampa && window.Lampa.Storage) {
+            var hiddenMenu = window.Lampa.Storage.get('menu_hide');
+            if (hiddenMenu && Array.isArray(hiddenMenu)) {
+                var idx = hiddenMenu.indexOf('pluginx');
+                if (idx !== -1) {
+                    hiddenMenu.splice(idx, 1);
+                    window.Lampa.Storage.set('menu_hide', hiddenMenu);
+                }
+            }
+        }
+        // ----------------------------------------------------------------------
+
         var menu_list = $('.menu .menu__list').eq(0);
         if (menu_list.length && !menu_list.find('[data-action="pluginx"]').length) {
             var menu_item = $('<li class="menu__item selector" data-action="pluginx"><div class="menu__ico"><img src="https://bodya-elven.github.io/different/icons/pluginx.svg" width="24" height="24" style="filter: brightness(0) invert(1);" /></div><div class="menu__text">Каталоги X</div></li>');
