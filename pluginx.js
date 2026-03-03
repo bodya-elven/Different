@@ -19,8 +19,8 @@
                 '.my-youtube-style.is-grid-cat .card, .my-youtube-style.is-models-grid .card { width: 16.666% !important; }' + 
             '}' +
             
-            /* ВИПРАВЛЕНО: Прибрано overflow:hidden, щоб не ламати рідний фокус Лампи на ТБ */
-            '.my-youtube-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
+            /* ВИПРАВЛЕНО: Додано position: relative, щоб бейдж тривалості тримався всередині картинки! */
+            '.my-youtube-style .card__view { position: relative !important; padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
             
             '.my-youtube-style.is-grid-cat .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
             '.my-youtube-style.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
@@ -34,17 +34,16 @@
             '}' +
             '.my-youtube-style.is-grid-cat .card__title, .my-youtube-style.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* Ховаємо рідні бейджі Лампи */
+            /* Ховаємо рідні системні бейджі Лампи, щоб уникнути конфліктів */
             '.my-youtube-style .card__age, .my-youtube-style .card__textbox { display: none !important; }' +
             
-            /* ДОДАНО: Безпечний і 100% видимий бейдж тривалості */
-            '.my-video-duration { position: absolute; bottom: 8px; right: 8px; background: rgba(0, 0, 0, 0.8); color: #fff; font-size: 0.85em; padding: 3px 6px; border-radius: 6px; z-index: 100 !important; font-weight: bold; pointer-events: none; }' +
+            /* СТИЛІ БЕЙДЖА: Тепер він завжди буде в правому нижньому кутку */
+            '.my-video-duration { position: absolute; bottom: 8px; right: 8px; background: rgba(0, 0, 0, 0.8); color: #fff; font-size: 0.85em; padding: 3px 6px; border-radius: 6px; z-index: 10 !important; font-weight: bold; pointer-events: none; }' +
 
             '.pluginx-sep { font-size: 0.85em !important; opacity: 0.5; pointer-events: none !important; text-align: left !important; padding: 10px 20px 5px 20px !important; text-transform: uppercase; letter-spacing: 1px; color: #fff; border: none !important; background: transparent !important; box-shadow: none !important; }' +
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '.studio-count { font-size: 0.85em; color: #aaa; margin-top: 2px; display: block; text-align: center; }' +
             
-            /* ВИПРАВЛЕНО: Жорстке закріплення пункту меню, щоб Лампа не могла його сховати */
             '.menu__item[data-action="pluginx"] { display: flex !important; }' +
             '</style>';
         $('body').append(css);
@@ -161,7 +160,6 @@
                 }
                 return results;
             }
-
             function parseCategories(doc, siteBaseUrl, siteType) {
                 var results = [];
                 var sel = (siteType === 'lenkino') ? '.grd-cat a' : '.categories-list-div a';
@@ -251,7 +249,7 @@
 
                         if (linkEl365 && imgEl365 && nameEl) {
                             var title365 = nameEl.innerText.trim();
-                            var countText365 = countEl ? countEl.innerText.trim() + ' відео' : '';
+                            var countText365 = countEl ? countEl.innerText.trim() + ' видео' : '';
                             var href365 = linkEl365.getAttribute('href');
                             var img365 = imgEl365.getAttribute('data-src') || imgEl365.getAttribute('src') || '';
                             
@@ -265,6 +263,7 @@
                 }
                 return results;
             }
+
             comp.create = function () {
                 var _this = this; this.activity.loader(true);
                 var target = object.url || (currentSite === 'lenkino' ? LENKINO_DOMAIN : PORNO365_DOMAIN);
@@ -459,7 +458,7 @@
 
             comp.onRight = comp.filter.bind(comp);
             comp.cardRender = function (card, element, events) {
-                // БЕЗПЕЧНИЙ БЕЙДЖ ТРИВАЛОСТІ: Накладаємо свій елемент поверх картинки
+                // БЕЗПЕЧНИЙ БЕЙДЖ ТРИВАЛОСТІ: Накладаємо поверх картинки
                 if (element.duration && !element.is_grid) {
                     var durationBadge = $('<div class="my-video-duration">' + element.duration + '</div>');
                     $(card).find('.card__view').append(durationBadge);
@@ -583,7 +582,6 @@
 
     function addMenu() {
         // --- ЗАЛІЗОБЕТОННЕ ВИПРАВЛЕННЯ ДЛЯ ТБ ---
-        // Якщо Лампа запам'ятала, що меню приховане, ми примусово видаляємо його з чорного списку
         if (window.Lampa && window.Lampa.Storage) {
             var hiddenMenu = window.Lampa.Storage.get('menu_hide');
             if (hiddenMenu && Array.isArray(hiddenMenu)) {
@@ -598,7 +596,8 @@
 
         var menu_list = $('.menu .menu__list').eq(0);
         if (menu_list.length && !menu_list.find('[data-action="pluginx"]').length) {
-            var menu_item = $('<li class="menu__item selector" data-action="pluginx"><div class="menu__ico"><img src="https://bodya-elven.github.io/different/icons/pluginx.svg" width="24" height="24" style="filter: brightness(0) invert(1);" /></div><div class="menu__text">Каталоги X</div></li>');
+            // ОНОВЛЕНО НАЗВУ: CatalogX
+            var menu_item = $('<li class="menu__item selector" data-action="pluginx"><div class="menu__ico"><img src="https://bodya-elven.github.io/different/icons/pluginx.svg" width="24" height="24" style="filter: brightness(0) invert(1);" /></div><div class="menu__text">CatalogX</div></li>');
             menu_item.on('hover:enter', function () { Lampa.Select.show({ title: 'Оберіть сайт', items: [{ title: 'Porno365', site: 'porno365' }, { title: 'Lenkino', site: 'lenkino' }], onSelect: function(a) { Lampa.Activity.push({ title: a.title, component: 'pluginx_comp', site: a.site, page: 1 }); }, onBack: function() { Lampa.Controller.toggle('menu'); } }); });
             var settings_item = menu_list.find('[data-action="settings"]');
             if (settings_item.length) menu_item.insertBefore(settings_item); else menu_list.append(menu_item);
