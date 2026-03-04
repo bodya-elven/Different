@@ -32,19 +32,19 @@
             '}' +
             '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* ВИПРАВЛЕНИЙ ДИЗАЙН СТУДІЙ: Великий шрифт, багаторядковість, зняття обмежень */
+            /* СТУДІЇ: Вдвічі нижчі (25%) та більш сірі (#c4c4c4) */
             '.main-grid.is-noimg-grid .card { position: relative !important; }' +
-            '.main-grid.is-noimg-grid .card__view { padding-bottom: 40% !important; background: #e0e0e0 !important; border-radius: 8px !important; border: 1px solid #ccc; transition: transform 0.2s; }' +
-            '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #d0d0d0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
+            '.main-grid.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
+            '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
             '.main-grid.is-noimg-grid .card__img { display: none !important; }' +
             '.main-grid.is-noimg-grid .card__title { ' +
                 'position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; ' +
                 'display: flex !important; align-items: center !important; justify-content: center !important; ' +
-                'color: #111111 !important; font-weight: bold !important; ' +
-                'font-size: 1.4em !important; line-height: 1.2 !important; ' + /* Залізобетонно великий розмір */
+                'color: #000000 !important; font-weight: bold !important; ' +
+                'font-size: 1.3em !important; line-height: 1.2 !important; ' + 
                 'text-align: center !important; white-space: normal !important; word-break: break-word !important; ' +
-                '-webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; ' + /* Скасовуємо обрізку рядків Лампи */
-                'padding: 10px !important; margin: 0 !important; ' +
+                '-webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; ' + 
+                'padding: 8px !important; margin: 0 !important; ' +
                 'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
             '}' +
 
@@ -162,11 +162,21 @@
                 var results = [], elements = doc.querySelectorAll('.list-models .item');
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i];
+                    if (el.querySelector('.no-thumb')) continue; // Жорстко ігноруємо без фото
+                    
                     var imgEl = el.querySelector('img');
                     if (!imgEl) continue; 
-                    var imgSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
-                    if (!imgSrc || el.querySelector('.no-thumb')) continue; 
                     
+                    // Бронебійне діставання посилання на фото (ігноруємо data:image заглушки)
+                    var imgSrc = imgEl.getAttribute('data-original') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
+                    if (imgSrc && imgSrc.indexOf('data:image') === 0) {
+                        imgSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || '';
+                    }
+                    if (!imgSrc) continue; // Якщо фото так і немає - пропускаємо
+                    
+                    if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; 
+                    else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
+
                     var linkEl = el.tagName === 'A' ? el : (el.querySelector('a') || el);
                     var rawName = imgEl.getAttribute('alt') || linkEl.getAttribute('title') || '';
                     if (!rawName) {
@@ -176,28 +186,39 @@
                     }
                     
                     var countEl = el.querySelector('.videos'), count = countEl ? countEl.innerText.trim() : '';
-                    if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
-
                     var vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
+                    
                     if (rawName) results.push({ name: formatTitle(rawName, count, '☰'), url: vUrl, picture: imgSrc, img: imgSrc, is_grid: true, is_models_grid: true });
                 }
                 return results;
             }
 
             function parseStudiosLongvideos(doc, siteBaseUrl) {
-                var results = [], container = doc.querySelector('.list-sponsors');
-                if (!container) return results;
-                var headlines = container.querySelectorAll('.headline'); 
+                var results = [];
+                // Більш "всеїдний" пошук для надійної пагінації
+                var headlines = doc.querySelectorAll('.list-sponsors .headline, .headline'); 
                 for (var i = 0; i < headlines.length; i++) {
-                    var el = headlines[i], titleEl = el.querySelector('h1, h2, h3, h4'), linkEl = el.querySelector('a.more, a');
-                    if (titleEl && linkEl) {
+                    var el = headlines[i];
+                    var linkEl = el.querySelector('a.more') || el.querySelector('a');
+                    var titleEl = el.querySelector('h1, h2, h3, h4, .title') || linkEl;
+                    
+                    if (linkEl) {
+                        var vUrl = linkEl.getAttribute('href');
+                        // Відсіюємо випадкові відео, беремо тільки посилання на студії
+                        if (!vUrl || vUrl.indexOf('/sites/') === -1) continue; 
+                        
                         var rawName = titleEl.innerText.trim();
                         var span = titleEl.querySelector('span');
-                        if (span) rawName = rawName.replace(span.innerText, '').trim(); 
+                        if (span && rawName !== span.innerText.trim()) {
+                            rawName = rawName.replace(span.innerText, '').trim(); 
+                        }
+                        if (!rawName) rawName = linkEl.innerText.trim();
+                        if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
                         
-                        var vUrl = linkEl.getAttribute('href');
-                        if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                        if (rawName) results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true });
+                        // Запобігаємо дублікатам
+                        if (rawName && !results.some(function(r) { return r.url === vUrl; })) {
+                            results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true });
+                        }
                     }
                 }
                 return results;
@@ -436,7 +457,7 @@
                     else if (a.action === 'categories') Lampa.Activity.push({ url: cleanD + '/categories', title: 'Категорії', component: 'pluginx_comp', site: currentSite, page: 1 });
                     else if (a.action === 'studios_lenkino') Lampa.Activity.push({ url: cleanD + '/channels', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
                     else if (a.action === 'models') Lampa.Activity.push({ url: cleanD + (currentSite === 'lenkino' ? '/pornstars' : '/models/'), title: 'Моделі', component: 'pluginx_comp', site: currentSite, page: 1 });
-                    else if (a.action === 'studios') Lampa.Activity.push({ url: cleanD + '/sites/', title: 'Мережі та Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
+                    else if (a.action === 'studios') Lampa.Activity.push({ url: cleanD + '/sites/', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
                 }, onBack: function () { Lampa.Controller.toggle('content'); } });
             };
             comp.cardRender = function (card, element, events) {
