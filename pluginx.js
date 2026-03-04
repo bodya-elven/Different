@@ -20,7 +20,6 @@
                 '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
             '}' +
             
-            /* Прибрано overflow: hidden !important; щоб повернути рамку фокусу на ТБ */
             '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; }' +
             '.main-grid.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
             '.main-grid.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
@@ -33,7 +32,7 @@
             '}' +
             '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* Новий дизайн для Студій (горизонтальні, світло-сірі, багаторядкові) */
+            /* ВИПРАВЛЕНИЙ ДИЗАЙН СТУДІЙ: Великий шрифт, багаторядковість, зняття обмежень */
             '.main-grid.is-noimg-grid .card { position: relative !important; }' +
             '.main-grid.is-noimg-grid .card__view { padding-bottom: 40% !important; background: #e0e0e0 !important; border-radius: 8px !important; border: 1px solid #ccc; transition: transform 0.2s; }' +
             '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #d0d0d0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
@@ -42,9 +41,10 @@
                 'position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; ' +
                 'display: flex !important; align-items: center !important; justify-content: center !important; ' +
                 'color: #111111 !important; font-weight: bold !important; ' +
-                'font-size: clamp(0.9em, 2vw, 1.4em) !important; ' + /* Динамічний шрифт */
-                'text-align: center !important; white-space: normal !important; word-wrap: break-word !important; ' +
-                'padding: 8px !important; margin: 0 !important; ' +
+                'font-size: 1.4em !important; line-height: 1.2 !important; ' + /* Залізобетонно великий розмір */
+                'text-align: center !important; white-space: normal !important; word-break: break-word !important; ' +
+                '-webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; ' + /* Скасовуємо обрізку рядків Лампи */
+                'padding: 10px !important; margin: 0 !important; ' +
                 'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
             '}' +
 
@@ -162,23 +162,24 @@
                 var results = [], elements = doc.querySelectorAll('.list-models .item');
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i];
-                    if (el.querySelector('.no-thumb')) continue; 
+                    var imgEl = el.querySelector('img');
+                    if (!imgEl) continue; 
+                    var imgSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
+                    if (!imgSrc || el.querySelector('.no-thumb')) continue; 
                     
                     var linkEl = el.tagName === 'A' ? el : (el.querySelector('a') || el);
-                    var rawName = linkEl.getAttribute('title') || '';
+                    var rawName = imgEl.getAttribute('alt') || linkEl.getAttribute('title') || '';
                     if (!rawName) {
-                        var clone = el.cloneNode(true);
-                        var vids = clone.querySelector('.videos'); if (vids) vids.parentNode.removeChild(vids);
-                        var noThumb = clone.querySelector('.no-thumb'); if (noThumb) noThumb.parentNode.removeChild(noThumb);
-                        rawName = clone.innerText.trim().replace(/\n/g, ' ');
+                        var titleEl = el.querySelector('.title, .name, h5');
+                        if (titleEl) rawName = titleEl.innerText.trim();
+                        else rawName = 'Model';
                     }
                     
                     var countEl = el.querySelector('.videos'), count = countEl ? countEl.innerText.trim() : '';
-                    var imgEl = el.querySelector('img'), img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                    if (img && img.indexOf('//') === 0) img = 'https:' + img; else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
+                    if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
 
                     var vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                    if (rawName) results.push({ name: formatTitle(rawName, count, '☰'), url: vUrl, picture: img, img: img, is_grid: true, is_models_grid: true });
+                    if (rawName) results.push({ name: formatTitle(rawName, count, '☰'), url: vUrl, picture: imgSrc, img: imgSrc, is_grid: true, is_models_grid: true });
                 }
                 return results;
             }
@@ -250,6 +251,7 @@
                 if (currentSite === 'lenkino') target = object.url || LENKINO_DOMAIN;
                 if (currentSite === 'longvideos') target = object.url || (LONGVIDEOS_DOMAIN + '/latest-updates/');
 
+                // Розумна пагінація (збереження GET-параметрів)
                 if (currentSite === 'lenkino') {
                     target = target.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1);
                 } else if (currentSite === 'longvideos' && object.page > 1) {
@@ -264,23 +266,30 @@
                     var cleanD = currentSite === 'lenkino' ? LENKINO_DOMAIN : (currentSite === 'longvideos' ? LONGVIDEOS_DOMAIN : PORNO365_DOMAIN);
                     var targetPath = target.replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     
-                    var isStudios = currentSite === 'lenkino' && (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
-                    var isCategories = targetPath === '/categories';
-                    var isModels = (currentSite === 'lenkino' ? targetPath === '/pornstars' : (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0));
-                    
                     var res = [];
-                    if (isCategories) res = parseCategories(doc, cleanD, currentSite);
-                    else if (isModels) res = parseModels(doc, cleanD, currentSite);
-                    else if (currentSite === 'lenkino') res = parseCardsLenkino(doc, cleanD, isStudios);
-                    else if (currentSite === 'longvideos') {
-                        if (targetPath === '/models' || targetPath.indexOf('/models/') === 0) res = parseModelsLongvideos(doc, cleanD);
-                        else if (targetPath === '/sites' || targetPath.indexOf('/sites/') === 0) res = parseStudiosLongvideos(doc, cleanD);
-                        else if (object.is_related) {
+                    
+                    // СТРОГА МАРШРУТИЗАЦІЯ ЗА САЙТАМИ
+                    if (currentSite === 'longvideos') {
+                        if (targetPath === '/models' || targetPath.indexOf('/models/') === 0) {
+                            res = parseModelsLongvideos(doc, cleanD);
+                        } else if (targetPath === '/sites' || targetPath.indexOf('/sites/') === 0) {
+                            res = parseStudiosLongvideos(doc, cleanD);
+                        } else if (object.is_related) {
                             var relCont = doc.querySelector('.related-videos, .related_videos');
                             if (relCont) res = parseCardsLongvideos(relCont, cleanD);
-                        } else res = parseCardsLongvideos(doc, cleanD);
+                        } else {
+                            res = parseCardsLongvideos(doc, cleanD);
+                        }
+                    } else if (currentSite === 'lenkino') {
+                        var isStudiosLenkino = (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
+                        if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
+                        else if (targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
+                        else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
+                    } else {
+                        if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
+                        else if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
+                        else res = parseCards365(doc, cleanD, object.is_related);
                     }
-                    else res = parseCards365(doc, cleanD, object.is_related);
                     
                     if (res.length > 0) { 
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
@@ -300,7 +309,7 @@
                 if (object.is_related) return reject();
                 var cleanD = currentSite === 'lenkino' ? LENKINO_DOMAIN : (currentSite === 'longvideos' ? LONGVIDEOS_DOMAIN : PORNO365_DOMAIN);
                 var targetPath = (object.url || '').replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
-                if (targetPath === '/categories') return reject(); // /sites прибрали звідси, тепер Студії гортаються!
+                if (targetPath === '/categories') return reject(); 
 
                 var url = object.url || cleanD;
                 if (currentSite === 'lenkino') {
@@ -318,18 +327,21 @@
                 
                 smartRequest(url, function (htmlText) {
                     var parser = new DOMParser(), doc = parser.parseFromString(htmlText, 'text/html');
-                    var isModels = (currentSite === 'lenkino' ? targetPath === '/pornstars' : (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0));
-                    var isStudios = currentSite === 'lenkino' && (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
                     var res = [];
                     
-                    if (isModels) res = parseModels(doc, cleanD, currentSite);
-                    else if (currentSite === 'lenkino') res = parseCardsLenkino(doc, cleanD, isStudios);
-                    else if (currentSite === 'longvideos') {
+                    // СТРОГА МАРШРУТИЗАЦІЯ ДЛЯ ПАГІНАЦІЇ
+                    if (currentSite === 'longvideos') {
                         if (targetPath === '/models' || targetPath.indexOf('/models/') === 0) res = parseModelsLongvideos(doc, cleanD);
                         else if (targetPath === '/sites' || targetPath.indexOf('/sites/') === 0) res = parseStudiosLongvideos(doc, cleanD);
                         else res = parseCardsLongvideos(doc, cleanD);
+                    } else if (currentSite === 'lenkino') {
+                        var isStudiosLenkino = (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
+                        if (targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
+                        else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
+                    } else {
+                        if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
+                        else res = parseCards365(doc, cleanD, false);
                     }
-                    else res = parseCards365(doc, cleanD, false);
 
                     if (res.length > 0) resolve({ results: res, collection: true, total_pages: 50, page: object.page }); 
                     else reject();
@@ -360,7 +372,6 @@
                         else if (curUrl.indexOf('/top-rated') !== -1) currentSortTitle = 'Рейтингові';
                         else currentSortTitle = 'Популярні';
                     } else if (targetPath.indexOf('/sites') === 0) {
-                        /* Сортування для Студій */
                         sortItems.push(
                             { title: 'Оновлення', url: cleanD + '/sites/' },
                             { title: 'Рейтингові', url: cleanD + '/sites/top-rated/' },
