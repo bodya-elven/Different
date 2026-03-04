@@ -538,6 +538,19 @@
         }
     }
 
-    if (window.appready) initPlugin();
-    else Lampa.Listener.follow('app', function (e) { if (e.type == 'ready') initPlugin(); });
+    // 1. ДОДАЄМО ВТРАЧЕНУ ФУНКЦІЮ (це найголовніше!)
+    function initPlugin() {
+        startPlugin();
+        addMenu();
+    }
+
+    // 2. І ТЕПЕР ВИКЛИКАЄМО ЇЇ
+    if (window.appready) {
+        initPlugin();
+    } else {
+        Lampa.Listener.follow('app', function (e) { 
+            if (e.type == 'ready') initPlugin(); 
+        });
+    }
+
 })();
