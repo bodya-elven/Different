@@ -10,14 +10,16 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ВИПРАВЛЕННЯ СКРОЛУ: Робимо сітку гнучкою, щоб Лампа бачила її висоту */
-            '.main-grid { padding: 0 !important; display: flex !important; flex-wrap: wrap !important; align-content: flex-start !important; }' +
+            /* ВІДНОВЛЕННЯ СКРОЛУ: Класичний блочний макет замість flexbox */
+            '.main-grid { padding: 0 !important; display: block !important; }' +
+            '.main-grid::after { content: ""; display: block; clear: both; }' + /* Обов'язковий clearfix, щоб Лампа бачила висоту рядів */
+            
             '@media screen and (max-width: 580px) {' +
-                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; box-sizing: border-box !important; }' +
+                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; box-sizing: border-box !important; float: left !important; display: block !important; }' +
                 '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 50% !important; }' + 
             '}' +
             '@media screen and (min-width: 581px) {' +
-                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; box-sizing: border-box !important; }' +
+                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; box-sizing: border-box !important; float: left !important; display: block !important; }' +
                 '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
             '}' +
             
@@ -88,6 +90,7 @@
                 if (isAndroid) network.native(url, function (res) { onSuccess(typeof res === 'object' ? JSON.stringify(res) : res); }, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
                 else network.silent(url, onSuccess, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
             }
+
             // --- ПАРСЕРИ PORNO365 та LENKINO ---
             function parseCards365(doc, siteBaseUrl, isRelated) {
                 var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
