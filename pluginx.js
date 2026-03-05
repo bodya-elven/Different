@@ -467,18 +467,25 @@
                 events.onEnter = function () {
                     hidePreview();
                     
+                    var targetSite = currentSite;
+                    if (currentSite === 'bookmarks') {
+                        if (element.url.indexOf(LENKINO_DOMAIN) !== -1) targetSite = 'lenkino';
+                        else if (element.url.indexOf(LONGVIDEOS_DOMAIN) !== -1) targetSite = 'longvideos';
+                        else targetSite = 'porno365';
+                    }
+
                     if (element.is_grid) { 
-                        Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: currentSite, page: 1 }); 
+                        Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: targetSite, page: 1 }); 
                         return; 
                     }
                     
                     smartRequest(element.url, function(htmlText) {
                         var str = [], doc = new DOMParser().parseFromString(htmlText, 'text/html');
                         
-                        if (currentSite === 'longvideos') {
+                        if (targetSite === 'longvideos') {
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 0) str.push({ title: sources[0].getAttribute('label') || 'Оригінал', url: sources[0].getAttribute('src') });
-                        } else if (currentSite === 'lenkino') {
+                        } else if (targetSite === 'lenkino') {
                             var u = htmlText.match(/video_url:[\t ]+'([^']+)'/), a = htmlText.match(/video_alt_url:[\t ]+'([^']+)'/);
                             if (u && u[1]) str.push({ title: 'Стандарт', url: u[1] });
                             if (a && a[1]) str.push({ title: 'Основний (HD)', url: a[1] });
@@ -488,9 +495,9 @@
                         }
                         
                         if (str.length > 0) {
-                            var bestStream = (currentSite === 'longvideos') ? str[0] : str[str.length - 1];
+                            var bestStream = (targetSite === 'longvideos') ? str[0] : str[str.length - 1];
                             var playData = { title: element.name, url: bestStream.url, quality: str };
-                            if (currentSite === 'lenkino') playData.headers = { 'Referer': 'https://wes.lenkino.adult/', 'Origin': 'https://wes.lenkino.adult' };
+                            if (targetSite === 'lenkino') playData.headers = { 'Referer': 'https://wes.lenkino.adult/', 'Origin': 'https://wes.lenkino.adult' };
                             Lampa.Player.play(playData); Lampa.Player.playlist([playData]);
                         }
                     });
@@ -498,10 +505,36 @@
 
                 events.onMenu = function () {
                     hidePreview();
+                    
+                    var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
+                    var isBookmarked = bmarks.some(function(b) { return b.url === element.url; });
+                    
+                    var toggleBookmark = function() {
+                        var currentBmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
+                        var idx = currentBmarks.findIndex(function(b) { return b.url === element.url; });
+                        if (idx !== -1) {
+                            currentBmarks.splice(idx, 1);
+                            Lampa.Noty.show('Видалено з обраного');
+                        } else {
+                            currentBmarks.unshift(element);
+                            Lampa.Noty.show('Додано до обраного');
+                        }
+                        window.Lampa.Storage.set('pluginx_bookmarks', currentBmarks);
+                    };
+
+                    var targetSite = currentSite;
+                    if (currentSite === 'bookmarks') {
+                        if (element.url.indexOf(LENKINO_DOMAIN) !== -1) targetSite = 'lenkino';
+                        else if (element.url.indexOf(LONGVIDEOS_DOMAIN) !== -1) targetSite = 'longvideos';
+                        else targetSite = 'porno365';
+                    }
+
                     smartRequest(element.url, function (htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html'), menu = [];
                         
-                        if (currentSite === 'longvideos') {
+                        menu.push({ title: isBookmarked ? '★ Видалити з обраного' : '☆ Додати до обраного', action: 'bookmark' });
+                        
+                        if (targetSite === 'longvideos') {
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
                             
@@ -516,7 +549,7 @@
                             
                             menu.push({ title: 'Категорії', action: 'lv_cats', html: htmlText }, { title: 'Схожі відео', action: 'sim', url: element.url });
                             
-                        } else if (currentSite === 'lenkino') {
+                        } else if (targetSite === 'lenkino') {
                             var mEls = doc.querySelectorAll('.grd-mdl a'); for (var m = 0; m < mEls.length; m++) menu.push({ title: mEls[m].innerText.trim(), action: 'direct', url: mEls[m].getAttribute('href') });
                             var sEls = doc.querySelectorAll('.vid-aut a, .itm-aut a, .grd-spn a');
                             for (var s = 0; s < sEls.length; s++) { var sT = sEls[s].innerText.trim().replace(/\s+/g, ' '); if (!menu.some(function(i) { return i.title === sT; }) && sT) menu.push({ title: sT, action: 'direct', url: sEls[s].getAttribute('href') }); }
@@ -527,34 +560,43 @@
                         }
 
                         Lampa.Select.show({ title: 'Дії', items: menu, onSelect: function (a) {
-                            if (a.action === 'play_direct') { Lampa.Player.play({ title: element.name, url: a.url }); Lampa.Player.playlist([{ title: element.name, url: a.url }]); } 
-                            else if (a.action === 'sim' || a.action === 'direct') { Lampa.Activity.push({ url: a.url, title: a.title || 'Схожі', component: 'pluginx_comp', site: currentSite, page: 1, is_related: (a.action === 'sim') }); } 
+                            if (a.action === 'bookmark') {
+                                toggleBookmark();
+                            }
+                            else if (a.action === 'play_direct') { Lampa.Player.play({ title: element.name, url: a.url }); Lampa.Player.playlist([{ title: element.name, url: a.url }]); } 
+                            else if (a.action === 'sim' || a.action === 'direct') { Lampa.Activity.push({ url: a.url, title: a.title || 'Схожі', component: 'pluginx_comp', site: targetSite, page: 1, is_related: (a.action === 'sim') }); } 
                             else if (a.action === 'lv_cats') {
                                 var tempDoc = new DOMParser().parseFromString(a.html, 'text/html'), tags = tempDoc.querySelectorAll('.btn_tag, .btn_tag.hidden'), tagItems = [];
                                 for (var t = 0; t < tags.length; t++) tagItems.push({ title: tags[t].innerText.trim(), url: tags[t].getAttribute('href') });
-                                if (tagItems.length > 0) Lampa.Select.show({ title: 'Категорії', items: tagItems, onSelect: function (it) { Lampa.Activity.push({ url: it.url, title: it.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function () { events.onMenu(); } });
+                                if (tagItems.length > 0) Lampa.Select.show({ title: 'Категорії', items: tagItems, onSelect: function (it) { Lampa.Activity.push({ url: it.url, title: it.title, component: 'pluginx_comp', site: targetSite, page: 1 }); }, onBack: function () { events.onMenu(); } });
                             } else {
-                                var sel = (a.action === 'cats') ? (currentSite === 'lenkino' ? '.vid-cat a' : '.video-categories:not(.video-models) a') : '.video-tags a';
+                                var sel = (a.action === 'cats') ? (targetSite === 'lenkino' ? '.vid-cat a' : '.video-categories:not(.video-models) a') : '.video-tags a';
                                 var subEls = doc.querySelectorAll(sel), sub = [];
                                 for (var i = 0; i < subEls.length; i++) sub.push({ title: subEls[i].innerText.trim(), url: subEls[i].getAttribute('href') });
-                                if (sub.length > 0) Lampa.Select.show({ title: a.title, items: sub, onSelect: function (it) { Lampa.Activity.push({ url: it.url, title: it.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function () { events.onMenu(); } });
+                                if (sub.length > 0) Lampa.Select.show({ title: a.title, items: sub, onSelect: function (it) { Lampa.Activity.push({ url: it.url, title: it.title, component: 'pluginx_comp', site: targetSite, page: 1 }); }, onBack: function () { events.onMenu(); } });
                             }
                         }, onBack: function () { Lampa.Controller.toggle('content'); } });
                     });
                 };
 
-                // ВАЖЛИВО: Ми більше не чіпаємо events.onFocus! 
-                // Рідний скрол Лампи працює ідеально сам по собі.
-                // Замість цього вішаємо паралельного слухача суто для нашого прев'ю відео:
-                card.on('hover:focus', function () {
+                // ОСЬ ВІН - ПРАВИЛЬНИЙ КОД ФОКУСУ!
+                // Зберігаємо рідний "розумний" скрол Лампи у змінну
+                var originalFocus = events.onFocus; 
+                
+                events.onFocus = function (target) {
+                    // 1. Віддаємо Лампі наказ зробити її нативний плавний скрол
+                    if (typeof originalFocus === 'function') {
+                        originalFocus(target); 
+                    }
+                    
+                    // 2. Запускаємо логіку прев'ю відео
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
-                            // Передаємо card, щоб відео з'явилося саме в поточній картці
-                            showPreview(card, element.preview); 
+                            showPreview($(target), element.preview); 
                         }, 1000);
                     }
-                });
+                };
             };
             
             comp.onRight = comp.filter.bind(comp); 
