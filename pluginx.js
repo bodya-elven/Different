@@ -12,7 +12,7 @@
         var css = '<style>' +
             /* ВІДНОВЛЕННЯ СКРОЛУ: Класичний блочний макет замість flexbox */
             '.main-grid { padding: 0 !important; display: block !important; }' +
-            '.main-grid::after { content: ""; display: block; clear: both; }' + /* Обов'язковий clearfix, щоб Лампа бачила висоту рядів */
+            '.main-grid::after { content: ""; display: block; clear: both; }' + 
             
             '@media screen and (max-width: 580px) {' +
                 '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; box-sizing: border-box !important; float: left !important; display: block !important; }' +
@@ -67,12 +67,30 @@
             }
         }
 
+        // ОНОВЛЕНО: Тепер приймає як рядок (один URL), так і масив URL-ів (для перебору)
         function showPreview(target, src) {
             var previewContainer = $('<div class="sisi-video-preview" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;overflow:hidden;z-index:4;background:#000;"><video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>');
-            var videoEl = previewContainer.find('video')[0]; videoEl.src = src;
+            var videoEl = previewContainer.find('video')[0];
+            
+            var sources = Array.isArray(src) ? src : [src];
+            if (!sources || sources.length === 0 || !sources[0]) return;
+            
+            var currentIdx = 0;
+            videoEl.src = sources[currentIdx];
+            
+            // Якщо сервер не відповідає - перемикаємо на наступний субдомен
+            videoEl.onerror = function() {
+                currentIdx++;
+                if (currentIdx < sources.length) {
+                    videoEl.src = sources[currentIdx];
+                    var p = videoEl.play(); if (p !== undefined) p.catch(function(){});
+                }
+            };
+
             target.find('.card__view').append(previewContainer);
             activePreviewNode = previewContainer;
-            var p = videoEl.play(); if (p !== undefined) p.catch(function(){});
+            var playPromise = videoEl.play(); 
+            if (playPromise !== undefined) playPromise.catch(function(){});
         }
 
         function formatTitle(name, info, symbol) {
@@ -90,7 +108,6 @@
                 if (isAndroid) network.native(url, function (res) { onSuccess(typeof res === 'object' ? JSON.stringify(res) : res); }, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
                 else network.silent(url, onSuccess, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
             }
-
             // --- ПАРСЕРИ PORNO365 та LENKINO ---
             function parseCards365(doc, siteBaseUrl, isRelated) {
                 var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
@@ -102,9 +119,25 @@
                         var img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
                         if (img && img.indexOf('//') === 0) img = 'https:' + img;
                         var vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
-                        var pUrl = vP ? (vP.getAttribute('src') || vP.getAttribute('data-src') || '') : ''; if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
+                        
+                        var pUrl = vP ? (vP.getAttribute('src') || vP.getAttribute('data-src') || '') : ''; 
+                        if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
+                        
+                        // РОЗУМНИЙ ПЕРЕБІР ПРЕВ'Ю ДЛЯ PORNO365
+                        var previewData = pUrl;
+                        var matchId = vUrl.match(/\/movie\/(\d+)/);
+                        if (matchId && matchId[1]) {
+                            var vidId = matchId[1];
+                            var f1 = vidId.charAt(0), f2 = vidId.length > 1 ? vidId.charAt(1) : '0';
+                            var subs = ['53', '33', '26', '18', '51', '32', '54'];
+                            previewData = [];
+                            for (var s = 0; s < subs.length; s++) {
+                                previewData.push('https://tr' + subs[s] + '.vide365.com/porno365/trailers/' + f1 + '/' + f2 + '/' + vidId + '.webm');
+                            }
+                        }
+
                         var name = titleEl.innerText.trim(), time = timeEl ? timeEl.innerText.trim() : '';
-                        results.push({ name: formatTitle(name, time, '▶'), url: vUrl, picture: img, img: img, preview: pUrl });
+                        results.push({ name: formatTitle(name, time, '▶'), url: vUrl, picture: img, img: img, preview: previewData });
                     }
                 }
                 return results;
@@ -291,9 +324,8 @@
                     
                     // СТРОГА МАРШРУТИЗАЦІЯ ЗА САЙТАМИ ТА ТОЧНИМИ ПОСИЛАННЯМИ
                     if (currentSite === 'longvideos') {
-                        var cleanPath = targetPath.replace(/\/+$/, ''); // Очищаємо від зайвих слішів наприкінці
+                        var cleanPath = targetPath.replace(/\/+$/, ''); 
                         
-                        // Жорстка перевірка: тільки головні сторінки списків
                         var isModelsList = (cleanPath === '/models' || cleanPath === '/models/total-videos' || cleanPath === '/models/top-rated');
                         var isSitesList = (cleanPath === '/sites' || cleanPath === '/sites/total-videos' || cleanPath === '/sites/top-rated');
                         
@@ -305,7 +337,6 @@
                             var relCont = doc.querySelector('.related-videos, .related_videos');
                             if (relCont) res = parseCardsLongvideos(relCont, cleanD);
                         } else {
-                            // Якщо це /models/imya-modeli/ або /sites/nazva-studii/ — парсимо як звичайні ВІДЕО
                             res = parseCardsLongvideos(doc, cleanD);
                         }
                     } else if (currentSite === 'lenkino') {
@@ -475,8 +506,6 @@
                 events.onEnter = function () {
                     hidePreview();
                     if (element.is_grid) { 
-                        // Якщо це модель або студія, ми відправляємо її URL.
-                        // Завдяки жорсткій перевірці в Частині 3, цей URL запустить парсер відео.
                         Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: currentSite, page: 1 }); 
                         return; 
                     }
@@ -553,7 +582,12 @@
                 };
 
                 events.onFocus = function (t) {
-                    hidePreview(); if (element.preview && !element.is_grid) previewTimeout = setTimeout(function () { showPreview($(t), element.preview); }, 1000);
+                    hidePreview(); 
+                    if (element.preview && !element.is_grid) {
+                        previewTimeout = setTimeout(function () { 
+                            showPreview($(t), element.preview); 
+                        }, 1000);
+                    }
                 };
             };
             
