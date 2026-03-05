@@ -166,7 +166,7 @@
                 return results;
             }
 
-            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНО!) ---
+            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНІ КАРТИНКИ І МОДЕЛІ) ---
             function parseCardsLongvideos(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('.list-videos .item, .item');
                 for (var i = 0; i < elements.length; i++) {
@@ -175,7 +175,16 @@
                     var name = linkEl.innerText.trim(), vUrl = linkEl.getAttribute('href');
                     if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
                     
-                    var imgEl = el.querySelector('img.thumb, img.thumb_img'), img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
+                    var imgEl = el.querySelector('img.thumb, img.thumb_img, img');
+                    var img = '';
+                    if (imgEl) {
+                        // Спочатку шукаємо в data-атрибутах
+                        img = imgEl.getAttribute('data-original') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
+                        // Якщо зловили порожній піксель (ліниве завантаження) - беремо резервний атрибут
+                        if (img.indexOf('data:image') === 0) {
+                            img = imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || '';
+                        }
+                    }
                     if (img && img.indexOf('//') === 0) img = 'https:' + img; else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
 
                     var previewEl = el.querySelector('.img.thumb__img'), pUrl = previewEl ? previewEl.getAttribute('data-preview') : '';
@@ -183,9 +192,6 @@
 
                     var timeEl = el.querySelector('.duration');
                     var timeText = timeEl ? timeEl.innerText.replace(/Full Video/gi, '').trim() : '';
-                    
-                    // ВИДАЛЕНО: Ми більше не парсимо моделі тут, щоб не тормозити завантаження сітки!
-                    // Ми зробимо це в меню "Дії" безпосередньо зі сторінки відео.
 
                     results.push({ name: formatTitle(name, timeText, '▶'), url: vUrl, picture: img, img: img, preview: pUrl });
                 }
@@ -285,6 +291,7 @@
                 }
                 return results;
             }
+
             comp.create = function () {
                 var _this = this; 
                 this.activity.loader(true);
