@@ -543,17 +543,16 @@
                     });
                 };
 
-                // ОСЬ ВІН - ПРАВИЛЬНИЙ КОД ФОКУСУ!
-                // Зберігаємо рідний скрол Лампи у змінну, щоб не затерти його
+                // Зберігаємо рідний "розумний" скрол Лампи
                 var originalFocus = events.onFocus; 
                 
                 events.onFocus = function (t) {
-                    // 1. Спочатку дозволяємо Лампі проскролити екран (як в оригіналі)
+                    // 1. Віддаємо Лампі наказ зробити її нативний плавний скрол
                     if (typeof originalFocus === 'function') {
                         originalFocus(t); 
                     }
                     
-                    // 2. А вже потім запускаємо нашу логіку прев'ю
+                    // 2. Запускаємо логіку прев'ю відео
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
