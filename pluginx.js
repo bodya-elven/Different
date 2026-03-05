@@ -10,36 +10,36 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ПОВЕРНЕННЯ ДО ТВОГО ОРИГІНАЛУ: Тільки ширина, жодних втручань у сітку Лампи */
-            '.pluginx-style { padding: 0 !important; }' +
+            /* ТОЧНА КОПІЯ ТВОГО СТАБІЛЬНОГО CSS (БЕЗ FLOAT/FLEX) */
+            '.main-grid { padding: 0 !important; }' +
             
             '@media screen and (max-width: 580px) {' +
-                '.pluginx-style .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
-                '.pluginx-style.is-categories-grid .card, .pluginx-style.is-models-grid .card, .pluginx-style.is-noimg-grid .card { width: 50% !important; }' + 
+                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
+                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 50% !important; }' + 
             '}' +
             '@media screen and (min-width: 581px) {' +
-                '.pluginx-style .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
-                '.pluginx-style.is-categories-grid .card, .pluginx-style.is-models-grid .card, .pluginx-style.is-noimg-grid .card { width: 16.666% !important; }' + 
+                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
+                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
             '}' +
             
-            '.pluginx-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; }' +
-            '.pluginx-style.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
-            '.pluginx-style.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
-            '.pluginx-style .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }' +
+            '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; }' +
+            '.main-grid.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
+            '.main-grid.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
+            '.main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }' +
             
-            '.pluginx-style .card__title { ' +
+            '.main-grid .card__title { ' +
                 'display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; ' +
                 'overflow: hidden !important; white-space: normal !important; text-align: left !important; ' +
                 'line-height: 1.2 !important; max-height: 3.6em !important; padding-top: 2px !important; margin-top: 0 !important; text-overflow: ellipsis !important; ' +
             '}' +
-            '.pluginx-style.is-categories-grid .card__title, .pluginx-style.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
+            '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
             /* СТУДІЇ: Низькі і сірі */
-            '.pluginx-style.is-noimg-grid .card { position: relative !important; }' +
-            '.pluginx-style.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
-            '.pluginx-style.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
-            '.pluginx-style.is-noimg-grid .card__img { display: none !important; }' +
-            '.pluginx-style.is-noimg-grid .card__title { ' +
+            '.main-grid.is-noimg-grid .card { position: relative !important; }' +
+            '.main-grid.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
+            '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
+            '.main-grid.is-noimg-grid .card__img { display: none !important; }' +
+            '.main-grid.is-noimg-grid .card__title { ' +
                 'position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; ' +
                 'display: flex !important; align-items: center !important; justify-content: center !important; ' +
                 'color: #000000 !important; font-weight: bold !important; ' +
@@ -50,7 +50,7 @@
                 'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
             '}' +
 
-            '.pluginx-style .card__age, .pluginx-style .card__textbox { display: none !important; }' +
+            '.main-grid .card__age, .main-grid .card__textbox { display: none !important; }' +
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '</style>';
         $('body').append(css);
@@ -166,7 +166,7 @@
                 return results;
             }
 
-            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНІ КАРТИНКИ І МОДЕЛІ) ---
+            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНІ КАРТИНКИ ТА ШВИДКОДІЯ) ---
             function parseCardsLongvideos(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('.list-videos .item, .item');
                 for (var i = 0; i < elements.length; i++) {
@@ -175,12 +175,10 @@
                     var name = linkEl.innerText.trim(), vUrl = linkEl.getAttribute('href');
                     if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
                     
-                    var imgEl = el.querySelector('img.thumb, img.thumb_img, img');
+                    var imgEl = el.querySelector('img.thumb');
                     var img = '';
                     if (imgEl) {
-                        // Спочатку шукаємо в data-атрибутах
-                        img = imgEl.getAttribute('data-original') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
-                        // Якщо зловили порожній піксель (ліниве завантаження) - беремо резервний атрибут
+                        img = imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
                         if (img.indexOf('data:image') === 0) {
                             img = imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || '';
                         }
@@ -291,18 +289,16 @@
                 }
                 return results;
             }
-
             comp.create = function () {
                 var _this = this; 
                 this.activity.loader(true);
 
-                // --- ОБРОБКА РОЗДІЛУ "ОБРАНЕ" ---
                 if (currentSite === 'bookmarks') {
                     var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
                     if (bmarks.length > 0) {
                         _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 });
                         var rendered = _this.render();
-                        rendered.addClass('pluginx-style'); 
+                        rendered.addClass('main-grid'); 
                         
                         if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (bmarks[0].is_models_grid) rendered.addClass('is-models-grid');
@@ -358,7 +354,7 @@
                     if (res.length > 0) { 
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
                         var rendered = _this.render();
-                        rendered.addClass('pluginx-style');
+                        rendered.addClass('main-grid');
                         
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (res[0].is_models_grid) rendered.addClass('is-models-grid');
@@ -557,12 +553,15 @@
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
                             
-                            // ОПТИМІЗАЦІЯ LONGVIDEOS: Шукаємо моделей прямо тут, зі сторінки відео!
-                            var lvModels = doc.querySelectorAll('a[href^="/models/"]');
+                            // ОПТИМІЗОВАНО: Точний пошук моделей за класом .models__item зі сторінки відео
+                            var lvModels = doc.querySelectorAll('.models__item');
+                            var addedModels = [];
                             for (var m = 0; m < lvModels.length; m++) {
                                 var mTitle = lvModels[m].innerText.trim();
-                                if (mTitle && !menu.some(function(i) { return i.title === mTitle; })) {
-                                    menu.push({ title: mTitle, action: 'direct', url: lvModels[m].getAttribute('href') });
+                                var mUrl = lvModels[m].getAttribute('href');
+                                if (mTitle && mUrl && addedModels.indexOf(mTitle) === -1) {
+                                    menu.push({ title: mTitle, action: 'direct', url: mUrl });
+                                    addedModels.push(mTitle);
                                 }
                             }
                             
@@ -601,22 +600,15 @@
                     });
                 };
 
-                // ОСЬ ВОНО! Розумне перехоплення фокусу, щоб зберегти рідний скрол!
-                var originalFocus = events.onFocus;
-                events.onFocus = function (target) {
-                    // Спочатку запускаємо вбудовану в Лампу логіку скролу
-                    if (typeof originalFocus === 'function') {
-                        originalFocus(target); 
-                    }
-                    
-                    // А потім запускаємо наше прев'ю
+                // ТВІЙ РОБОЧИЙ ФОКУС: Не ламає скрол і запускає прев'ю!
+                $(card).on('hover:focus', function () {
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
-                            showPreview($(target), element.preview); 
+                            showPreview($(card), element.preview); 
                         }, 1000);
                     }
-                };
+                });
             };
             
             comp.onRight = comp.filter.bind(comp); 
