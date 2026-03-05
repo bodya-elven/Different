@@ -10,17 +10,17 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ВІДНОВЛЕННЯ СКРОЛУ: Класичний блочний макет замість flexbox */
+            /* ВІДНОВЛЕННЯ СКРОЛУ: Класичний блочний макет */
             '.main-grid { padding: 0 !important; display: block !important; }' +
             '.main-grid::after { content: ""; display: block; clear: both; }' + 
             
             '@media screen and (max-width: 580px) {' +
                 '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; box-sizing: border-box !important; float: left !important; display: block !important; }' +
-                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 50% !important; }' + 
+                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card, .main-grid .card.card--sort-btn { width: 50% !important; }' + 
             '}' +
             '@media screen and (min-width: 581px) {' +
                 '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; box-sizing: border-box !important; float: left !important; display: block !important; }' +
-                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
+                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card, .main-grid .card.card--sort-btn { width: 16.666% !important; }' + 
             '}' +
             
             '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; width: 100% !important; }' +
@@ -51,6 +51,22 @@
                 'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
             '}' +
 
+            /* НОВІ КНОПКИ СОРТУВАННЯ: Ще нижчі (15%), вугільно-сірі з білим текстом */
+            '.main-grid .card.card--sort-btn { position: relative !important; }' +
+            '.main-grid .card.card--sort-btn .card__view { padding-bottom: 15% !important; background: #333333 !important; border-radius: 6px !important; border: 1px solid #555; transition: transform 0.2s; }' +
+            '.main-grid .card.card--sort-btn.focus .card__view { transform: scale(1.05); background: #555555 !important; border-color: #ffffff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
+            '.main-grid .card.card--sort-btn .card__img { display: none !important; }' +
+            '.main-grid .card.card--sort-btn .card__title { ' +
+                'position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; ' +
+                'display: flex !important; align-items: center !important; justify-content: center !important; ' +
+                'color: #ffffff !important; font-weight: bold !important; ' +
+                'font-size: 1.1em !important; line-height: 1.2 !important; ' + 
+                'text-align: center !important; white-space: normal !important; word-break: break-word !important; ' +
+                '-webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; ' + 
+                'padding: 5px !important; margin: 0 !important; ' +
+                'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
+            '}' +
+
             '.main-grid .card__age, .main-grid .card__textbox { display: none !important; }' +
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '</style>';
@@ -67,7 +83,6 @@
             }
         }
 
-        // ОНОВЛЕНО: Тепер приймає як рядок (один URL), так і масив URL-ів (для перебору)
         function showPreview(target, src) {
             var previewContainer = $('<div class="sisi-video-preview" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;overflow:hidden;z-index:4;background:#000;"><video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>');
             var videoEl = previewContainer.find('video')[0];
@@ -78,7 +93,6 @@
             var currentIdx = 0;
             videoEl.src = sources[currentIdx];
             
-            // Якщо сервер не відповідає - перемикаємо на наступний субдомен
             videoEl.onerror = function() {
                 currentIdx++;
                 if (currentIdx < sources.length) {
@@ -109,9 +123,48 @@
                 else network.silent(url, onSuccess, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
             }
             // --- ПАРСЕРИ PORNO365 та LENKINO ---
-            function parseCards365(doc, siteBaseUrl, isRelated) {
+            // Додали параметр isFirstPage, щоб кнопки сортування рендерились лише на початку
+            function parseCards365(doc, siteBaseUrl, isRelated, isFirstPage) {
+                var results = [];
+                
+                // Вбудовуємо кнопки сортування (тільки на першій сторінці)
+                if (isFirstPage && !isRelated) {
+                    var sortDivs = doc.querySelectorAll('.sort_div, .sort-div');
+                    for (var s = 0; s < sortDivs.length; s++) {
+                        var sDiv = sortDivs[s];
+                        
+                        // Клонуємо блок, щоб безпечно видалити <ul> і дістати чисту назву
+                        var clone = sDiv.cloneNode(true);
+                        var cloneUl = clone.querySelector('ul');
+                        if (cloneUl) cloneUl.parentNode.removeChild(cloneUl);
+                        var title = clone.innerText.trim().replace(/\n/g, ' ').replace(/\s+/g, ' ');
+                        
+                        var realUl = sDiv.querySelector('ul');
+                        if (realUl) {
+                            var items = realUl.querySelectorAll('a');
+                            var sortItems = [];
+                            for (var j = 0; j < items.length; j++) {
+                                var iUrl = items[j].getAttribute('href');
+                                if (iUrl && iUrl.indexOf('http') !== 0) iUrl = siteBaseUrl + iUrl;
+                                sortItems.push({ title: items[j].innerText.trim(), url: iUrl });
+                            }
+                            if (sortItems.length > 0) {
+                                results.push({ name: '▼ ' + title, is_sort_btn: true, sort_items: sortItems, is_grid: true });
+                            }
+                        } else {
+                            var aLink = sDiv.querySelector('a') || sDiv;
+                            var href = aLink.getAttribute('href');
+                            if (href) {
+                                if (href.indexOf('http') !== 0) href = siteBaseUrl + href;
+                                results.push({ name: title, url: href, is_sort_btn: true, is_grid: true });
+                            }
+                        }
+                    }
+                }
+
+                // Стандартний парсинг відео
                 var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer';
-                var elements = doc.querySelectorAll(sel), results = [];
+                var elements = doc.querySelectorAll(sel);
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i], linkEl = el.querySelector('a.image'), titleEl = el.querySelector('a.image p, .title'), imgEl = el.querySelector('img'), timeEl = el.querySelector('.duration');
                     var vP = el.querySelector('video#videoPreview') || el.querySelector('video'); 
@@ -123,7 +176,6 @@
                         var pUrl = vP ? (vP.getAttribute('src') || vP.getAttribute('data-src') || '') : ''; 
                         if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
                         
-                        // РОЗУМНИЙ ПЕРЕБІР ПРЕВ'Ю ДЛЯ PORNO365
                         var previewData = pUrl;
                         var matchId = vUrl.match(/\/movie\/(\d+)/);
                         if (matchId && matchId[1]) {
@@ -131,18 +183,19 @@
                             var f1 = vidId.charAt(0), f2 = vidId.length > 1 ? vidId.charAt(1) : '0';
                             var subs = ['53', '33', '26', '18', '51', '32', '54'];
                             previewData = [];
-                            for (var s = 0; s < subs.length; s++) {
-                                previewData.push('https://tr' + subs[s] + '.vide365.com/porno365/trailers/' + f1 + '/' + f2 + '/' + vidId + '.webm');
+                            for (var st = 0; st < subs.length; st++) {
+                                previewData.push('https://tr' + subs[st] + '.vide365.com/porno365/trailers/' + f1 + '/' + f2 + '/' + vidId + '.webm');
                             }
                         }
 
-                        var name = titleEl.innerText.trim(), time = timeEl ? timeEl.innerText.trim() : '';
-                        results.push({ name: formatTitle(name, time, '▶'), url: vUrl, picture: img, img: img, preview: previewData });
+                        var nameVideo = titleEl.innerText.trim(), time = timeEl ? timeEl.innerText.trim() : '';
+                        results.push({ name: formatTitle(nameVideo, time, '▶'), url: vUrl, picture: img, img: img, preview: previewData });
                     }
                 }
                 return results;
             }
 
+            // ... (Інші парсери залишаються без змін)
             function parseCardsLenkino(doc, siteBaseUrl, isStudios) {
                 var results = [], elements = [];
                 if (isStudios) elements = doc.querySelectorAll('.itm-crd-spn, .itm-crd'); 
@@ -170,7 +223,6 @@
                 return results;
             }
 
-            // --- ПАРСЕРИ LONGVIDEOS ---
             function parseCardsLongvideos(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('.list-videos .item, .item');
                 for (var i = 0; i < elements.length; i++) {
@@ -178,18 +230,13 @@
                     if (!linkEl) continue;
                     var name = linkEl.innerText.trim(), vUrl = linkEl.getAttribute('href');
                     if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                    
                     var imgEl = el.querySelector('img.thumb, img.thumb_img'), img = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
                     if (img && img.indexOf('//') === 0) img = 'https:' + img; else if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
-
                     var previewEl = el.querySelector('.img.thumb__img'), pUrl = previewEl ? previewEl.getAttribute('data-preview') : '';
                     if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
-
                     var timeEl = el.querySelector('.duration'), timeText = timeEl ? timeEl.innerText.replace(/Full Video/gi, '').trim() : '';
-                    
                     var modelEls = el.querySelectorAll('.models__item'), cardModels = [];
                     for (var m = 0; m < modelEls.length; m++) cardModels.push({ title: modelEls[m].innerText.trim(), url: modelEls[m].getAttribute('href') });
-
                     results.push({ name: formatTitle(name, timeText, '▶'), url: vUrl, picture: img, img: img, preview: pUrl, card_models: cardModels });
                 }
                 return results;
@@ -200,30 +247,17 @@
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i];
                     if (el.querySelector('.no-thumb')) continue; 
-                    
                     var imgEl = el.querySelector('img');
                     if (!imgEl) continue; 
-                    
                     var imgSrc = imgEl.getAttribute('data-original') || imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
-                    if (imgSrc && imgSrc.indexOf('data:image') === 0) {
-                        imgSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || '';
-                    }
+                    if (imgSrc && imgSrc.indexOf('data:image') === 0) imgSrc = imgEl.getAttribute('data-src') || imgEl.getAttribute('data-original') || '';
                     if (!imgSrc) continue; 
-                    
-                    if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; 
-                    else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
-
+                    if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
                     var linkEl = el.tagName === 'A' ? el : (el.querySelector('a') || el);
                     var rawName = imgEl.getAttribute('alt') || linkEl.getAttribute('title') || '';
-                    if (!rawName) {
-                        var titleEl = el.querySelector('.title, .name, h5');
-                        if (titleEl) rawName = titleEl.innerText.trim();
-                        else rawName = 'Model';
-                    }
-                    
+                    if (!rawName) { var titleEl = el.querySelector('.title, .name, h5'); if (titleEl) rawName = titleEl.innerText.trim(); else rawName = 'Model'; }
                     var countEl = el.querySelector('.videos'), count = countEl ? countEl.innerText.trim() : '';
                     var vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                    
                     if (rawName) results.push({ name: formatTitle(rawName, count, '☰'), url: vUrl, picture: imgSrc, img: imgSrc, is_grid: true, is_models_grid: true });
                 }
                 return results;
@@ -236,28 +270,20 @@
                     var el = headlines[i];
                     var linkEl = el.querySelector('a.more') || el.querySelector('a');
                     var titleEl = el.querySelector('h1, h2, h3, h4, .title') || linkEl;
-                    
                     if (linkEl) {
                         var vUrl = linkEl.getAttribute('href');
                         if (!vUrl || vUrl.indexOf('/sites/') === -1) continue; 
-                        
                         var rawName = titleEl.innerText.trim();
                         var span = titleEl.querySelector('span');
-                        if (span && rawName !== span.innerText.trim()) {
-                            rawName = rawName.replace(span.innerText, '').trim(); 
-                        }
+                        if (span && rawName !== span.innerText.trim()) rawName = rawName.replace(span.innerText, '').trim(); 
                         if (!rawName) rawName = linkEl.innerText.trim();
                         if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                        
-                        if (rawName && !results.some(function(r) { return r.url === vUrl; })) {
-                            results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true });
-                        }
+                        if (rawName && !results.some(function(r) { return r.url === vUrl; })) results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true });
                     }
                 }
                 return results;
             }
 
-            // --- КАТЕГОРІЇ ТА МОДЕЛІ ДЛЯ ІНШИХ САЙТІВ ---
             function parseCategories(doc, siteBaseUrl, siteType) {
                 var results = [], sel = (siteType === 'lenkino') ? '.grd-cat a' : '.categories-list-div a';
                 var links = doc.querySelectorAll(sel);
@@ -321,6 +347,7 @@
                     var targetPath = target.replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     
                     var res = [];
+                    var isFirstPage = (!object.page || object.page === 1);
                     
                     // СТРОГА МАРШРУТИЗАЦІЯ ЗА САЙТАМИ ТА ТОЧНИМИ ПОСИЛАННЯМИ
                     if (currentSite === 'longvideos') {
@@ -347,7 +374,7 @@
                     } else {
                         if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
                         else if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
-                        else res = parseCards365(doc, cleanD, object.is_related);
+                        else res = parseCards365(doc, cleanD, object.is_related, isFirstPage); // Передаємо параметр isFirstPage
                     }
                     
                     if (res.length > 0) { 
@@ -358,7 +385,7 @@
                         /* Розумне призначення сіток */
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (res[0].is_models_grid) rendered.addClass('is-models-grid');
-                        else if (res[0].is_grid && !res[0].is_models_grid && !res[0].is_studios_noimg) rendered.addClass('is-categories-grid');
+                        else if (res[0].is_grid && !res[0].is_models_grid && !res[0].is_studios_noimg && !res[0].is_sort_btn) rendered.addClass('is-categories-grid');
                         
                     } else _this.empty(); 
                 }, this.empty.bind(this));
@@ -402,7 +429,7 @@
                         else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
                     } else {
                         if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
-                        else res = parseCards365(doc, cleanD, false);
+                        else res = parseCards365(doc, cleanD, false, false); // isFirstPage = false для наступних сторінок
                     }
 
                     if (res.length > 0) resolve({ results: res, collection: true, total_pages: 50, page: object.page }); 
@@ -503,8 +530,32 @@
                 }, onBack: function () { Lampa.Controller.toggle('content'); } });
             };
             comp.cardRender = function (card, element, events) {
+                
+                // Додаємо спеціальний клас для кнопок сортування в сітці
+                if (element.is_sort_btn) {
+                    card.addClass('card--sort-btn');
+                }
+
                 events.onEnter = function () {
                     hidePreview();
+                    
+                    // Обробка кліку по штучних кнопках сортування
+                    if (element.is_sort_btn) {
+                        if (element.sort_items && element.sort_items.length > 0) {
+                            Lampa.Select.show({
+                                title: element.name.replace('▼ ', ''),
+                                items: element.sort_items,
+                                onSelect: function(a) {
+                                    Lampa.Activity.push({ url: a.url, title: a.title, component: 'pluginx_comp', site: currentSite, page: 1 });
+                                },
+                                onBack: function() { Lampa.Controller.toggle('content'); }
+                            });
+                        } else if (element.url) {
+                            Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: currentSite, page: 1 });
+                        }
+                        return;
+                    }
+
                     if (element.is_grid) { 
                         Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: currentSite, page: 1 }); 
                         return; 
@@ -536,6 +587,10 @@
 
                 events.onMenu = function () {
                     hidePreview();
+                    
+                    // Відключаємо меню для кнопок сортування
+                    if (element.is_sort_btn) return;
+                    
                     smartRequest(element.url, function (htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html'), menu = [];
                         
@@ -583,7 +638,7 @@
 
                 events.onFocus = function (t) {
                     hidePreview(); 
-                    if (element.preview && !element.is_grid) {
+                    if (element.preview && !element.is_grid && !element.is_sort_btn) {
                         previewTimeout = setTimeout(function () { 
                             showPreview($(t), element.preview); 
                         }, 1000);
