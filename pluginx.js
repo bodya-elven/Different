@@ -10,22 +10,22 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ПОВЕРНЕННЯ ДО СТАРОГО КОДУ: Жодних float чи flex! Тільки ширина і inline-block */
+            /* ПОВЕРНЕННЯ ДО ТВОГО ОРИГІНАЛУ: Тільки ширина, жодних втручань у сітку Лампи */
             '.main-grid { padding: 0 !important; }' +
             
             '@media screen and (max-width: 580px) {' +
-                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; display: inline-block !important; vertical-align: top !important; }' +
+                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
                 '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 50% !important; }' + 
             '}' +
             '@media screen and (min-width: 581px) {' +
-                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; display: inline-block !important; vertical-align: top !important; }' +
+                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
                 '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
             '}' +
             
-            '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; width: 100% !important; }' +
+            '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
             '.main-grid.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
             '.main-grid.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
-            '.main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; z-index: 2; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }' +
+            '.main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; }' +
             
             '.main-grid .card__title { ' +
                 'display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; ' +
@@ -34,7 +34,7 @@
             '}' +
             '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* СТУДІЇ */
+            /* СТУДІЇ: Низькі і сірі */
             '.main-grid.is-noimg-grid .card { position: relative !important; }' +
             '.main-grid.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
             '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
@@ -66,6 +66,7 @@
             }
         }
 
+        // Прев'ю з розумним перебором серверів
         function showPreview(target, src) {
             var previewContainer = $('<div class="sisi-video-preview" style="position:absolute;top:0;left:0;width:100%;height:100%;border-radius:12px;overflow:hidden;z-index:4;background:#000;"><video autoplay muted loop playsinline style="width:100%;height:100%;object-fit:cover;"></video></div>');
             var videoEl = previewContainer.find('video')[0];
@@ -181,7 +182,7 @@
                     var previewEl = el.querySelector('.img.thumb__img'), pUrl = previewEl ? previewEl.getAttribute('data-preview') : '';
                     if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
 
-                    // ВИПРАВЛЕНО: Прибрано зайвий запит, через який падала помилка "Cannot read properties of null"
+                    // ОСЬ ТУТ ВИПРАВЛЕНО ТУ ПОМИЛКУ З СКРИНШОТУ (прибрано зайвий querySelector)
                     var timeEl = el.querySelector('.duration');
                     var timeText = timeEl ? timeEl.innerText.replace(/Full Video/gi, '').trim() : '';
                     
@@ -316,16 +317,12 @@
                         var isModelsList = (cleanPath === '/models' || cleanPath === '/models/total-videos' || cleanPath === '/models/top-rated');
                         var isSitesList = (cleanPath === '/sites' || cleanPath === '/sites/total-videos' || cleanPath === '/sites/top-rated');
                         
-                        if (isModelsList) {
-                            res = parseModelsLongvideos(doc, cleanD);
-                        } else if (isSitesList) {
-                            res = parseStudiosLongvideos(doc, cleanD);
-                        } else if (object.is_related) {
+                        if (isModelsList) res = parseModelsLongvideos(doc, cleanD);
+                        else if (isSitesList) res = parseStudiosLongvideos(doc, cleanD);
+                        else if (object.is_related) {
                             var relCont = doc.querySelector('.related-videos, .related_videos');
                             if (relCont) res = parseCardsLongvideos(relCont, cleanD);
-                        } else {
-                            res = parseCardsLongvideos(doc, cleanD);
-                        }
+                        } else res = parseCardsLongvideos(doc, cleanD);
                     } else if (currentSite === 'lenkino') {
                         var isStudiosLenkino = (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
                         if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
@@ -341,10 +338,9 @@
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
                         var rendered = _this.render();
                         
-                        // ТОЧНО ЯК В ТВОЄМУ КОДІ pluginx_1.js
+                        // ТОЧНО ЯК В ТВОЄМУ КОДІ
                         rendered.addClass('main-grid');
                         
-                        // Застосовуємо стилі для категорій/моделей
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (res[0].is_models_grid) rendered.addClass('is-models-grid');
                         else if (res[0].is_grid && !res[0].is_models_grid && !res[0].is_studios_noimg) rendered.addClass('is-categories-grid');
@@ -406,7 +402,6 @@
                 var targetPath = curUrl.replace(cleanD, '').split('?')[0];
                 var cleanPath = targetPath.replace(/\/+$/, '');
                 var isCategories = targetPath === '/categories';
-                
                 var items = [{ title: 'Пошук', action: 'search' }];
                 
                 if (currentSite === 'longvideos') items.push({ title: 'Моделі', action: 'models' }, { title: 'Студії', action: 'studios' });
@@ -503,7 +498,6 @@
 
                 events.onMenu = function () {
                     hidePreview();
-
                     smartRequest(element.url, function (htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html'), menu = [];
                         
@@ -549,9 +543,18 @@
                     });
                 };
 
+                // ОСЬ ВІН - ПРАВИЛЬНИЙ КОД ФОКУСУ!
+                // Зберігаємо рідний скрол Лампи у змінну, щоб не затерти його
+                var originalFocus = events.onFocus; 
+                
                 events.onFocus = function (t) {
+                    // 1. Спочатку дозволяємо Лампі проскролити екран (як в оригіналі)
+                    if (typeof originalFocus === 'function') {
+                        originalFocus(t); 
+                    }
+                    
+                    // 2. А вже потім запускаємо нашу логіку прев'ю
                     hidePreview(); 
-
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
                             showPreview($(t), element.preview); 
