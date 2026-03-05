@@ -10,36 +10,36 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ТОЧНА КОПІЯ ТВОГО CSS */
-            '.main-grid { padding: 0 !important; }' +
+            /* ПОВЕРНЕННЯ ДО ТВОГО ОРИГІНАЛУ: Тільки ширина, жодних втручань у сітку Лампи */
+            '.pluginx-style { padding: 0 !important; }' +
             
             '@media screen and (max-width: 580px) {' +
-                '.main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
-                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 50% !important; }' + 
+                '.pluginx-style .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }' +
+                '.pluginx-style.is-categories-grid .card, .pluginx-style.is-models-grid .card, .pluginx-style.is-noimg-grid .card { width: 50% !important; }' + 
             '}' +
             '@media screen and (min-width: 581px) {' +
-                '.main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
-                '.main-grid.is-categories-grid .card, .main-grid.is-models-grid .card, .main-grid.is-noimg-grid .card { width: 16.666% !important; }' + 
+                '.pluginx-style .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }' +
+                '.pluginx-style.is-categories-grid .card, .pluginx-style.is-models-grid .card, .pluginx-style.is-noimg-grid .card { width: 16.666% !important; }' + 
             '}' +
             
-            '.main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; }' +
-            '.main-grid.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
-            '.main-grid.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
-            '.main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; }' +
+            '.pluginx-style .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; }' +
+            '.pluginx-style.is-categories-grid .card__view { padding-bottom: 80% !important; background: #ffffff !important; }' + 
+            '.pluginx-style.is-models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }' + 
+            '.pluginx-style .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }' +
             
-            '.main-grid .card__title { ' +
+            '.pluginx-style .card__title { ' +
                 'display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; ' +
                 'overflow: hidden !important; white-space: normal !important; text-align: left !important; ' +
                 'line-height: 1.2 !important; max-height: 3.6em !important; padding-top: 2px !important; margin-top: 0 !important; text-overflow: ellipsis !important; ' +
             '}' +
-            '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
+            '.pluginx-style.is-categories-grid .card__title, .pluginx-style.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* СТУДІЇ: Твій дизайн низьких карток без зламу сітки */
-            '.main-grid.is-noimg-grid .card { position: relative !important; }' +
-            '.main-grid.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
-            '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
-            '.main-grid.is-noimg-grid .card__img { display: none !important; }' +
-            '.main-grid.is-noimg-grid .card__title { ' +
+            /* СТУДІЇ: Низькі і сірі */
+            '.pluginx-style.is-noimg-grid .card { position: relative !important; }' +
+            '.pluginx-style.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
+            '.pluginx-style.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
+            '.pluginx-style.is-noimg-grid .card__img { display: none !important; }' +
+            '.pluginx-style.is-noimg-grid .card__title { ' +
                 'position: absolute !important; top: 0; left: 0; width: 100%; height: 100%; ' +
                 'display: flex !important; align-items: center !important; justify-content: center !important; ' +
                 'color: #000000 !important; font-weight: bold !important; ' +
@@ -50,7 +50,7 @@
                 'z-index: 10; box-sizing: border-box !important; background: transparent !important; text-shadow: none !important; ' +
             '}' +
 
-            '.main-grid .card__age, .main-grid .card__textbox { display: none !important; }' +
+            '.pluginx-style .card__age, .pluginx-style .card__textbox { display: none !important; }' +
             '.pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }' +
             '</style>';
         $('body').append(css);
@@ -166,7 +166,7 @@
                 return results;
             }
 
-            // --- ПАРСЕРИ LONGVIDEOS ---
+            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНО!) ---
             function parseCardsLongvideos(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('.list-videos .item, .item');
                 for (var i = 0; i < elements.length; i++) {
@@ -181,14 +181,13 @@
                     var previewEl = el.querySelector('.img.thumb__img'), pUrl = previewEl ? previewEl.getAttribute('data-preview') : '';
                     if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
 
-                    // ВИПРАВЛЕНО: чистий пошук duration без вкладеності
                     var timeEl = el.querySelector('.duration');
                     var timeText = timeEl ? timeEl.innerText.replace(/Full Video/gi, '').trim() : '';
                     
-                    var modelEls = el.querySelectorAll('.models__item'), cardModels = [];
-                    for (var m = 0; m < modelEls.length; m++) cardModels.push({ title: modelEls[m].innerText.trim(), url: modelEls[m].getAttribute('href') });
+                    // ВИДАЛЕНО: Ми більше не парсимо моделі тут, щоб не тормозити завантаження сітки!
+                    // Ми зробимо це в меню "Дії" безпосередньо зі сторінки відео.
 
-                    results.push({ name: formatTitle(name, timeText, '▶'), url: vUrl, picture: img, img: img, preview: pUrl, card_models: cardModels });
+                    results.push({ name: formatTitle(name, timeText, '▶'), url: vUrl, picture: img, img: img, preview: pUrl });
                 }
                 return results;
             }
@@ -296,7 +295,7 @@
                     if (bmarks.length > 0) {
                         _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 });
                         var rendered = _this.render();
-                        rendered.addClass('main-grid'); // Використовуємо твій ідеальний CSS-клас
+                        rendered.addClass('pluginx-style'); 
                         
                         if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (bmarks[0].is_models_grid) rendered.addClass('is-models-grid');
@@ -352,7 +351,7 @@
                     if (res.length > 0) { 
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
                         var rendered = _this.render();
-                        rendered.addClass('main-grid');
+                        rendered.addClass('pluginx-style');
                         
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (res[0].is_models_grid) rendered.addClass('is-models-grid');
@@ -485,7 +484,6 @@
             comp.cardRender = function (card, element, events) {
                 events.onEnter = function () {
                     hidePreview();
-                    
                     var targetSite = currentSite;
                     if (currentSite === 'bookmarks') {
                         if (element.url.indexOf(LENKINO_DOMAIN) !== -1) targetSite = 'lenkino';
@@ -551,7 +549,16 @@
                         if (targetSite === 'longvideos') {
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
-                            if (element.card_models) element.card_models.forEach(function(m) { menu.push({ title: m.title, action: 'direct', url: m.url }); });
+                            
+                            // ОПТИМІЗАЦІЯ LONGVIDEOS: Шукаємо моделей прямо тут, зі сторінки відео!
+                            var lvModels = doc.querySelectorAll('a[href^="/models/"]');
+                            for (var m = 0; m < lvModels.length; m++) {
+                                var mTitle = lvModels[m].innerText.trim();
+                                if (mTitle && !menu.some(function(i) { return i.title === mTitle; })) {
+                                    menu.push({ title: mTitle, action: 'direct', url: lvModels[m].getAttribute('href') });
+                                }
+                            }
+                            
                             var sponsors = doc.querySelectorAll('.btn_sponsor, .btn_sponsor_group');
                             for (var sp = 0; sp < sponsors.length; sp++) {
                                 var spName = sponsors[sp].innerText.trim();
@@ -587,19 +594,22 @@
                     });
                 };
 
-                // ОСЬ ВІН - КЛЮЧ ДО ІДЕАЛЬНОГО СКРОЛУ! 
-                // Ми ВЗАГАЛІ не пишемо тут events.onFocus = ... 
-                // Це дозволяє Лампі самій повісити свій ідеальний, плавний скрол!
-                // А своє прев'ю ми безпечно вішаємо паралельно, обгорнувши card у jQuery:
-                
-                $(card).on('hover:focus', function () {
+                // ОСЬ ВОНО! Розумне перехоплення фокусу, щоб зберегти рідний скрол!
+                var originalFocus = events.onFocus;
+                events.onFocus = function (target) {
+                    // Спочатку запускаємо вбудовану в Лампу логіку скролу
+                    if (typeof originalFocus === 'function') {
+                        originalFocus(target); 
+                    }
+                    
+                    // А потім запускаємо наше прев'ю
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
-                            showPreview($(card), element.preview); 
+                            showPreview($(target), element.preview); 
                         }, 1000);
                     }
-                });
+                };
             };
             
             comp.onRight = comp.filter.bind(comp); 
