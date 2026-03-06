@@ -263,6 +263,7 @@
                 return results;
             }
 
+            // ВИПРАВЛЕНО: Додано is_models_grid: true для моделей Porno365 та Lenkino
             function parseModels(doc, siteBaseUrl, siteType) {
                 var results = [];
                 if (siteType === 'lenkino') {
@@ -274,7 +275,7 @@
                             var name = titleEl ? titleEl.innerText.trim() : (imgEl.getAttribute('alt') || 'Model'), count = countEl ? countEl.innerText.trim() : '', img = imgEl.getAttribute('data-src') || imgEl.getAttribute('src') || '';
                             if (img && img.indexOf('/') === 0) img = siteBaseUrl + img;
                             var vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl;
-                            results.push({ name: formatTitle(name, count, '☰'), url: vUrl, picture: img, img: img, is_grid: true });
+                            results.push({ name: formatTitle(name, count, '☰'), url: vUrl, picture: img, img: img, is_grid: true, is_models_grid: true });
                         }
                     }
                 } else {
@@ -283,7 +284,7 @@
                         var elM = mEls[k], linkM = elM.querySelector('a'), nameM = elM.querySelector('.model_eng_name'), countM = elM.querySelector('.cnt_span'), imgM = elM.querySelector('img');
                         if (linkM && nameM) {
                             var vUrlM = linkM.getAttribute('href'); if (vUrlM && vUrlM.indexOf('http') !== 0) vUrlM = siteBaseUrl + vUrlM;
-                            results.push({ name: formatTitle(nameM.innerText.trim(), countM ? countM.innerText.trim() : '', '☰'), url: vUrlM, picture: imgM ? imgM.getAttribute('src') : '', img: imgM ? imgM.getAttribute('src') : '', is_grid: true });
+                            results.push({ name: formatTitle(nameM.innerText.trim(), countM ? countM.innerText.trim() : '', '☰'), url: vUrlM, picture: imgM ? imgM.getAttribute('src') : '', img: imgM ? imgM.getAttribute('src') : '', is_grid: true, is_models_grid: true });
                         }
                     }
                 }
@@ -293,11 +294,14 @@
                 var _this = this; 
                 this.activity.loader(true);
 
+                // --- ОБРОБКА РОЗДІЛУ "ОБРАНЕ" ---
                 if (currentSite === 'bookmarks') {
                     var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
                     if (bmarks.length > 0) {
                         _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 });
                         var rendered = _this.render();
+                        
+                        // ВИКОРИСТОВУЄМО ТВІЙ ЗАФІКСОВАНИЙ КЛАС!
                         rendered.addClass('main-grid'); 
                         
                         if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
@@ -313,6 +317,7 @@
                 if (currentSite === 'lenkino') target = object.url || LENKINO_DOMAIN;
                 if (currentSite === 'longvideos') target = object.url || (LONGVIDEOS_DOMAIN + '/latest-updates/');
 
+                // Розумна пагінація
                 if (currentSite === 'lenkino') {
                     target = target.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1);
                 } else if (currentSite === 'longvideos' && object.page > 1) {
@@ -354,6 +359,7 @@
                     if (res.length > 0) { 
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
                         var rendered = _this.render();
+                        
                         rendered.addClass('main-grid');
                         
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
@@ -553,18 +559,15 @@
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
                             
-                            // ВИПРАВЛЕНО: Шукаємо моделей ТІЛЬКИ в першому блоці .models, ігноруючи схожі відео
-                            var modelsContainer = doc.querySelector('.models');
-                            if (modelsContainer) {
-                                var lvModels = modelsContainer.querySelectorAll('.models__item');
-                                var addedModels = [];
-                                for (var m = 0; m < lvModels.length; m++) {
-                                    var mTitle = lvModels[m].innerText.trim();
-                                    var mUrl = lvModels[m].getAttribute('href');
-                                    if (mTitle && mUrl && addedModels.indexOf(mTitle) === -1) {
-                                        menu.push({ title: mTitle, action: 'direct', url: mUrl });
-                                        addedModels.push(mTitle);
-                                    }
+                            // ВИПРАВЛЕНО: Шукаємо моделей суворо за класом .btn_models
+                            var lvModels = doc.querySelectorAll('.btn_models');
+                            var addedModels = [];
+                            for (var m = 0; m < lvModels.length; m++) {
+                                var mTitle = lvModels[m].innerText.trim();
+                                var mUrl = lvModels[m].getAttribute('href');
+                                if (mTitle && mUrl && addedModels.indexOf(mTitle) === -1) {
+                                    menu.push({ title: mTitle, action: 'direct', url: mUrl });
+                                    addedModels.push(mTitle);
                                 }
                             }
                             
@@ -603,20 +606,15 @@
                     });
                 };
 
-                // ПОВЕРНЕНО ПРАЦЮЮЧЕ ПРЕВ'Ю!
-                // Зберігаємо рідний скрол Лампи, а потім безпечно запускаємо відео.
-                var originalFocus = events.onFocus;
-                events.onFocus = function (target) {
-                    if (typeof originalFocus === 'function') {
-                        originalFocus(target); 
-                    }
+                // ТВІЙ РОБОЧИЙ ФОКУС: Не ламає скрол і запускає прев'ю!
+                $(card).on('hover:focus', function () {
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
                         previewTimeout = setTimeout(function () { 
-                            showPreview($(target), element.preview); 
+                            showPreview($(card), element.preview); 
                         }, 1000);
                     }
-                };
+                });
             };
             
             comp.onRight = comp.filter.bind(comp); 
