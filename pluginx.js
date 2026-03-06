@@ -10,7 +10,6 @@
         window.pluginx_ready = true;
 
         var css = '<style>' +
-            /* ТОЧНА КОПІЯ ТВОГО СТАБІЛЬНОГО CSS (БЕЗ FLOAT/FLEX) */
             '.main-grid { padding: 0 !important; }' +
             
             '@media screen and (max-width: 580px) {' +
@@ -34,7 +33,6 @@
             '}' +
             '.main-grid.is-categories-grid .card__title, .main-grid.is-models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }' +
             
-            /* СТУДІЇ: Низькі і сірі */
             '.main-grid.is-noimg-grid .card { position: relative !important; }' +
             '.main-grid.is-noimg-grid .card__view { padding-bottom: 25% !important; background: #c4c4c4 !important; border-radius: 8px !important; border: 1px solid #aaa; transition: transform 0.2s; }' +
             '.main-grid.is-noimg-grid .card.focus .card__view { transform: scale(1.05); background: #b0b0b0 !important; border-color: #fff; box-shadow: 0 0 10px rgba(255,255,255,0.8); }' +
@@ -166,7 +164,6 @@
                 return results;
             }
 
-            // --- ПАРСЕРИ LONGVIDEOS (ОПТИМІЗОВАНІ КАРТИНКИ ТА ШВИДКОДІЯ) ---
             function parseCardsLongvideos(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('.list-videos .item, .item');
                 for (var i = 0; i < elements.length; i++) {
@@ -263,7 +260,6 @@
                 return results;
             }
 
-            // ВИПРАВЛЕНО: Додано is_models_grid: true для моделей Porno365 та Lenkino
             function parseModels(doc, siteBaseUrl, siteType) {
                 var results = [];
                 if (siteType === 'lenkino') {
@@ -294,16 +290,12 @@
                 var _this = this; 
                 this.activity.loader(true);
 
-                // --- ОБРОБКА РОЗДІЛУ "ОБРАНЕ" ---
                 if (currentSite === 'bookmarks') {
                     var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
                     if (bmarks.length > 0) {
                         _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 });
                         var rendered = _this.render();
-                        
-                        // ВИКОРИСТОВУЄМО ТВІЙ ЗАФІКСОВАНИЙ КЛАС!
                         rendered.addClass('main-grid'); 
-                        
                         if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
                         else if (bmarks[0].is_models_grid) rendered.addClass('is-models-grid');
                         else if (bmarks[0].is_grid) rendered.addClass('is-categories-grid');
@@ -317,7 +309,6 @@
                 if (currentSite === 'lenkino') target = object.url || LENKINO_DOMAIN;
                 if (currentSite === 'longvideos') target = object.url || (LONGVIDEOS_DOMAIN + '/latest-updates/');
 
-                // Розумна пагінація
                 if (currentSite === 'lenkino') {
                     target = target.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1);
                 } else if (currentSite === 'longvideos' && object.page > 1) {
@@ -359,7 +350,6 @@
                     if (res.length > 0) { 
                         _this.build({ results: res, collection: true, total_pages: 50, page: object.page || 1 }); 
                         var rendered = _this.render();
-                        
                         rendered.addClass('main-grid');
                         
                         if (res[0].is_studios_noimg) rendered.addClass('is-noimg-grid');
@@ -559,7 +549,7 @@
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
                             
-                            // ВИПРАВЛЕНО: Шукаємо моделей суворо за класом .btn_models
+                            // ОСЬ ВОНО: Точний пошук моделей на сторінці відео за вказаним класом!
                             var lvModels = doc.querySelectorAll('.btn_models');
                             var addedModels = [];
                             for (var m = 0; m < lvModels.length; m++) {
@@ -606,7 +596,7 @@
                     });
                 };
 
-                // ТВІЙ РОБОЧИЙ ФОКУС: Не ламає скрол і запускає прев'ю!
+                // ОСЬ ВІН - ТОЙ САМИЙ ПРАЦЮЮЧИЙ ФОКУС! Жодних originalFocus
                 $(card).on('hover:focus', function () {
                     hidePreview(); 
                     if (element.preview && !element.is_grid) {
