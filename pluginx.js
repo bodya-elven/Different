@@ -353,9 +353,9 @@
                     var res = [];
                     if (currentSite === 'longvideos') {
                         var cleanPath = targetPath.replace(/\/+$/, ''); 
-                        // ВИПРАВЛЕНО РОУТИНГ: Перевіряємо, чи починається шлях з /models або /sites
-                        var isModelsList = (cleanPath === '/models' || cleanPath.indexOf('/models/') === 0);
-                        var isSitesList = (cleanPath === '/sites' || cleanPath.indexOf('/sites/') === 0);
+                        // ВИПРАВЛЕНО: Використовуємо переданий контекст сторінки (object.is_models)
+                        var isModelsList = object.is_models || cleanPath === '/models';
+                        var isSitesList = object.is_studios || cleanPath === '/sites';
                         
                         if (isModelsList) res = parseModelsLongvideos(doc, cleanD);
                         else if (isSitesList) res = parseStudiosLongvideos(doc, cleanD);
@@ -364,13 +364,13 @@
                             if (relCont) res = parseCardsLongvideos(relCont, cleanD);
                         } else res = parseCardsLongvideos(doc, cleanD);
                     } else if (currentSite === 'lenkino') {
-                        var isStudiosLenkino = (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
+                        var isStudiosLenkino = object.is_studios || (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
                         if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
-                        else if (targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
+                        else if (object.is_models || targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
                         else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
                     } else {
                         if (targetPath === '/categories') res = parseCategories(doc, cleanD, currentSite);
-                        else if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
+                        else if (object.is_models || targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
                         else res = parseCards365(doc, cleanD, object.is_related);
                     }
                     
@@ -414,18 +414,18 @@
                     
                     if (currentSite === 'longvideos') {
                         var cleanPath = targetPath.replace(/\/+$/, '');
-                        var isModelsList = (cleanPath === '/models' || cleanPath.indexOf('/models/') === 0);
-                        var isSitesList = (cleanPath === '/sites' || cleanPath.indexOf('/sites/') === 0);
+                        var isModelsList = object.is_models || cleanPath === '/models';
+                        var isSitesList = object.is_studios || cleanPath === '/sites';
 
                         if (isModelsList) res = parseModelsLongvideos(doc, cleanD);
                         else if (isSitesList) res = parseStudiosLongvideos(doc, cleanD);
                         else res = parseCardsLongvideos(doc, cleanD);
                     } else if (currentSite === 'lenkino') {
-                        var isStudiosLenkino = (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
-                        if (targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
+                        var isStudiosLenkino = object.is_studios || (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views');
+                        if (object.is_models || targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite);
                         else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
                     } else {
-                        if (targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
+                        if (object.is_models || targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite);
                         else res = parseCards365(doc, cleanD, false);
                     }
 
@@ -496,11 +496,21 @@
                         });
                     }
                     else if (a.action === 'bookmarks') Lampa.Activity.push({ title: 'Обране', component: 'pluginx_comp', site: 'bookmarks', page: 1 });
-                    else if (a.action === 'sort') Lampa.Select.show({ title: 'Сортування', items: a.sort_items, onSelect: function(s) { Lampa.Activity.push({ url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1 }); }, onBack: function() { comp.filter(); } });
+                    
+                    // ВИПРАВЛЕНО: Додаємо прапорці при переході в Моделі/Студії, щоб плагін запам'ятав контекст
+                    else if (a.action === 'models') Lampa.Activity.push({ url: cleanD + (currentSite === 'lenkino' ? '/pornstars' : '/models/'), title: 'Моделі', component: 'pluginx_comp', site: currentSite, page: 1, is_models: true });
+                    else if (a.action === 'studios') Lampa.Activity.push({ url: cleanD + '/sites/', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1, is_studios: true });
+                    else if (a.action === 'studios_lenkino') Lampa.Activity.push({ url: cleanD + '/channels', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1, is_studios: true });
                     else if (a.action === 'categories') Lampa.Activity.push({ url: cleanD + '/categories', title: 'Категорії', component: 'pluginx_comp', site: currentSite, page: 1 });
-                    else if (a.action === 'studios_lenkino') Lampa.Activity.push({ url: cleanD + '/channels', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
-                    else if (a.action === 'models') Lampa.Activity.push({ url: cleanD + (currentSite === 'lenkino' ? '/pornstars' : '/models/'), title: 'Моделі', component: 'pluginx_comp', site: currentSite, page: 1 });
-                    else if (a.action === 'studios') Lampa.Activity.push({ url: cleanD + '/sites/', title: 'Студії', component: 'pluginx_comp', site: currentSite, page: 1 });
+                    
+                    // ВИПРАВЛЕНО: При сортуванні наслідуємо контекст (якщо були в моделях, залишаємось в моделях)
+                    else if (a.action === 'sort') Lampa.Select.show({ title: 'Сортування', items: a.sort_items, onSelect: function(s) { 
+                        Lampa.Activity.push({ 
+                            url: s.url, title: s.title, component: 'pluginx_comp', site: currentSite, page: 1,
+                            is_models: object.is_models,
+                            is_studios: object.is_studios
+                        }); 
+                    }, onBack: function() { comp.filter(); } });
                 }, onBack: function () { Lampa.Controller.toggle('content'); } });
             };
             comp.cardRender = function (card, element, events) {
@@ -572,8 +582,8 @@
                             var sources = doc.querySelectorAll('video source');
                             if (sources.length > 1) menu.push({ title: 'Відтворити в ' + (sources[1].getAttribute('label') || 'Альтернативна якість'), action: 'play_direct', url: sources[1].getAttribute('src') });
                             
-                            // ВИПРАВЛЕНО ТА ЗАФІКСОВАНО: Тільки .btn_models по всій сторінці.
-                            var lvModels = doc.querySelectorAll('.btn_models');
+                            // ВИПРАВЛЕНО: Рівно .btn_model. 
+                            var lvModels = doc.querySelectorAll('.btn_model');
                             var addedModels = [];
                             for (var m = 0; m < lvModels.length; m++) {
                                 var mTitle = lvModels[m].innerText.trim();
