@@ -49,7 +49,6 @@
             target.find('.card__view').append(previewContainer); activePreviewNode = previewContainer;
             var playPromise = videoEl.play(); if (playPromise !== undefined) playPromise.catch(function(){});
         }
-
         function formatTitle(name, info, symbol) {
             if (!info) return name; var cleanInfo = info.replace(/[^0-9:]/g, ''); return name + ' ' + symbol + ' ' + cleanInfo;
         }
@@ -62,6 +61,7 @@
                 if (isAndroid) network.native(url, function (res) { onSuccess(typeof res === 'object' ? JSON.stringify(res) : res); }, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
                 else network.silent(url, onSuccess, function (err) { if (onError) onError(err); }, false, { dataType: 'text', headers: headers, timeout: 10000 });
             }
+
             function parseCardsPornhub(doc, siteBaseUrl) {
                 var results = [], elements = doc.querySelectorAll('li.videoblock, li.pcVideoListItem');
                 for (var i = 0; i < elements.length; i++) {
@@ -70,7 +70,7 @@
                     if (linkEl && imgEl) {
                         var name = imgEl.getAttribute('title') || imgEl.getAttribute('alt') || linkEl.innerText.trim(), vUrl = linkEl.getAttribute('href');
                         if (vUrl && vUrl.indexOf('javascript') === -1) {
-                            if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.startsWith('/') ? '' : '/') + vUrl;
+                            if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
                             var img = imgEl.getAttribute('data-mediumthumb') || imgEl.getAttribute('data-thumb_url') || imgEl.getAttribute('src') || '';
                             if (img && img.indexOf('//') === 0) img = 'https:' + img;
                             var pUrl = imgEl.getAttribute('data-mediabook') || ''; if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
@@ -83,18 +83,21 @@
             }
 
             function parseModelsStudiosPornhub(doc, siteBaseUrl, isStudios) {
-                var results = [], sel = isStudios ? '.channelsList li, .channelsUL li' : '#pornstarListSection li, .pornstarIndexContainer li, .modelIndexContainer li';
+                var results = [], sel = isStudios ? '.channelsList li, .channelsUL li' : '#pornstarListSection > li, .pornstarIndexContainer > li, .modelIndexContainer > li';
                 var elements = doc.querySelectorAll(sel);
                 for (var i = 0; i < elements.length; i++) {
                     var el = elements[i];
-                    var linkEl = el.querySelector(isStudios ? '.usernameLink, .avatar a, a.js-popUnder' : 'a.pornstarLink, a');
+                    var linkEl = el.querySelector(isStudios ? '.usernameLink, .avatar a, a' : 'a.pornstarLink, a.js-popUnder, a');
                     var imgEl = el.querySelector(isStudios ? '.avatar img, img' : 'img.pornstarThumb, img');
                     var titleEl = el.querySelector(isStudios ? '.usernameLink, .title a, .title' : '.performerCardName, .pornstarName, .title');
                     if (linkEl && imgEl) {
                         var name = titleEl ? titleEl.innerText.trim() : (imgEl.getAttribute('alt') || (isStudios ? 'Studio' : 'Model')), vUrl = linkEl.getAttribute('href');
-                        if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.startsWith('/') ? '' : '/') + vUrl;
-                        var img = imgEl.getAttribute('data-thumb_url') || imgEl.getAttribute('src') || ''; if (img && img.indexOf('//') === 0) img = 'https:' + img;
-                        if (name && vUrl) results.push({ name: formatTitle(name, '', '☰'), url: vUrl, picture: img, img: img, is_grid: true, is_models_grid: !isStudios, is_studios_noimg: isStudios });
+                        if (vUrl && vUrl.indexOf('javascript') === -1) {
+                            if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
+                            var img = imgEl.getAttribute('data-thumb_url') || imgEl.getAttribute('data-image') || imgEl.getAttribute('src') || ''; 
+                            if (img && img.indexOf('//') === 0) img = 'https:' + img;
+                            if (name) results.push({ name: formatTitle(name, '', '☰'), url: vUrl, picture: img, img: img, is_grid: true, is_models_grid: !isStudios, is_studios_noimg: isStudios });
+                        }
                     }
                 }
                 return results;
@@ -106,14 +109,13 @@
                     var el = elements[i], linkEl = el.querySelector('a'), imgEl = el.querySelector('img');
                     if (linkEl && imgEl) {
                         var name = el.querySelector('.category-title') ? el.querySelector('.category-title').innerText.trim() : imgEl.getAttribute('alt');
-                        var vUrl = linkEl.getAttribute('href'); if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.startsWith('/') ? '' : '/') + vUrl;
+                        var vUrl = linkEl.getAttribute('href'); if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + (vUrl.indexOf('/') === 0 ? '' : '/') + vUrl;
                         var img = imgEl.getAttribute('data-thumb_url') || imgEl.getAttribute('src') || ''; if (img && img.indexOf('//') === 0) img = 'https:' + img;
                         if (name) results.push({ name: name, url: vUrl, picture: img, img: img, is_grid: true });
                     }
                 }
                 return results;
             }
-
             function parseCards365(doc, siteBaseUrl, isRelated) {
                 var sel = isRelated ? '.related .related_video' : 'li.video_block, li.trailer', elements = doc.querySelectorAll(sel), results = [];
                 for (var i = 0; i < elements.length; i++) {
@@ -129,6 +131,7 @@
                 }
                 return results;
             }
+
             function parseCardsLenkino(doc, siteBaseUrl, isStudios) {
                 var results = [], elements = [];
                 if (isStudios) elements = doc.querySelectorAll('.itm-crd-spn, .itm-crd'); 
@@ -167,8 +170,7 @@
                     if (!imgSrc) continue; if (imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc; else if (imgSrc.indexOf('/') === 0) imgSrc = siteBaseUrl + imgSrc;
                     var linkEl = el.tagName === 'A' ? el : (el.querySelector('a') || el), rawName = imgEl.getAttribute('alt') || linkEl.getAttribute('title') || ''; if (!rawName) { var titleEl = el.querySelector('.title, .name, h5'); if (titleEl) rawName = titleEl.innerText.trim(); else rawName = 'Model'; }
                     var countEl = el.querySelector('.videos'), count = countEl ? countEl.innerText.trim() : '', vUrl = linkEl.getAttribute('href'); if (vUrl && vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl; if (rawName) results.push({ name: formatTitle(rawName, count, '☰'), url: vUrl, picture: imgSrc, img: imgSrc, is_grid: true, is_models_grid: true });
-                }
-                return results;
+                } return results;
             }
 
             function parseStudiosLongvideos(doc, siteBaseUrl) {
@@ -176,12 +178,8 @@
                 var headlines = container.querySelectorAll('.headline'); 
                 for (var i = 0; i < headlines.length; i++) {
                     var el = headlines[i], linkEl = el.querySelector('a.more') || el.querySelector('a'), titleEl = el.querySelector('h1, h2, h3, h4, .title') || linkEl;
-                    if (linkEl) {
-                        var vUrl = linkEl.getAttribute('href'); if (!vUrl || vUrl.indexOf('/sites/') === -1) continue; var rawName = titleEl.innerText.trim(), span = titleEl.querySelector('span'); if (span && rawName !== span.innerText.trim()) rawName = rawName.replace(span.innerText, '').trim(); if (!rawName) rawName = linkEl.innerText.trim();
-                        if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl; if (rawName && !results.some(function(r) { return r.url === vUrl; })) results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true });
-                    }
-                }
-                return results;
+                    if (linkEl) { var vUrl = linkEl.getAttribute('href'); if (!vUrl || vUrl.indexOf('/sites/') === -1) continue; var rawName = titleEl.innerText.trim(), span = titleEl.querySelector('span'); if (span && rawName !== span.innerText.trim()) rawName = rawName.replace(span.innerText, '').trim(); if (!rawName) rawName = linkEl.innerText.trim(); if (vUrl.indexOf('http') !== 0) vUrl = siteBaseUrl + vUrl; if (rawName && !results.some(function(r) { return r.url === vUrl; })) results.push({ name: rawName, url: vUrl, picture: '', img: '', is_studios_noimg: true, is_grid: true }); }
+                } return results;
             }
 
             function parseCategories(doc, siteBaseUrl, siteType, object) {
@@ -198,7 +196,10 @@
             }
             comp.create = function () {
                 var _this = this; this.activity.loader(true);
-                if (currentSite === 'bookmarks') { var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []); if (bmarks.length > 0) { _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 }); var rendered = _this.render(); rendered.addClass('main-grid'); if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid'); else if (bmarks[0].is_models_grid) rendered.addClass('is-models-grid'); else if (bmarks[0].is_grid) rendered.addClass('is-categories-grid'); } else _this.empty(); return; }
+                if (currentSite === 'bookmarks') {
+                    var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []);
+                    if (bmarks.length > 0) { _this.build({ results: bmarks, collection: true, total_pages: 1, page: 1 }); var rendered = _this.render(); rendered.addClass('main-grid'); if (bmarks[0].is_studios_noimg) rendered.addClass('is-noimg-grid'); else if (bmarks[0].is_models_grid) rendered.addClass('is-models-grid'); else if (bmarks[0].is_grid) rendered.addClass('is-categories-grid'); } else _this.empty(); return;
+                }
                 
                 var target = object.url || PORNO365_DOMAIN; if (currentSite === 'lenkino') target = object.url || LENKINO_DOMAIN; if (currentSite === 'longvideos') target = object.url || (LONGVIDEOS_DOMAIN + '/latest-updates/'); if (currentSite === 'pornhub') target = object.url || PORNHUB_DOMAIN + '/video';
                 if (currentSite === 'lenkino') { target = target.replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + (object.page || 1); } else if (currentSite === 'longvideos' && object.page > 1) { var uParts = target.split('?'), baseS = uParts[0].replace(/\/[0-9]+\/$/, '/'); if (!baseS.endsWith('/')) baseS += '/'; target = baseS + object.page + '/' + (uParts.length > 1 ? '?' + uParts[1] : ''); } else if (currentSite === 'pornhub' && object.page > 1) { target = target + (target.indexOf('?') === -1 ? '?' : '&') + 'page=' + object.page; }
@@ -232,17 +233,12 @@
 
             comp.nextPageReuest = function (object, resolve, reject) {
                 if (currentSite === 'bookmarks' || object.is_related) return reject();
-                var cleanD = currentSite === 'lenkino' ? LENKINO_DOMAIN : (currentSite === 'longvideos' ? LONGVIDEOS_DOMAIN : (currentSite === 'pornhub' ? PORNHUB_DOMAIN : PORNO365_DOMAIN));
-                var targetPath = (object.url || '').replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, ''); if (targetPath === '/categories' || object.is_categories || object.is_trends) return reject(); 
+                var cleanD = currentSite === 'lenkino' ? LENKINO_DOMAIN : (currentSite === 'longvideos' ? LONGVIDEOS_DOMAIN : (currentSite === 'pornhub' ? PORNHUB_DOMAIN : PORNO365_DOMAIN)), targetPath = (object.url || '').replace(cleanD, '').split('?')[0].replace(/\/page\/[0-9]+$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, ''); if (targetPath === '/categories' || object.is_categories || object.is_trends) return reject(); 
                 var url = object.url || cleanD;
                 if (currentSite === 'lenkino') { url = (object.url || LENKINO_DOMAIN).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, '') + '/page/' + object.page; } else if (currentSite === 'longvideos') { var uP = (object.url || (LONGVIDEOS_DOMAIN + '/latest-updates/')).split('?'), bL = uP[0].replace(/\/[0-9]+\/$/, '/'); if (!bL.endsWith('/')) bL += '/'; url = bL + object.page + '/' + (uP.length > 1 ? '?' + uP[1] : ''); } else if (currentSite === 'pornhub') { url = (object.url || (PORNHUB_DOMAIN + '/video')) + ((object.url || '').indexOf('?') === -1 ? '?' : '&') + 'page=' + object.page; } else { var base365 = (object.url || PORNO365_DOMAIN).replace(/\/page\/[0-9]+$/, '').replace(/\/+$/, ''); url = base365 + (base365.indexOf('?') !== -1 ? '&' : '/') + object.page; }
-                
                 smartRequest(url, function (htmlText) {
                     var parser = new DOMParser(), doc = parser.parseFromString(htmlText, 'text/html'), res = [];
-                    if (currentSite === 'pornhub') { if (targetPath === '/pornstars' || targetPath === '/channels') res = parseModelsStudiosPornhub(doc, cleanD, targetPath === '/channels'); else res = parseCardsPornhub(doc, cleanD);
-                    } else if (currentSite === 'longvideos') { var cleanPath = targetPath.replace(/\/+$/, ''); var isModelsList = object.is_models || cleanPath === '/models'; var isSitesList = object.is_studios || cleanPath === '/sites'; if (isModelsList) res = parseModelsLongvideos(doc, cleanD); else if (isSitesList) res = parseStudiosLongvideos(doc, cleanD); else res = parseCardsLongvideos(doc, cleanD);
-                    } else if (currentSite === 'lenkino') { var isStudiosLenkino = object.is_studios || (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views'); if (object.is_models || targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite); else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino);
-                    } else { if (object.is_models || targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite); else res = parseCards365(doc, cleanD, false); }
+                    if (currentSite === 'pornhub') { if (targetPath === '/pornstars' || targetPath === '/channels') res = parseModelsStudiosPornhub(doc, cleanD, targetPath === '/channels'); else res = parseCardsPornhub(doc, cleanD); } else if (currentSite === 'longvideos') { var cleanPath = targetPath.replace(/\/+$/, ''); var isModelsList = object.is_models || cleanPath === '/models'; var isSitesList = object.is_studios || cleanPath === '/sites'; if (isModelsList) res = parseModelsLongvideos(doc, cleanD); else if (isSitesList) res = parseStudiosLongvideos(doc, cleanD); else res = parseCardsLongvideos(doc, cleanD); } else if (currentSite === 'lenkino') { var isStudiosLenkino = object.is_studios || (targetPath === '/channels' || targetPath === '/channels-new' || targetPath === '/channels-views'); if (object.is_models || targetPath === '/pornstars') res = parseModels(doc, cleanD, currentSite); else res = parseCardsLenkino(doc, cleanD, isStudiosLenkino); } else { if (object.is_models || targetPath === '/models' || targetPath.indexOf('/models/sort-by-') === 0) res = parseModels(doc, cleanD, currentSite); else res = parseCards365(doc, cleanD, false); }
                     if (res.length > 0) resolve({ results: res, collection: true, total_pages: 1000, page: object.page }); else reject();
                 }, reject);
             };
@@ -282,7 +278,7 @@
                         var str = [], doc = new DOMParser().parseFromString(htmlText, 'text/html');
                         if (targetSite === 'pornhub') { str = parsePHStreams(htmlText); } else if (targetSite === 'longvideos') { var sources = doc.querySelectorAll('video source'); for(var i=0; i<sources.length; i++) str.push({ title: sources[i].getAttribute('label') || 'Оригінал', url: sources[i].getAttribute('src') }); } else if (targetSite === 'lenkino') { var a = htmlText.match(/video_alt_url:[\t ]+'([^']+)'/), u = htmlText.match(/video_url:[\t ]+'([^']+)'/); if (a && a[1]) str.push({ title: 'Основний (HD)', url: a[1] }); if (u && u[1]) str.push({ title: 'Стандарт', url: u[1] }); } else { var q = doc.querySelectorAll('.quality_chooser a'); for (var j = q.length - 1; j >= 0; j--) if (q[j].getAttribute('href')) str.push({ title: q[j].innerText.trim(), url: q[j].getAttribute('href') }); }
                         if (str.length > 0) { var bestStream = str[str.length - 1], playData = { title: element.name, url: bestStream.url, quality: str }; if (targetSite === 'lenkino') playData.headers = { 'Referer': 'https://wes.lenkino.adult/', 'Origin': 'https://wes.lenkino.adult' }; if (targetSite === 'pornhub') playData.headers = { 'Referer': 'https://rt.pornhub.com/', 'Origin': 'https://rt.pornhub.com' }; Lampa.Player.play(playData); Lampa.Player.playlist([playData]); } else Lampa.Noty.show('Не вдалося отримати відео');
-                    }, function() { Lampa.Noty.show('Помилка мережі'); });
+                    });
                 };
                 events.onMenu = function () {
                     hidePreview(); var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []); var isBookmarked = bmarks.some(function(b) { return b.url === element.url; }); var toggleBookmark = function() { var currentBmarks = window.Lampa.Storage.get('pluginx_bookmarks', []); var idx = currentBmarks.findIndex(function(b) { return b.url === element.url; }); if (idx !== -1) { currentBmarks.splice(idx, 1); Lampa.Noty.show('Видалено з обраного'); } else { currentBmarks.unshift(element); Lampa.Noty.show('Додано до обраного'); } window.Lampa.Storage.set('pluginx_bookmarks', currentBmarks); };
