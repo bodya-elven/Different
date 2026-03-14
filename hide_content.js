@@ -16,17 +16,15 @@
             blacklist: []
         };
 
-        // 1. ГЛИБОКИЙ СКАНЕР: Розпаковує об'єкти Lampa у всіх розділах (Пошук, Закладки тощо)
+        // 1. ГЛИБОКИЙ СКАНЕР: Розпаковує "матрьошку" даних Lampa
         function getMediaData(item) {
             if (!item) return null;
             
-            // Розгортаємо "матрьошку" даних
             var data = item;
             if (item.movie && item.movie.id) data = item.movie;
             else if (item.card && item.card.id) data = item.card;
             else if (item.data && item.data.id) data = item.data;
 
-            // Відкидаємо системні об'єкти (плагіни, торренти, акторів)
             var typeStr = (data.type || item.type || '').toString().toLowerCase();
             if (['plugin', 'extension', 'theme', 'addon', 'torrent', 'person'].indexOf(typeStr) !== -1) return null;
             
@@ -35,7 +33,6 @@
             
             if (data.plugin !== undefined || item.plugin !== undefined) return null;
 
-            // Перевіряємо наявність ID та назви
             var hasTitle = data.title || data.name || data.original_title || data.original_name;
             var hasId = data.id !== undefined && data.id !== null;
 
@@ -50,8 +47,7 @@
                     if (!settings.asian_filter_enabled) return items;
                     return items.filter(function (item) {
                         var data = getMediaData(item);
-                        if (!data) return true;
-                        if (!data.original_language) return true;
+                        if (!data || !data.original_language) return true;
                         var lang = data.original_language.toLowerCase();
                         var asianLangs = ['ja', 'ko', 'zh', 'th', 'vi', 'hi', 'ta', 'te', 'ml', 'kn', 'bn', 'ur', 'pa', 'gu', 'mr', 'ne', 'si', 'my', 'km', 'lo', 'mn', 'ka', 'hy', 'az', 'kk', 'ky', 'tg', 'tk', 'uz'];
                         return asianLangs.indexOf(lang) === -1;
@@ -61,8 +57,7 @@
                     if (!settings.language_filter_enabled) return items;
                     return items.filter(function (item) {
                         var data = getMediaData(item);
-                        if (!data) return true;
-                        if (!data.original_language) return true;
+                        if (!data || !data.original_language) return true;
                         var defaultLang = Lampa.Storage.get('language') || 'uk';
                         var original = data.original_title || data.original_name;
                         var translated = data.title || data.name;
@@ -101,7 +96,7 @@
                         return !isSeriesFullyWatched(title, allWatchedEpisodes);
                     });
                 },
-                function (items) { // RU/SU Контент
+                function (items) { // RU/SU Контент (Тепер бачить країни у фільмів!)
                     if (!settings.ru_content_filter_enabled) return items;
                     return items.filter(function (item) {
                         var data = getMediaData(item);
@@ -155,7 +150,6 @@
             }
         };
 
-        // 3. ДОПОМІЖНІ ФУНКЦІЇ ІСТОРІЇ
         function getWatchedEpisodesFromFavorite(id, favoriteData) {
             var card = (favoriteData.card || []).find(function (c) { return c.id === id && Array.isArray(c.seasons) && c.seasons.length > 0; });
             if (!card) return [];
@@ -192,10 +186,10 @@
             return true;
         }
 
-        // 4. ЯДРО: ПЕРЕХОПЛЕННЯ СТВОРЕННЯ КАРТОК (Вбиває контент до відмальовки)
+        // 3. ГЛОБАЛЬНЕ ПЕРЕХОПЛЕННЯ ВІДМАЛЬОВКИ (Вирішує проблему Пошуку та Закладок)
         function initCardInterceptor() {
-            if (window.content_filter_interceptor_v6) return;
-            window.content_filter_interceptor_v6 = true;
+            if (window.content_filter_interceptor_final) return;
+            window.content_filter_interceptor_final = true;
             
             if (Lampa.Card && Lampa.Card.prototype && Lampa.Card.prototype.create) {
                 var origCreate = Lampa.Card.prototype.create;
@@ -204,54 +198,51 @@
                     if (mediaData) {
                         var passed = filterProcessor.apply([mediaData]);
                         if (passed.length === 0) {
-                            // Блокуємо створення: картка стає пустим невидимим блоком без фокусу
                             this.card = $('<div style="display:none !important;" class="hide content-filter-blocked"></div>');
                             this.render = function() { return this.card; };
                             this.destroy = function() {};
                             this.build = function() {};
                             this.visible = function() {};
-                            return; // Перериваємо оригінальну відмальовку Lampa!
+                            return; 
                         }
                     }
                     origCreate.apply(this, arguments);
                 };
             }
         }
-        // 5. КОНТЕКСТНЕ МЕНЮ (Використовує глибокий сканер)
-        function addContextMenu() {
-            Lampa.Listener.follow('app', function (e) {
-                if (e.type === 'contextmenu' && e.object && e.menu && Array.isArray(e.menu)) {
-                    var data = getMediaData(e.object);
-                    if (data) {
-                        var isBlacklisted = false;
-                        if (Array.isArray(settings.blacklist)) {
-                            isBlacklisted = settings.blacklist.some(function(b) { return b.id === data.id; });
-                        }
-
-                        if (!isBlacklisted) {
-                            e.menu.push({
-                                title: Lampa.Lang.translate('content_filter_hide_item'),
-                                onSelect: function () {
-                                    if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
-                                    settings.blacklist.push({ id: data.id, title: data.title || data.name || 'Unknown' });
-                                    Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
-                                    Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
-                                    
-                                    // Миттєво приховуємо картку, на яку натиснули
-                                    if (e.object.card) {
-                                        e.object.card.addClass('hide').removeClass('focusable').css('display', 'none', 'important');
-                                    } else {
-                                        $('.card[data-id="'+data.id+'"]').addClass('hide').removeClass('focusable').css('display', 'none', 'important');
-                                    }
+        // 4. КОНТЕКСТНЕ МЕНЮ (Слухає канали 'app' та 'card')
+        function handleContextMenu(e) {
+            if (e.type === 'contextmenu' && e.object && e.menu && Array.isArray(e.menu)) {
+                var data = getMediaData(e.object);
+                if (data) {
+                    var isBlacklisted = Array.isArray(settings.blacklist) && settings.blacklist.some(function(b) { return b.id === data.id; });
+                    if (!isBlacklisted) {
+                        e.menu.push({
+                            title: Lampa.Lang.translate('content_filter_hide_item'),
+                            onSelect: function () {
+                                if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
+                                settings.blacklist.push({ id: data.id, title: data.title || data.name || 'Unknown' });
+                                Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
+                                Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
+                                
+                                if (e.object.card) {
+                                    e.object.card.addClass('hide').removeClass('focusable').css('display', 'none', 'important');
+                                } else {
+                                    $('.card[data-id="'+data.id+'"]').addClass('hide').removeClass('focusable').css('display', 'none', 'important');
                                 }
-                            });
-                        }
+                            }
+                        });
                     }
                 }
-            });
+            }
         }
 
-        // 6. ЛОКАЛІЗАЦІЯ (Без RU, змінено назви)
+        function addContextMenu() {
+            Lampa.Listener.follow('app', handleContextMenu);
+            Lampa.Listener.follow('card', handleContextMenu);
+        }
+
+        // 5. ЛОКАЛІЗАЦІЯ (Тільки UK та EN, нові назви)
         function addTranslations() {
             Lampa.Lang.add({
                 content_filters: { uk: 'Приховування контенту', en: 'Hide Content' },
@@ -273,7 +264,7 @@
                 keyword_filter: { uk: 'Фільтр за словами', en: 'Keyword Filter' },
                 keyword_filter_desc: { uk: 'Увімкнути фільтрацію за словами', en: 'Enable keyword filter' },
                 keyword_list: { uk: 'Список слів', en: 'List of words' },
-                keyword_list_desc: { uk: 'Слова через кому (наприклад: шоу, концерт)', en: 'Words separated by comma' },
+                keyword_list_desc: { uk: 'Слова через кому', en: 'Words separated by comma' },
                 blacklist_manager: { uk: 'Чорний список (керування)', en: 'Blacklist (manage)' },
                 blacklist_manager_desc: { uk: 'Натисніть для видалення прихованого', en: 'Click to remove hidden items' },
                 content_filter_hide_item: { uk: 'Приховати цей контент', en: 'Hide this content' },
@@ -285,7 +276,7 @@
             });
         }
 
-        // 7. НАЛАШТУВАННЯ В ІНТЕРФЕЙСІ
+        // 6. НАЛАШТУВАННЯ В ІНТЕРФЕЙСІ
         function addSettings() {
             Lampa.Settings.listener.follow('open', function (e) {
                 if (e.name === 'main') {
@@ -374,7 +365,7 @@
             });
         }
 
-        // 8. ЗАВАНТАЖЕННЯ І СТАРТ
+        // 7. ЗАВАНТАЖЕННЯ І СТАРТ
         function loadSettings() {
             var params = ['asian_filter_enabled', 'language_filter_enabled', 'rating_filter_enabled', 'history_filter_enabled', 'ru_content_filter_enabled', 'country_filter_enabled', 'keyword_filter_enabled'];
             params.forEach(function (name) { settings[name] = Lampa.Storage.get(name, false); });
@@ -400,14 +391,14 @@
         }
 
         function initPlugin() {
-            if (window.content_filter_surgery_v6) return;
-            window.content_filter_surgery_v6 = true;
+            if (window.content_filter_surgery_final) return;
+            window.content_filter_surgery_final = true;
 
             loadSettings();
             addTranslations();
             addSettings();
             addContextMenu();
-            initCardInterceptor(); // Активація блокування карток
+            initCardInterceptor(); // Активація глобального блокування карток
 
             Lampa.Listener.follow('line', function (e) {
                 if (e.type !== 'visible' || !needMoreButton(e.data)) return;
@@ -437,7 +428,7 @@
                 }
             });
 
-            // Очищення масивів мережі (залишаємо для правильної роботи пагінації)
+            // Мережевий фільтр залишаємо для підвантаження наступних сторінок
             Lampa.Listener.follow('request_secuses', function (e) {
                 if (!e.data || !Array.isArray(e.data.results)) return;
                 var url = e.url || (e.data && e.data.url) || '';
