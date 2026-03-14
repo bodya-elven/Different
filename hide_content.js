@@ -16,33 +16,43 @@
             blacklist: []
         };
 
-        // НАДІЙНА ПЕРЕВІРКА (Тепер розпізнає контент у всіх розділах)
-        function isMediaContent(item) {
-            if (!item) return false;
+        // 1. ГЛИБОКИЙ СКАНЕР: Розпаковує об'єкти Lampa у всіх розділах (Пошук, Закладки тощо)
+        function getMediaData(item) {
+            if (!item) return null;
             
-            // Відкидаємо плагіни, віджети та торренти
-            var typeStr = (item.type || '').toString().toLowerCase();
-            if (['plugin', 'extension', 'theme', 'addon', 'torrent', 'person'].indexOf(typeStr) !== -1) return false;
-            var compStr = (item.component || '').toString().toLowerCase();
-            if (['torrent', 'plugins', 'extensions'].indexOf(compStr) !== -1) return false;
-            if (item.plugin !== undefined || item.extension !== undefined) return false;
+            // Розгортаємо "матрьошку" даних
+            var data = item;
+            if (item.movie && item.movie.id) data = item.movie;
+            else if (item.card && item.card.id) data = item.card;
+            else if (item.data && item.data.id) data = item.data;
 
-            // Будь-що з ID та назвою вважається контентом
-            var hasTitle = item.title || item.name || item.original_title || item.original_name;
-            var hasId = item.id !== undefined && item.id !== null;
+            // Відкидаємо системні об'єкти (плагіни, торренти, акторів)
+            var typeStr = (data.type || item.type || '').toString().toLowerCase();
+            if (['plugin', 'extension', 'theme', 'addon', 'torrent', 'person'].indexOf(typeStr) !== -1) return null;
             
-            if (hasTitle && hasId) return true;
-            return false;
+            var compStr = (data.component || item.component || '').toString().toLowerCase();
+            if (['torrent', 'plugins', 'extensions'].indexOf(compStr) !== -1) return null;
+            
+            if (data.plugin !== undefined || item.plugin !== undefined) return null;
+
+            // Перевіряємо наявність ID та назви
+            var hasTitle = data.title || data.name || data.original_title || data.original_name;
+            var hasId = data.id !== undefined && data.id !== null;
+
+            if (hasTitle && hasId) return data;
+            return null;
         }
 
+        // 2. ПРОЦЕСОР ФІЛЬТРІВ
         var filterProcessor = {
             filters: [
                 function (items) { // Азіатський контент
                     if (!settings.asian_filter_enabled) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        if (!item.original_language) return true;
-                        var lang = item.original_language.toLowerCase();
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        if (!data.original_language) return true;
+                        var lang = data.original_language.toLowerCase();
                         var asianLangs = ['ja', 'ko', 'zh', 'th', 'vi', 'hi', 'ta', 'te', 'ml', 'kn', 'bn', 'ur', 'pa', 'gu', 'mr', 'ne', 'si', 'my', 'km', 'lo', 'mn', 'ka', 'hy', 'az', 'kk', 'ky', 'tg', 'tk', 'uz'];
                         return asianLangs.indexOf(lang) === -1;
                     });
@@ -50,62 +60,67 @@
                 function (items) { // Фільтр мови
                     if (!settings.language_filter_enabled) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        if (!item.original_language) return true;
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        if (!data.original_language) return true;
                         var defaultLang = Lampa.Storage.get('language') || 'uk';
-                        var original = item.original_title || item.original_name;
-                        var translated = item.title || item.name;
-                        if (item.original_language === defaultLang) return true;
-                        if (item.original_language !== defaultLang && translated !== original) return true;
+                        var original = data.original_title || data.original_name;
+                        var translated = data.title || data.name;
+                        if (data.original_language === defaultLang) return true;
+                        if (data.original_language !== defaultLang && translated !== original) return true;
                         return false;
                     });
                 },
                 function (items) { // Рейтинг
                     if (!settings.rating_filter_enabled) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        var isSpecial = item.media_type === 'video' || item.type === 'Trailer' || item.site === 'YouTube' || (item.key && item.name && item.name.toLowerCase().indexOf('trailer') !== -1);
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        var isSpecial = data.media_type === 'video' || data.type === 'Trailer' || data.site === 'YouTube' || (data.key && data.name && data.name.toLowerCase().indexOf('trailer') !== -1);
                         if (isSpecial) return true;
-                        if (!item.vote_average || item.vote_average === 0) return false;
-                        return item.vote_average >= 6;
+                        if (!data.vote_average || data.vote_average === 0) return false;
+                        return data.vote_average >= 6;
                     });
                 },
-                function (items) { // Переглянутий контент
+                function (items) { // Переглянуте
                     if (!settings.history_filter_enabled) return items;
                     var favorite = Lampa.Storage.get('favorite', '{}');
                     var timeline = Lampa.Storage.cache('timetable', 300, []);
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        var mediaType = item.media_type || (item.first_air_date ? 'tv' : 'movie');
-                        var card = Lampa.Favorite.check(item);
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        var mediaType = data.media_type || (data.first_air_date ? 'tv' : 'movie');
+                        var card = Lampa.Favorite.check(data);
                         if (card && card.thrown) return false;
                         if (!card || !card.history) return true;
                         if (card.history && mediaType === 'movie') return false;
-                        var watchedFromFavorite = getWatchedEpisodesFromFavorite(item.id, favorite);
-                        var watchedFromTimeline = getWatchedEpisodesFromTimeline(item.id, timeline);
+                        var watchedFromFavorite = getWatchedEpisodesFromFavorite(data.id, favorite);
+                        var watchedFromTimeline = getWatchedEpisodesFromTimeline(data.id, timeline);
                         var allWatchedEpisodes = mergeWatchedEpisodes(watchedFromFavorite, watchedFromTimeline);
-                        var title = item.original_title || item.original_name || item.title || item.name || '';
+                        var title = data.original_title || data.original_name || data.title || data.name || '';
                         return !isSeriesFullyWatched(title, allWatchedEpisodes);
                     });
                 },
                 function (items) { // RU/SU Контент
                     if (!settings.ru_content_filter_enabled) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        var lang = (item.original_language || '').toLowerCase();
-                        var countryArr = Array.isArray(item.origin_country) ? item.origin_country : (typeof item.origin_country === 'string' ? [item.origin_country] : []);
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        var lang = (data.original_language || '').toLowerCase();
+                        var countryArr = Array.isArray(data.origin_country) ? data.origin_country : (typeof data.origin_country === 'string' ? [data.origin_country] : []);
                         var countries = countryArr.join(',').toUpperCase();
                         if (lang === 'ru' || countries.indexOf('RU') !== -1 || countries.indexOf('SU') !== -1) return false;
                         return true;
                     });
                 },
-                function (items) { // Фільтр за країною
+                function (items) { // Країни
                     if (!settings.country_filter_enabled || typeof settings.country_list !== 'string') return items;
                     var blocked = settings.country_list.split(',').map(function(c) { return c.trim().toUpperCase(); }).filter(Boolean);
                     if (blocked.length === 0) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        var countryArr = Array.isArray(item.origin_country) ? item.origin_country : (typeof item.origin_country === 'string' ? [item.origin_country] : []);
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        var countryArr = Array.isArray(data.origin_country) ? data.origin_country : (typeof data.origin_country === 'string' ? [data.origin_country] : []);
                         var itemCountry = countryArr.join(',').toUpperCase();
                         if (!itemCountry) return true;
                         return !blocked.some(function(c) { return itemCountry.indexOf(c) !== -1; });
@@ -116,16 +131,18 @@
                     var keywords = settings.keyword_list.split(',').map(function(k) { return k.trim().toLowerCase(); }).filter(Boolean);
                     if (keywords.length === 0) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        var text = [item.title, item.original_title, item.name, item.original_name].filter(Boolean).join(' ').toLowerCase();
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        var text = [data.title, data.original_title, data.name, data.original_name].filter(Boolean).join(' ').toLowerCase();
                         return !keywords.some(function(kw) { return text.indexOf(kw) !== -1; });
                     });
                 },
                 function (items) { // Чорний список
                     if (!Array.isArray(settings.blacklist) || settings.blacklist.length === 0) return items;
                     return items.filter(function (item) {
-                        if (!isMediaContent(item)) return true;
-                        return !settings.blacklist.some(function(b) { return b.id === item.id; });
+                        var data = getMediaData(item);
+                        if (!data) return true;
+                        return !settings.blacklist.some(function(b) { return b.id === data.id; });
                     });
                 }
             ],
@@ -138,6 +155,7 @@
             }
         };
 
+        // 3. ДОПОМІЖНІ ФУНКЦІЇ ІСТОРІЇ
         function getWatchedEpisodesFromFavorite(id, favoriteData) {
             var card = (favoriteData.card || []).find(function (c) { return c.id === id && Array.isArray(c.seasons) && c.seasons.length > 0; });
             if (!card) return [];
@@ -174,45 +192,40 @@
             return true;
         }
 
-        // --- ГЛОБАЛЬНЕ ПРИХОВУВАННЯ У ВСІХ РОЗДІЛАХ ---
-        function initCardListener() {
-            if (window.content_filter_card_listener_v3) return;
-            window.content_filter_card_listener_v3 = true;
+        // 4. ЯДРО: ПЕРЕХОПЛЕННЯ СТВОРЕННЯ КАРТОК (Вбиває контент до відмальовки)
+        function initCardInterceptor() {
+            if (window.content_filter_interceptor_v6) return;
+            window.content_filter_interceptor_v6 = true;
             
-            // Включаємо системну подію створення картки
-            Object.defineProperty(Lampa.Card.prototype, 'build', {
-                get: function () { return this._build; },
-                set: function (value) {
-                    this._build = function () {
-                        value.apply(this);
-                        Lampa.Listener.send('card', { type: 'build', object: this });
-                    }.bind(this);
-                }
-            });
-
-            // Ловимо картку в момент відмальовки
-            Lampa.Listener.follow('card', function(e) {
-                if (e.type === 'build' && e.object && e.object.data && e.object.card) {
-                    if (isMediaContent(e.object.data)) {
-                        var passed = filterProcessor.apply([e.object.data]);
+            if (Lampa.Card && Lampa.Card.prototype && Lampa.Card.prototype.create) {
+                var origCreate = Lampa.Card.prototype.create;
+                Lampa.Card.prototype.create = function () {
+                    var mediaData = getMediaData(this.data);
+                    if (mediaData) {
+                        var passed = filterProcessor.apply([mediaData]);
                         if (passed.length === 0) {
-                            // Робимо повністю невидимою та прибираємо з фокусу навігації
-                            e.object.card.addClass('hide').removeClass('focusable').css('display', 'none', 'important');
+                            // Блокуємо створення: картка стає пустим невидимим блоком без фокусу
+                            this.card = $('<div style="display:none !important;" class="hide content-filter-blocked"></div>');
+                            this.render = function() { return this.card; };
+                            this.destroy = function() {};
+                            this.build = function() {};
+                            this.visible = function() {};
+                            return; // Перериваємо оригінальну відмальовку Lampa!
                         }
                     }
-                }
-            });
+                    origCreate.apply(this, arguments);
+                };
+            }
         }
-
-        // КОНТЕКСТНЕ МЕНЮ (Виправлено)
+        // 5. КОНТЕКСТНЕ МЕНЮ (Використовує глибокий сканер)
         function addContextMenu() {
             Lampa.Listener.follow('app', function (e) {
                 if (e.type === 'contextmenu' && e.object && e.menu && Array.isArray(e.menu)) {
-                    if (isMediaContent(e.object)) {
-                        // Перевіряємо чи не додано вже в чорний список
+                    var data = getMediaData(e.object);
+                    if (data) {
                         var isBlacklisted = false;
                         if (Array.isArray(settings.blacklist)) {
-                            isBlacklisted = settings.blacklist.some(function(b) { return b.id === e.object.id; });
+                            isBlacklisted = settings.blacklist.some(function(b) { return b.id === data.id; });
                         }
 
                         if (!isBlacklisted) {
@@ -220,12 +233,16 @@
                                 title: Lampa.Lang.translate('content_filter_hide_item'),
                                 onSelect: function () {
                                     if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
-                                    settings.blacklist.push({ id: e.object.id, title: e.object.title || e.object.name || 'Unknown' });
+                                    settings.blacklist.push({ id: data.id, title: data.title || data.name || 'Unknown' });
                                     Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
                                     Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
                                     
-                                    // Миттєво ховаємо картку
-                                    $('.card[data-id="'+e.object.id+'"]').addClass('hide').removeClass('focusable').css('display', 'none', 'important');
+                                    // Миттєво приховуємо картку, на яку натиснули
+                                    if (e.object.card) {
+                                        e.object.card.addClass('hide').removeClass('focusable').css('display', 'none', 'important');
+                                    } else {
+                                        $('.card[data-id="'+data.id+'"]').addClass('hide').removeClass('focusable').css('display', 'none', 'important');
+                                    }
                                 }
                             });
                         }
@@ -234,7 +251,7 @@
             });
         }
 
-        // ЛОКАЛІЗАЦІЯ (Без російської, нові назви)
+        // 6. ЛОКАЛІЗАЦІЯ (Без RU, змінено назви)
         function addTranslations() {
             Lampa.Lang.add({
                 content_filters: { uk: 'Приховування контенту', en: 'Hide Content' },
@@ -256,17 +273,19 @@
                 keyword_filter: { uk: 'Фільтр за словами', en: 'Keyword Filter' },
                 keyword_filter_desc: { uk: 'Увімкнути фільтрацію за словами', en: 'Enable keyword filter' },
                 keyword_list: { uk: 'Список слів', en: 'List of words' },
-                keyword_list_desc: { uk: 'Слова через кому', en: 'Words separated by comma' },
+                keyword_list_desc: { uk: 'Слова через кому (наприклад: шоу, концерт)', en: 'Words separated by comma' },
                 blacklist_manager: { uk: 'Чорний список (керування)', en: 'Blacklist (manage)' },
                 blacklist_manager_desc: { uk: 'Натисніть для видалення прихованого', en: 'Click to remove hidden items' },
                 content_filter_hide_item: { uk: 'Приховати цей контент', en: 'Hide this content' },
                 content_filter_added_to_blacklist: { uk: 'Додано в чорний список', en: 'Added to blacklist' },
+                blacklist_empty: { uk: 'Список порожній', en: 'List is empty' },
+                blacklist_removed: { uk: 'Видалено: ', en: 'Removed: ' },
                 more: { uk: 'ще', en: 'more' },
                 title_category: { uk: 'Категорія', en: 'Category' }
             });
         }
 
-        // НАЛАШТУВАННЯ ІНТЕРФЕЙСУ
+        // 7. НАЛАШТУВАННЯ В ІНТЕРФЕЙСІ
         function addSettings() {
             Lampa.Settings.listener.follow('open', function (e) {
                 if (e.name === 'main') {
@@ -340,14 +359,14 @@
                 onRender: function (el) {
                     el.css('cursor', 'pointer').on('hover:enter', function () {
                         var items = (settings.blacklist || []).map(function(b) { return { title: b.title, id: b.id }; });
-                        if (items.length === 0) { Lampa.Noty.show('Список порожній'); return; }
+                        if (items.length === 0) { Lampa.Noty.show(Lampa.Lang.translate('blacklist_empty')); return; }
                         Lampa.Select.show({
                             title: Lampa.Lang.translate('blacklist_manager'),
                             items: items,
                             onSelect: function (item) {
                                 settings.blacklist = settings.blacklist.filter(function(b) { return b.id !== item.id; });
                                 Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
-                                Lampa.Noty.show('Видалено: ' + item.title);
+                                Lampa.Noty.show(Lampa.Lang.translate('blacklist_removed') + item.title);
                             }
                         });
                     });
@@ -355,6 +374,7 @@
             });
         }
 
+        // 8. ЗАВАНТАЖЕННЯ І СТАРТ
         function loadSettings() {
             var params = ['asian_filter_enabled', 'language_filter_enabled', 'rating_filter_enabled', 'history_filter_enabled', 'ru_content_filter_enabled', 'country_filter_enabled', 'keyword_filter_enabled'];
             params.forEach(function (name) { settings[name] = Lampa.Storage.get(name, false); });
@@ -380,14 +400,14 @@
         }
 
         function initPlugin() {
-            if (window.content_filter_pro_v4) return;
-            window.content_filter_pro_v4 = true;
+            if (window.content_filter_surgery_v6) return;
+            window.content_filter_surgery_v6 = true;
 
             loadSettings();
             addTranslations();
             addSettings();
             addContextMenu();
-            initCardListener(); // Підключення глобального перехоплення карток
+            initCardInterceptor(); // Активація блокування карток
 
             Lampa.Listener.follow('line', function (e) {
                 if (e.type !== 'visible' || !needMoreButton(e.data)) return;
@@ -417,7 +437,7 @@
                 }
             });
 
-            // Мережевий перехоплювач для коректної пагінації
+            // Очищення масивів мережі (залишаємо для правильної роботи пагінації)
             Lampa.Listener.follow('request_secuses', function (e) {
                 if (!e.data || !Array.isArray(e.data.results)) return;
                 var url = e.url || (e.data && e.data.url) || '';
@@ -425,7 +445,7 @@
                 if (urlStr.indexOf('extension') !== -1 || urlStr.indexOf('plugin') !== -1 || urlStr.indexOf('store') !== -1 || urlStr.indexOf('market') !== -1) return;
                 if (e.data.results.length === 0) return;
                 
-                var hasMediaContent = e.data.results.some(function(item) { return isMediaContent(item); });
+                var hasMediaContent = e.data.results.some(function(item) { return getMediaData(item) !== null; });
                 if (!hasMediaContent) return;
                 
                 e.data.original_length = e.data.results.length;
