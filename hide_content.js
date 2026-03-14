@@ -15,7 +15,7 @@
         blacklist: []
     };
 
-    // ВИДЯГНЕННЯ КРАЇНИ: Тепер працює і для фільмів (production_countries), і для серіалів (origin_country)
+    // ВИДЯГНЕННЯ КРАЇНИ: Працює і для фільмів (production_countries), і для серіалів (origin_country)
     function extractCountries(item) {
         var countries = [];
         if (item.origin_country) {
@@ -178,47 +178,51 @@
         }
         return true;
     }
-    // КОНТЕКСТНЕ МЕНЮ (За алгоритмом Trakt TV)
-    function addContextMenu() {
-        Lampa.Listener.follow('app', function (e) {
-            if (e.type === 'contextmenu' && e.object && e.menu && Array.isArray(e.menu)) {
-                var item = e.object;
+
+    // КОНТЕКСТНЕ МЕНЮ (Універсальний перехоплювач Trakt TV)
+    function handleContextMenu(e) {
+        if (e.type === 'contextmenu' && e.object && e.menu && Array.isArray(e.menu)) {
+            var item = e.object;
+            
+            // Розкриваємо можливі вкладення Lampa
+            if (item.movie && item.movie.id) item = item.movie;
+            else if (item.data && item.data.id) item = item.data;
+            else if (item.card && item.card.id) item = item.card;
+
+            // Перевіряємо чи є ID і Назва
+            if (item && item.id && (item.title || item.name)) {
+                var comp = (item.component || '').toLowerCase();
+                var type = (item.type || '').toLowerCase();
                 
-                // Розкриваємо можливі вкладення Lampa
-                if (item.movie && item.movie.id) item = item.movie;
-                else if (item.data && item.data.id) item = item.data;
-                else if (item.card && item.card.id) item = item.card;
+                // Відкидаємо меню для торрентів та акторів
+                if (comp === 'torrent' || type === 'torrent' || type === 'person') return;
 
-                // Перевіряємо чи є ID і Назва (головний критерій)
-                if (item && item.id && (item.title || item.name)) {
-                    var comp = (item.component || '').toLowerCase();
-                    var type = (item.type || '').toLowerCase();
-                    
-                    // Відкидаємо меню для торрентів та акторів
-                    if (comp === 'torrent' || type === 'torrent' || type === 'person') return;
+                var isBlacklisted = false;
+                if (Array.isArray(settings.blacklist)) {
+                    isBlacklisted = settings.blacklist.some(function(b) { return b.id === item.id; });
+                }
 
-                    var isBlacklisted = false;
-                    if (Array.isArray(settings.blacklist)) {
-                        isBlacklisted = settings.blacklist.some(function(b) { return b.id === item.id; });
-                    }
-
-                    if (!isBlacklisted) {
-                        e.menu.push({
-                            title: Lampa.Lang.translate('content_filter_hide_item'),
-                            onSelect: function () {
-                                if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
-                                settings.blacklist.push({ id: item.id, title: item.title || item.name || 'Unknown' });
-                                Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
-                                Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
-                                
-                                // Приховуємо картку з екрана без перезавантаження
-                                $('.card[data-id="' + item.id + '"]').addClass('hide').css('display', 'none');
-                            }
-                        });
-                    }
+                if (!isBlacklisted) {
+                    e.menu.push({
+                        title: Lampa.Lang.translate('content_filter_hide_item'),
+                        onSelect: function () {
+                            if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
+                            settings.blacklist.push({ id: item.id, title: item.title || item.name || 'Unknown' });
+                            Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
+                            Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
+                            
+                            // Приховуємо картку з екрана
+                            $('.card[data-id="' + item.id + '"]').addClass('hide').css('display', 'none');
+                        }
+                    });
                 }
             }
-        });
+        }
+    }
+
+    function addContextMenu() {
+        Lampa.Listener.follow('app', handleContextMenu);
+        Lampa.Listener.follow('card', handleContextMenu); // Тепер пункт меню з'явиться 100%!
     }
 
     // ЛОКАЛІЗАЦІЯ (Тільки UK та EN)
@@ -348,9 +352,9 @@
                             Lampa.Noty.show(Lampa.Lang.translate('blacklist_removed') + item.title);
                         }
                     });
-                }
-            });
-        }
+                });
+            }
+        });
     }
 
     function loadSettings() {
@@ -408,7 +412,15 @@
             head.append(more);
         });
 
-        // Класичний перехоплювач даних: ніяких візуальних дірок у рядах
+        // Завантаження наступних сторінок
+        Lampa.Listener.follow('line', function (e) {
+            if (e.type !== 'append' || !needMoreButton(e.data)) return;
+            if (e.items.length === e.data.results.length && Lampa.Controller.own(e.line)) {
+                Lampa.Controller.collectionAppend(e.line.more());
+            }
+        });
+
+        // Класичний перехоплювач даних
         Lampa.Listener.follow('request_secuses', function (e) {
             if (!e.data || !Array.isArray(e.data.results)) return;
             var urlStr = typeof (e.url || (e.data && e.data.url)) === 'string' ? (e.url || (e.data && e.data.url)).toLowerCase() : '';
