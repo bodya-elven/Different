@@ -97,7 +97,6 @@
                                 Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
                                 Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
                                 
-                                // Приховування без зламу DOM
                                 if (e.object.card && e.object.card.node) $(e.object.card.node).css('display', 'none');
                                 else $('.card[data-id="' + id + '"]').css('display', 'none');
                             }
@@ -141,25 +140,32 @@
         });
     }
 
-    // ЧИСТЕ ДОДАВАННЯ КНОПКИ У РОЗДІЛ "ІНТЕРФЕЙС"
     function addSettings() {
-        // 1. Кнопка-перехід у системному розділі "Інтерфейс"
+        // Кнопка в меню "Інтерфейс"
         Lampa.SettingsApi.addParam({
             component: 'interface',
             param: { name: 'content_filters_btn', type: 'static' },
             field: { name: Lampa.Lang.translate('content_filters'), description: Lampa.Lang.translate('content_filters_desc') },
             onRender: function (el) {
+                // Безпечно переносимо кнопку нагору (на друге місце)
+                setTimeout(function () {
+                    var firstItem = el.parent().children().eq(0);
+                    if (firstItem.length && el[0] !== firstItem[0]) {
+                        el.insertAfter(firstItem);
+                    }
+                }, 50);
+
                 el.on('hover:enter', function () {
                     Lampa.Settings.create('content_filters');
-                    var currentController = Lampa.Controller.enabled().controller;
-                    if (currentController) {
-                        currentController.back = function () { Lampa.Settings.create('interface'); };
+                    var controller = Lampa.Controller.enabled().controller;
+                    if (controller) {
+                        controller.back = function () { Lampa.Settings.create('interface'); };
                     }
                 });
             }
         });
 
-        // 2. Внутрішні пункти меню
+        // Налаштування самого плагіна
         var params = [
             { id: 'ru_lang', name: 'ru_lang_enabled' },
             { id: 'asian_lang', name: 'asian_lang_enabled' },
@@ -243,8 +249,13 @@
     }
 
     function initPlugin() {
-        if (window.content_filter_perfect_ui) return;
-        window.content_filter_perfect_ui = true;
+        if (window.content_filter_final_fixed) return;
+        window.content_filter_final_fixed = true;
+
+        // ВАЖЛИВО: Реєстрація шаблону для меню налаштувань (вирішує "Template not found")
+        if (!Lampa.Template.get('settings_content_filters', true)) {
+            Lampa.Template.add('settings_content_filters', '<div><div class="settings-folder scroll"></div></div>');
+        }
 
         var keys = ['ru_lang_enabled', 'asian_lang_enabled', 'indian_lang_enabled', 'turkish_lang_enabled', 'arabic_lang_enabled', 'other_languages', 'rating_limit', 'hide_watched', 'keyword_filter'];
         keys.forEach(function(k) { settings[k] = Lampa.Storage.get(k, settings[k]); });
