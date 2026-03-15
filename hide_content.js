@@ -1,4 +1,4 @@
-/* Created by Elven (1|1) - 100% Original UI Architecture */
+/* Created by Elven (1|1) - Bulletproof Architecture */
 (function () {
     'use strict';
 
@@ -63,7 +63,7 @@
                 if (settings.arabic_lang_enabled && lang === 'ar') return false;
 
                 if (settings.other_languages) {
-                    var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+                    var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); });
                     if (other.indexOf(lang) !== -1) return false;
                 }
 
@@ -129,13 +129,13 @@
             ru_lang: { ru: 'Скрыть русский контент', uk: 'Приховати російський контент', en: 'Hide Russian content' },
             ru_lang_desc: { ru: 'Скрывает карточки с языком: <b>ru</b>', uk: 'Приховує картки з мовою оригіналу: <b>ru</b>', en: 'Hides cards with original language: <b>ru</b>' },
             asian_lang: { ru: 'Скрыть азиатский контент', uk: 'Приховати азійський контент', en: 'Hide Asian content' },
-            asian_lang_desc: { ru: 'Скрывает карточки с языком: <b>ja</b>, <b>ko</b>, <b>zh</b>', uk: 'Приховує картки з мовами: <b>ja</b>, <b>ko</b>, <b>zh</b>', en: 'Hides cards with languages: <b>ja</b>, <b>ko</b>, <b>zh</b>' },
+            asian_lang_desc: { ru: 'Скрывает карточки с языком: <b>ja</b>, <b>ko</b>, <b>zh</b>', uk: 'Приховує картки з мовами оригіналу: <b>ja</b>, <b>ko</b>, <b>zh</b>', en: 'Hides cards with languages: <b>ja</b>, <b>ko</b>, <b>zh</b>' },
             indian_lang: { ru: 'Скрыть индийский контент', uk: 'Приховати індійський контент', en: 'Hide Indian content' },
             indian_lang_desc: { ru: 'Скрывает карточки с языком: <b>hi</b>', uk: 'Приховує картки з мовою оригіналу: <b>hi</b>', en: 'Hides cards with original language: <b>hi</b>' },
             turkish_lang: { ru: 'Скрыть турецкий контент', uk: 'Приховати турецький контент', en: 'Hide Turkish content' },
-            turkish_lang_desc: { ru: 'Скрывает карточки с языком: <b>tr</b>', uk: 'Приховує картки з мовою: <b>tr</b>', en: 'Hides cards with original language: <b>tr</b>' },
+            turkish_lang_desc: { ru: 'Скрывает карточки с языком: <b>tr</b>', uk: 'Приховує картки з мовою оригіналу: <b>tr</b>', en: 'Hides cards with original language: <b>tr</b>' },
             arabic_lang: { ru: 'Скрыть арабский контент', uk: 'Приховати арабський контент', en: 'Hide Arabic content' },
-            arabic_lang_desc: { ru: 'Скрывает карточки с языком: <b>ar</b>', uk: 'Приховує картки з мовою: <b>ar</b>', en: 'Hides cards with original language: <b>ar</b>' },
+            arabic_lang_desc: { ru: 'Скрывает карточки с языком: <b>ar</b>', uk: 'Приховує картки з мовою оригіналу: <b>ar</b>', en: 'Hides cards with original language: <b>ar</b>' },
             other_langs: { ru: 'Другие языки', uk: 'Інші мови', en: 'Other languages' },
             other_langs_desc: { ru: 'Коды языков через запятую', uk: 'Впишіть коди мов через кому', en: 'Enter language codes separated by comma' },
             low_rating: { ru: 'Скрыть низкий рейтинг', uk: 'Приховати низький рейтинг', en: 'Hide low rating' },
@@ -143,55 +143,60 @@
             hide_watched: { ru: 'Скрыть просмотренное', uk: 'Приховати переглянуте', en: 'Hide watched' },
             hide_watched_desc: { ru: 'Скрывает просмотренные карточки', uk: 'Приховує переглянуті фільми та серіали', en: 'Hides watched movies and TV shows' },
             word_filter: { ru: 'Скрытие по словам', uk: 'Приховування за словами', en: 'Hiding by words' },
-            word_filter_desc: { ru: 'Слова в названии через запятую', uk: 'Приховує фільми та серіали за словами', en: 'Hides movies and TV shows by words' },
+            word_filter_desc: { ru: 'Слова в названии через запятую', uk: 'Приховує фільми та серіали за словами', en: 'Hides movies and TV shows by words in title' },
             blacklist_title: { ru: 'Черный список', uk: 'Чорний список', en: 'Blacklist' },
-            blacklist_desc: { ru: 'Скрытый вручную контент', uk: 'Керування прихованим вручну контентом', en: 'Manually hidden content' },
+            blacklist_desc: { ru: 'Скрытый вручную контент', uk: 'Керування контентом, що був прихований вручну через меню «Дії»', en: 'Manage manually hidden content' },
             content_filter_hide_item: { ru: 'Скрыть этот контент', uk: 'Приховати цей контент', en: 'Hide this content' },
-            content_filter_added_to_blacklist: { ru: 'Добавлено в черный список. Обновите страницу', uk: 'Додано в чорний список. Оновіть сторінку', en: 'Added to blacklist' },
+            content_filter_added_to_blacklist: { ru: 'Добавлено в черный список. Обновите страницу', uk: 'Додано в чорний список. Оновіть сторінку', en: 'Added to blacklist. Refresh page' },
             rating_none: { ru: 'Нет', uk: 'Ні', en: 'None' },
             blacklist_empty: { ru: 'Список пуст', uk: 'Список порожній', en: 'List is empty' },
             blacklist_removed: { ru: 'Удалено: ', uk: 'Видалено: ', en: 'Removed: ' }
         });
     }
 
-    // БУКВАЛЬНА КОПІЯ ТВОГО ОРИГІНАЛУ ДЛЯ ПОБУДОВИ МЕНЮ (0% ІМПРОВІЗАЦІЇ)
     function addSettings() {
+        // 1. Офіційна реєстрація. Lampa сама створить правильний шаблон, жодного крашу.
+        Lampa.SettingsApi.addComponent({
+            component: 'content_filters',
+            name: Lampa.Lang.translate('content_filters'),
+            icon: '<svg viewBox="0 0 24 24"><path fill="none" d="M0 0h24v24H0z"/><path fill="currentColor" d="M10 18h4v-2h-4v2zM3 6v2h18V6H3zm3 7h12v-2H6v2z"/></svg>'
+        });
+
+        // 2. БЕЗПЕЧНЕ керування вікнами. Ніяких .update() і setTimeout.
         Lampa.Settings.listener.follow('open', function (e) {
+            // Тихо ховаємо дублікат із Головного меню
             if (e.name === 'main') {
-                var render = Lampa.Settings.main().render();
-                if (render.find('[data-component="content_filters"]').length === 0) {
-                    Lampa.SettingsApi.addComponent({
-                        component: 'content_filters',
-                        name: Lampa.Lang.translate('content_filters')
-                    });
+                e.render.find('[data-component="content_filters"]').removeClass('selector').hide();
+            }
+            // Синхронно пересуваємо кнопку в Інтерфейсі на 4-те місце ДО ТОГО, як ініціалізується пульт!
+            if (e.name === 'interface') {
+                var myBtn = e.render.find('.settings-param').filter(function() {
+                    return $(this).find('.settings-param__name').text() === Lampa.Lang.translate('content_filters');
+                });
+                var target = e.render.find('.settings-param').eq(2);
+                if (myBtn.length && target.length && myBtn[0] !== target[0]) {
+                    myBtn.insertAfter(target);
                 }
-                Lampa.Settings.main().update();
-                render.find('[data-component="content_filters"]').addClass('hide');
             }
         });
 
+        // 3. Додаємо кнопку.
         Lampa.SettingsApi.addParam({
             component: 'interface',
-            param: { name: 'content_filters', type: 'static', default: true },
-            field: {
-                name: Lampa.Lang.translate('content_filters'),
-                description: Lampa.Lang.translate('content_filters_desc')
-            },
+            param: { name: 'content_filters_btn', type: 'static' },
+            field: { name: Lampa.Lang.translate('content_filters'), description: Lampa.Lang.translate('content_filters_desc') },
             onRender: function (el) {
-                setTimeout(function () {
-                    var title = Lampa.Lang.translate('content_filters');
-                    $('.settings-param > div:contains("' + title + '")').parent().insertAfter($('div[data-name="interface_size"]'));
-                }, 0);
                 el.on('hover:enter', function () {
                     Lampa.Settings.create('content_filters');
-                    Lampa.Controller.enabled().controller.back = function () {
-                        Lampa.Settings.create('interface');
-                    };
+                    var controller = Lampa.Controller.enabled().controller;
+                    if (controller) {
+                        controller.back = function () { Lampa.Settings.create('interface'); };
+                    }
                 });
             }
         });
 
-        // Наповнюємо параметрами
+        // 4. Внутрішні налаштування плагіна.
         var params = [
             { id: 'ru_lang', name: 'ru_lang_enabled' },
             { id: 'asian_lang', name: 'asian_lang_enabled' },
@@ -217,6 +222,7 @@
                 var valStr = settings.other_languages || '';
                 var valueDiv = $('<div class="settings-param__value"></div>').text(valStr);
                 el.find('.settings-param__name').after(valueDiv);
+                
                 el.on('hover:enter', function () {
                     if (Lampa.Keypad) Lampa.Keypad.enable();
                     Lampa.Input.edit({ title: Lampa.Lang.translate('other_langs'), value: settings.other_languages || '', free: true }, function (newVal) {
@@ -249,6 +255,7 @@
                 var valStr = settings.keyword_filter || '';
                 var valueDiv = $('<div class="settings-param__value"></div>').text(valStr);
                 el.find('.settings-param__name').after(valueDiv);
+                
                 el.on('hover:enter', function () {
                     if (Lampa.Keypad) Lampa.Keypad.enable();
                     Lampa.Input.edit({ title: Lampa.Lang.translate('word_filter'), value: settings.keyword_filter || '', free: true }, function (newVal) {
@@ -277,8 +284,8 @@
     }
 
     function initPlugin() {
-        if (window.content_filter_classic_v3) return;
-        window.content_filter_classic_v3 = true;
+        if (window.content_filter_bulletproof_final) return;
+        window.content_filter_bulletproof_final = true;
 
         var keys = ['ru_lang_enabled', 'asian_lang_enabled', 'indian_lang_enabled', 'turkish_lang_enabled', 'arabic_lang_enabled', 'other_languages', 'rating_limit', 'hide_watched', 'keyword_filter'];
         keys.forEach(function(k) { settings[k] = Lampa.Storage.get(k, settings[k]); });
