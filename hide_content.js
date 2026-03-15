@@ -1,4 +1,4 @@
-/* Created by Elven (1|1) */
+/* Created by Elven (1|1) - 100% Stable Core Version */
 (function () {
     'use strict';
 
@@ -39,7 +39,7 @@
                 var data = getMediaData(item);
                 if (!data) return true;
 
-                // 1. Чорний список
+                // 1. Чорний список (за ID)
                 var id = data.id || data.tmdb_id;
                 if (settings.blacklist.some(function(b) { return b.id == id; })) return false;
 
@@ -52,13 +52,13 @@
                 if (settings.turkish_lang_enabled && lang === 'tr') return false;
                 if (settings.arabic_lang_enabled && lang === 'ar') return false;
 
-                // 3. Інші мови
+                // 3. Інші мови (вручну)
                 if (settings.other_languages) {
                     var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); });
                     if (other.indexOf(lang) !== -1) return false;
                 }
 
-                // 4. Рейтинг (включно з нульовим рейтингом)
+                // 4. Рейтинг (включно з 0)
                 if (settings.rating_limit > 0) {
                     var vote = parseFloat(data.vote_average || 0);
                     if (vote < settings.rating_limit) return false;
@@ -75,9 +75,9 @@
                     }
                 }
 
-                // 6. Слова
+                // 6. Фільтр за словами
                 if (settings.keyword_filter) {
-                    var words = settings.keyword_filter.split(',').map(function(s){ return s.trim().toLowerCase(); });
+                    var words = settings.keyword_filter.split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
                     var title = (data.title || data.name || data.original_title || data.original_name || '').toLowerCase();
                     if (words.some(function(w) { return title.indexOf(w) !== -1; })) return false;
                 }
@@ -143,35 +143,33 @@
         });
     }
 
-    // ТУТ ПОВЕРНУТО 100% ВЧОРАШНІЙ АЛГОРИТМ ПОБУДОВИ МЕНЮ
     function addSettings() {
-        Lampa.Settings.listener.follow('open', function (e) {
-            if (e.name === 'main') {
-                var render = Lampa.Settings.main().render();
-                if (render.find('[data-component="content_filters"]').length === 0) {
-                    Lampa.SettingsApi.addComponent({ component: 'content_filters', name: Lampa.Lang.translate('content_filters') });
-                }
-                Lampa.Settings.main().update();
-                render.find('[data-component="content_filters"]').addClass('hide');
-            }
-        });
+        // Обов'язкова реєстрація системного шаблону для нашого вікна налаштувань (Виключає "Template not found")
+        if (!Lampa.Template.get('settings_content_filters', true)) {
+            Lampa.Template.add('settings_content_filters', '<div><div class="settings-folder scroll"></div></div>');
+        }
 
+        // БЕЗПЕЧНА інтеграція кнопки переходу в меню "Інтерфейс"
         Lampa.SettingsApi.addParam({
             component: 'interface',
-            param: { name: 'content_filters', type: 'static', default: true },
+            param: { name: 'content_filters_btn', type: 'static' },
             field: { name: Lampa.Lang.translate('content_filters'), description: Lampa.Lang.translate('content_filters_desc') },
             onRender: function (el) {
+                // Плавно і безпечно пересуваємо пункт під "Розмір інтерфейсу" без перемальовок і крашів
                 setTimeout(function () {
-                    var title = Lampa.Lang.translate('content_filters');
-                    $('.settings-param > div:contains("' + title + '")').parent().insertAfter($('div[data-name="interface_size"]'));
-                }, 0);
+                    var target = el.parent().find('.settings-param > div:contains("' + Lampa.Lang.translate('interface_size') + '")').parent();
+                    if (target.length) el.insertAfter(target);
+                }, 10);
+
                 el.on('hover:enter', function () {
                     Lampa.Settings.create('content_filters');
-                    Lampa.Controller.enabled().controller.back = function () { Lampa.Settings.create('interface'); };
+                    var controller = Lampa.Controller.enabled().controller;
+                    if (controller) controller.back = function () { Lampa.Settings.create('interface'); };
                 });
             }
         });
 
+        // Налаштування плагіна (всередині вікна "Приховування контенту")
         var params = [
             { id: 'ru_lang', name: 'ru_lang_enabled' },
             { id: 'asian_lang', name: 'asian_lang_enabled' },
@@ -194,21 +192,14 @@
             param: { name: 'other_languages', type: 'static' },
             field: { name: Lampa.Lang.translate('other_langs'), description: Lampa.Lang.translate('other_langs_desc') },
             onRender: function (el) {
-                var val = settings.other_languages || '';
-                var valueDiv = $('<div class="settings-param__value"></div>').text(val);
+                var valStr = settings.other_languages || '';
+                var valueDiv = $('<div class="settings-param__value"></div>').text(valStr);
                 el.find('.settings-param__name').after(valueDiv);
-
+                
                 el.on('hover:enter', function () {
                     if (Lampa.Keypad) Lampa.Keypad.enable();
-                    Lampa.Input.edit({
-                        title: Lampa.Lang.translate('other_langs'),
-                        value: settings.other_languages || '',
-                        free: true,
-                        nosave: false
-                    }, function (newVal) {
-                        settings.other_languages = newVal;
-                        Lampa.Storage.set('other_languages', newVal);
-                        valueDiv.text(newVal);
+                    Lampa.Input.edit({ title: Lampa.Lang.translate('other_langs'), value: settings.other_languages || '', free: true }, function (newVal) {
+                        settings.other_languages = newVal; Lampa.Storage.set('other_languages', newVal); valueDiv.text(newVal);
                     });
                 });
             }
@@ -234,21 +225,14 @@
             param: { name: 'keyword_filter', type: 'static' },
             field: { name: Lampa.Lang.translate('word_filter'), description: Lampa.Lang.translate('word_filter_desc') },
             onRender: function (el) {
-                var val = settings.keyword_filter || '';
-                var valueDiv = $('<div class="settings-param__value"></div>').text(val);
+                var valStr = settings.keyword_filter || '';
+                var valueDiv = $('<div class="settings-param__value"></div>').text(valStr);
                 el.find('.settings-param__name').after(valueDiv);
-
+                
                 el.on('hover:enter', function () {
                     if (Lampa.Keypad) Lampa.Keypad.enable();
-                    Lampa.Input.edit({
-                        title: Lampa.Lang.translate('word_filter'),
-                        value: settings.keyword_filter || '',
-                        free: true,
-                        nosave: false
-                    }, function (newVal) {
-                        settings.keyword_filter = newVal;
-                        Lampa.Storage.set('keyword_filter', newVal);
-                        valueDiv.text(newVal);
+                    Lampa.Input.edit({ title: Lampa.Lang.translate('word_filter'), value: settings.keyword_filter || '', free: true }, function (newVal) {
+                        settings.keyword_filter = newVal; Lampa.Storage.set('keyword_filter', newVal); valueDiv.text(newVal);
                     });
                 });
             }
@@ -261,24 +245,20 @@
             onRender: function (el) {
                 el.on('hover:enter', function () {
                     var items = settings.blacklist.map(function(b) { return { title: b.title, id: b.id }; });
-                    if (items.length === 0) { Lampa.Noty.show('Список порожній'); return; }
-                    Lampa.Select.show({
-                        title: Lampa.Lang.translate('blacklist_title'),
-                        items: items,
-                        onSelect: function (item) {
-                            settings.blacklist = settings.blacklist.filter(function(b) { return b.id !== item.id; });
-                            Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
-                            Lampa.Noty.show('Видалено: ' + item.title);
-                        }
-                    });
+                    if (items.length === 0) return Lampa.Noty.show('Список порожній');
+                    Lampa.Select.show({ title: Lampa.Lang.translate('blacklist_title'), items: items, onSelect: function (item) {
+                        settings.blacklist = settings.blacklist.filter(function(b) { return b.id !== item.id; });
+                        Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
+                        Lampa.Noty.show('Видалено: ' + item.title);
+                    }});
                 });
             }
         });
     }
 
     function initPlugin() {
-        if (window.content_filter_restored_stable) return;
-        window.content_filter_restored_stable = true;
+        if (window.content_filter_pure_core_v1) return;
+        window.content_filter_pure_core_v1 = true;
 
         var keys = ['ru_lang_enabled', 'asian_lang_enabled', 'indian_lang_enabled', 'turkish_lang_enabled', 'arabic_lang_enabled', 'other_languages', 'rating_limit', 'hide_watched', 'keyword_filter'];
         keys.forEach(function(k) { settings[k] = Lampa.Storage.get(k, settings[k]); });
@@ -289,14 +269,16 @@
         addSettings();
         addContextMenu();
 
+        // Чиста і безпечна фільтрація каталогів на рівні мережі
         Lampa.Listener.follow('request_secuses', function (e) {
             if (!e.data || !Array.isArray(e.data.results)) return;
             var urlStr = typeof (e.url || (e.data && e.data.url)) === 'string' ? (e.url || (e.data && e.data.url)).toLowerCase() : '';
-            if (urlStr.indexOf('extension') !== -1 || urlStr.indexOf('plugin') !== -1 || urlStr.indexOf('store') !== -1 || urlStr.indexOf('market') !== -1) return;
-            if (e.data.results.length === 0) return;
-
-            e.data.original_length = e.data.results.length;
-            e.data.results = filterProcessor.apply(e.data.results);
+            if (urlStr.indexOf('extension') !== -1 || urlStr.indexOf('plugin') !== -1 || urlStr.indexOf('store') !== -1) return;
+            
+            if (e.data.results.length > 0) {
+                e.data.original_length = e.data.results.length;
+                e.data.results = filterProcessor.apply(e.data.results);
+            }
         });
     }
 
