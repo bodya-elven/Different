@@ -1,4 +1,4 @@
-/* Created by Elven (1|1) - 100% Stable Core Version */
+/* Created by Elven (1|1) - Final Stable Core */
 (function () {
     'use strict';
 
@@ -39,7 +39,7 @@
                 var data = getMediaData(item);
                 if (!data) return true;
 
-                // 1. Чорний список (за ID)
+                // 1. Чорний список
                 var id = data.id || data.tmdb_id;
                 if (settings.blacklist.some(function(b) { return b.id == id; })) return false;
 
@@ -52,13 +52,13 @@
                 if (settings.turkish_lang_enabled && lang === 'tr') return false;
                 if (settings.arabic_lang_enabled && lang === 'ar') return false;
 
-                // 3. Інші мови (вручну)
+                // 3. Інші мови
                 if (settings.other_languages) {
                     var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); });
                     if (other.indexOf(lang) !== -1) return false;
                 }
 
-                // 4. Рейтинг (включно з 0)
+                // 4. Рейтинг
                 if (settings.rating_limit > 0) {
                     var vote = parseFloat(data.vote_average || 0);
                     if (vote < settings.rating_limit) return false;
@@ -75,7 +75,7 @@
                     }
                 }
 
-                // 6. Фільтр за словами
+                // 6. Слова
                 if (settings.keyword_filter) {
                     var words = settings.keyword_filter.split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
                     var title = (data.title || data.name || data.original_title || data.original_name || '').toLowerCase();
@@ -144,32 +144,52 @@
     }
 
     function addSettings() {
-        // Обов'язкова реєстрація системного шаблону для нашого вікна налаштувань (Виключає "Template not found")
+        // 1. СТВОРЮЄМО ШАБЛОН І КОМПОНЕНТ РАЗОМ (Усуває помилку "Template not found")
         if (!Lampa.Template.get('settings_content_filters', true)) {
             Lampa.Template.add('settings_content_filters', '<div><div class="settings-folder scroll"></div></div>');
         }
+        Lampa.SettingsApi.addComponent({
+            component: 'content_filters',
+            name: Lampa.Lang.translate('content_filters')
+        });
 
-        // БЕЗПЕЧНА інтеграція кнопки переходу в меню "Інтерфейс"
+        // 2. ХОВАЄМО З ГОЛОВНОГО МЕНЮ БЕЗ ВИКЛИКУ ".update()" (Усуває помилку "reading '0'")
+        Lampa.Settings.listener.follow('open', function (e) {
+            if (e.name === 'main') {
+                e.render.find('[data-component="content_filters"]').css('display', 'none');
+            }
+        });
+
+        // 3. ДОДАЄМО КНОПКУ В "ІНТЕРФЕЙС" (4-й пункт)
         Lampa.SettingsApi.addParam({
             component: 'interface',
-            param: { name: 'content_filters_btn', type: 'static' },
+            param: { name: 'content_filters_btn', type: 'static', default: true },
             field: { name: Lampa.Lang.translate('content_filters'), description: Lampa.Lang.translate('content_filters_desc') },
             onRender: function (el) {
-                // Плавно і безпечно пересуваємо пункт під "Розмір інтерфейсу" без перемальовок і крашів
+                // Плавне переміщення після генерації списку
                 setTimeout(function () {
-                    var target = el.parent().find('.settings-param > div:contains("' + Lampa.Lang.translate('interface_size') + '")').parent();
-                    if (target.length) el.insertAfter(target);
-                }, 10);
+                    var target = $('.settings-param').filter(function() {
+                        return $(this).text().indexOf('Розмір інтерфейсу') !== -1 || $(this).text().indexOf('Interface size') !== -1;
+                    });
+                    if (target.length) {
+                        el.insertAfter(target.last());
+                    } else {
+                        var items = el.parent().children('.settings-param');
+                        if (items.length >= 4) el.insertAfter(items.eq(2));
+                    }
+                }, 50);
 
                 el.on('hover:enter', function () {
                     Lampa.Settings.create('content_filters');
                     var controller = Lampa.Controller.enabled().controller;
-                    if (controller) controller.back = function () { Lampa.Settings.create('interface'); };
+                    if (controller) {
+                        controller.back = function () { Lampa.Settings.create('interface'); };
+                    }
                 });
             }
         });
 
-        // Налаштування плагіна (всередині вікна "Приховування контенту")
+        // 4. НАПОВНЮЄМО НАШЕ МЕНЮ
         var params = [
             { id: 'ru_lang', name: 'ru_lang_enabled' },
             { id: 'asian_lang', name: 'asian_lang_enabled' },
@@ -257,8 +277,8 @@
     }
 
     function initPlugin() {
-        if (window.content_filter_pure_core_v1) return;
-        window.content_filter_pure_core_v1 = true;
+        if (window.content_filter_rock_solid_v5) return;
+        window.content_filter_rock_solid_v5 = true;
 
         var keys = ['ru_lang_enabled', 'asian_lang_enabled', 'indian_lang_enabled', 'turkish_lang_enabled', 'arabic_lang_enabled', 'other_languages', 'rating_limit', 'hide_watched', 'keyword_filter'];
         keys.forEach(function(k) { settings[k] = Lampa.Storage.get(k, settings[k]); });
@@ -269,7 +289,6 @@
         addSettings();
         addContextMenu();
 
-        // Чиста і безпечна фільтрація каталогів на рівні мережі
         Lampa.Listener.follow('request_secuses', function (e) {
             if (!e.data || !Array.isArray(e.data.results)) return;
             var urlStr = typeof (e.url || (e.data && e.data.url)) === 'string' ? (e.url || (e.data && e.data.url)).toLowerCase() : '';
