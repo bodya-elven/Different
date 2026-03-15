@@ -95,11 +95,9 @@
                                 if (!Array.isArray(settings.blacklist)) settings.blacklist = [];
                                 settings.blacklist.push({ id: id, title: title });
                                 Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
-                                Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
                                 
-                                // Безпечне приховування після ручного кліку
-                                if (e.object.card && e.object.card.node) $(e.object.card.node).css('display', 'none');
-                                else $('.card[data-id="' + id + '"]').css('display', 'none');
+                                // Жодного візуального приховування тут! Тільки повідомлення. Це рятує від крашу.
+                                Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
                             }
                         });
                     }
@@ -136,24 +134,35 @@
             blacklist_title: { uk: 'Чорний список', en: 'Blacklist' },
             blacklist_desc: { uk: 'Керування контентом, що був прихований вручну через меню «Дії»', en: 'Manage content hidden manually via the "Actions" menu' },
             content_filter_hide_item: { uk: 'Приховати цей контент', en: 'Hide this content' },
-            content_filter_added_to_blacklist: { uk: 'Додано в чорний список', en: 'Added to blacklist' },
+            content_filter_added_to_blacklist: { uk: 'Додано в чорний список. Оновіть сторінку', en: 'Added to blacklist. Refresh page' },
             rating_none: { uk: 'Ні', en: 'None' }
         });
     }
 
     function addSettings() {
-        // Реєстрація компонента (щоб не було "Template not found")
+        // Реєстрація компонента (без нього виникає помилка "Template not found")
         Lampa.SettingsApi.addComponent({
             component: 'content_filters',
             name: Lampa.Lang.translate('content_filters')
         });
 
-        // Додаємо кнопку до розділу "Інтерфейс"
+        // Ховаємо наш компонент із загального списку головного меню
+        Lampa.Settings.listener.follow('open', function (e) {
+            if (e.name === 'main') {
+                e.render.find('[data-component="content_filters"]').css('display', 'none');
+            }
+        });
+
+        // БЕЗПЕЧНЕ додавання кнопки як 4-го пункту в розділ "Інтерфейс"
         Lampa.SettingsApi.addParam({
             component: 'interface',
             param: { name: 'content_filters_btn', type: 'static' },
             field: { name: Lampa.Lang.translate('content_filters'), description: Lampa.Lang.translate('content_filters_desc') },
             onRender: function (el) {
+                // Переміщуємо синхронно відразу під час рендеру. Це рятує пульт від помилки!
+                var target = el.parent().children('.settings-param').eq(2);
+                if (target.length) el.insertAfter(target);
+
                 el.on('hover:enter', function () {
                     Lampa.Settings.create('content_filters');
                     var controller = Lampa.Controller.enabled().controller;
@@ -162,24 +171,7 @@
             }
         });
 
-        // СИНХРОННЕ ПЕРЕМІЩЕННЯ: Ховаємо з головного меню і ставимо четвертим в Інтерфейсі
-        Lampa.Settings.listener.follow('open', function (e) {
-            if (e.name === 'main') {
-                e.render.find('[data-component="content_filters"]').addClass('hide');
-            } else if (e.name === 'interface') {
-                // Знаходимо нашу кнопку за назвою
-                var title = Lampa.Lang.translate('content_filters');
-                var myBtn = e.render.find('.settings-param:contains("' + title + '")').closest('.settings-param');
-                var allParams = e.render.find('.settings-param');
-                
-                // Ставимо після 3-го елемента (тобто робимо 4-м)
-                if (myBtn.length && allParams.length >= 3 && myBtn[0] !== allParams[3]) {
-                    myBtn.insertAfter(allParams.eq(2));
-                }
-            }
-        });
-
-        // ПУНКТИ САМОГО ПЛАГІНА
+        // Додаємо наші пункти всередину нашого меню
         var params = [
             { id: 'ru_lang', name: 'ru_lang_enabled' },
             { id: 'asian_lang', name: 'asian_lang_enabled' },
@@ -263,10 +255,10 @@
     }
 
     function initPlugin() {
-        if (window.content_filter_v18_final) return;
-        window.content_filter_v18_final = true;
+        if (window.content_filter_v20_stable) return;
+        window.content_filter_v20_stable = true;
 
-        // ВАЖЛИВО: Реєстрація шаблону для нашого вікна налаштувань (Вирішує "Template not found")
+        // Ініціалізація шаблону для нашого меню
         if (!Lampa.Template.get('settings_content_filters', true)) {
             Lampa.Template.add('settings_content_filters', '<div><div class="settings-folder scroll"></div></div>');
         }
@@ -280,6 +272,7 @@
         addSettings();
         addContextMenu();
 
+        // Працюємо виключно з мережею, ніякого ламання карток!
         Lampa.Listener.follow('request_secuses', function (e) {
             if (e.data && Array.isArray(e.data.results)) {
                 e.data.results = filterProcessor.apply(e.data.results);
