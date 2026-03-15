@@ -15,7 +15,7 @@
         blacklist: []
     };
 
-    // Універсальний пошук даних
+    // Глибокий пошук даних
     function getMediaData(item) {
         if (!item) return null;
         var data = item;
@@ -33,61 +33,76 @@
         return null;
     }
 
-    var filterProcessor = {
-        apply: function (items) {
-            if (!Array.isArray(items)) return items;
-            return items.filter(function (item) {
-                var data = getMediaData(item);
-                if (!data) return true;
+    // Перевірка чи дозволено контент
+    function isAllowed(item) {
+        var data = getMediaData(item);
+        if (!data) return true;
 
-                // 1. Чорний список
-                var id = data.id || data.tmdb_id;
-                if (settings.blacklist.some(function(b) { return b.id == id; })) return false;
+        var id = data.id || data.tmdb_id;
+        if (settings.blacklist.some(function(b) { return b.id == id; })) return false;
 
-                var lang = (data.original_language || '').toLowerCase();
+        var lang = (data.original_language || '').toLowerCase();
 
-                // 2. Мовні фільтри
-                if (settings.ru_lang_enabled && lang === 'ru') return false;
-                if (settings.asian_lang_enabled && ['ja', 'ko', 'zh'].indexOf(lang) !== -1) return false;
-                if (settings.indian_lang_enabled && ['hi', 'te', 'ta', 'kn', 'ml'].indexOf(lang) !== -1) return false;
-                if (settings.turkish_lang_enabled && lang === 'tr') return false;
-                if (settings.arabic_lang_enabled && lang === 'ar') return false;
+        if (settings.ru_lang_enabled && lang === 'ru') return false;
+        if (settings.asian_lang_enabled && ['ja', 'ko', 'zh'].indexOf(lang) !== -1) return false;
+        if (settings.indian_lang_enabled && ['hi', 'te', 'ta', 'kn', 'ml'].indexOf(lang) !== -1) return false;
+        if (settings.turkish_lang_enabled && lang === 'tr') return false;
+        if (settings.arabic_lang_enabled && lang === 'ar') return false;
 
-                // 3. Інші мови
-                if (settings.other_languages) {
-                    var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); });
-                    if (other.indexOf(lang) !== -1) return false;
-                }
-
-                // 4. Рейтинг
-                if (settings.rating_limit > 0) {
-                    var vote = parseFloat(data.vote_average || 0);
-                    if (vote < settings.rating_limit) return false;
-                }
-
-                // 5. Переглянуте
-                if (settings.hide_watched) {
-                    var cardStatus = Lampa.Favorite.check(data);
-                    if (cardStatus) {
-                        if (cardStatus.thrown) return false;
-                        var mediaType = data.media_type || (data.first_air_date ? 'tv' : 'movie');
-                        if (mediaType === 'movie' && cardStatus.history) return false;
-                        if (mediaType === 'tv' && cardStatus.viewed) return false;
-                    }
-                }
-
-                // 6. Слова
-                if (settings.keyword_filter) {
-                    var words = settings.keyword_filter.split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
-                    var title = (data.title || data.name || data.original_title || data.original_name || '').toLowerCase();
-                    if (words.some(function(w) { return title.indexOf(w) !== -1; })) return false;
-                }
-
-                return true;
-            });
+        if (settings.other_languages) {
+            var other = settings.other_languages.split(',').map(function(s){ return s.trim().toLowerCase(); });
+            if (other.indexOf(lang) !== -1) return false;
         }
-    };
-    // БЕЗПЕЧНЕ МЕНЮ "ДІЇ"
+
+        if (settings.rating_limit > 0) {
+            var vote = parseFloat(data.vote_average || 0);
+            if (vote < settings.rating_limit) return false;
+        }
+
+        if (settings.hide_watched) {
+            var cardStatus = Lampa.Favorite.check(data);
+            if (cardStatus) {
+                if (cardStatus.thrown) return false;
+                var mediaType = data.media_type || (data.first_air_date ? 'tv' : 'movie');
+                if (mediaType === 'movie' && cardStatus.history) return false;
+                if (mediaType === 'tv' && cardStatus.viewed) return false;
+            }
+        }
+
+        if (settings.keyword_filter) {
+            var words = settings.keyword_filter.split(',').map(function(s){ return s.trim().toLowerCase(); }).filter(Boolean);
+            var title = (data.title || data.name || data.original_title || data.original_name || '').toLowerCase();
+            if (words.some(function(w) { return title.indexOf(w) !== -1; })) return false;
+        }
+
+        return true;
+    }
+
+    // БЕЗПЕЧНЕ CSS-МАСКУВАННЯ КАРТОК
+    function initCardCloaking() {
+        if (Lampa.Card && Lampa.Card.prototype && !Lampa.Card.prototype._contentFilterCloak) {
+            Lampa.Card.prototype._contentFilterCloak = true;
+            var origBuild = Lampa.Card.prototype.build;
+            
+            Lampa.Card.prototype.build = function () {
+                origBuild.apply(this, arguments); // Дозволяємо Lampa безпечно побудувати картку
+                try {
+                    // Не чіпаємо Закладки та Історію
+                    var activity = Lampa.Activity.active();
+                    var comp = activity ? (activity.component || '').toLowerCase() : '';
+                    if (comp === 'bookmarks' || comp === 'history') return;
+
+                    if (this.data && this.card) {
+                        if (!isAllowed(this.data)) {
+                            // Ховаємо картку, не ламаючи її структуру для ядра
+                            this.card.addClass('hide').removeClass('focusable').css('display', 'none');
+                        }
+                    }
+                } catch(e) {}
+            };
+        }
+    }
+    // МЕНЮ "ДІЇ"
     function addContextMenu() {
         var menuHandler = function (e) {
             if (e.type === 'contextmenu' && e.menu && e.object) {
@@ -96,9 +111,7 @@
                     var id = data.id || data.tmdb_id;
                     var title = data.title || data.name || 'Content';
                     
-                    var isBlacklisted = settings.blacklist.some(function(b) { return b.id == id; });
-
-                    if (!isBlacklisted) {
+                    if (!settings.blacklist.some(function(b) { return b.id == id; })) {
                         e.menu.push({
                             title: Lampa.Lang.translate('content_filter_hide_item'),
                             onSelect: function () {
@@ -107,9 +120,12 @@
                                 Lampa.Storage.set('content_filter_blacklist', settings.blacklist);
                                 Lampa.Noty.show(Lampa.Lang.translate('content_filter_added_to_blacklist'));
                                 
-                                // Приховуємо картку візуально
-                                if (e.object.card && e.object.card.node) $(e.object.card.node).css('display', 'none');
-                                else $('.card[data-id="' + id + '"]').css('display', 'none');
+                                // Візуально приховуємо після кліку
+                                if (e.object.card && e.object.card.node) {
+                                    $(e.object.card.node).removeClass('focusable').css('display', 'none');
+                                } else {
+                                    $('.card[data-id="' + id + '"]').removeClass('focusable').css('display', 'none');
+                                }
                             }
                         });
                     }
@@ -262,8 +278,8 @@
     }
 
     function initPlugin() {
-        if (window.content_filter_v13_safe) return;
-        window.content_filter_v13_safe = true;
+        if (window.content_filter_safe_cloak) return;
+        window.content_filter_safe_cloak = true;
 
         var keys = ['ru_lang_enabled', 'asian_lang_enabled', 'indian_lang_enabled', 'turkish_lang_enabled', 'arabic_lang_enabled', 'other_languages', 'rating_limit', 'hide_watched', 'keyword_filter'];
         keys.forEach(function(k) { settings[k] = Lampa.Storage.get(k, settings[k]); });
@@ -273,13 +289,7 @@
         addTranslations();
         addSettings();
         addContextMenu();
-
-        // ТІЛЬКИ МЕРЕЖЕВА ФІЛЬТРАЦІЯ (Безпечно для ядра Lampa)
-        Lampa.Listener.follow('request_secuses', function (e) {
-            if (e.data && Array.isArray(e.data.results)) {
-                e.data.results = filterProcessor.apply(e.data.results);
-            }
-        });
+        initCardCloaking(); // Активація безпечного маскування
     }
 
     if (window.appready) initPlugin();
