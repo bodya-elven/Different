@@ -15,7 +15,7 @@
         filter_words: ''
     };
 
-    // Функція перевірки, чи є елемент медіа-контентом (щоб не приховати плагіни)
+    // Функція перевірки, чи є елемент медіа-контентом
     function isMediaContent(item) {
         if (!item) return false;
         
@@ -38,7 +38,6 @@
     // Процесор фільтрів
     var filterProcessor = {
         filters: [
-            // Фільтр мов (Російська, Азійська, Індійська, Турецька, Арабська + кастомні)
             function (items) {
                 var langsToHide = [];
                 if (settings.filter_ru) langsToHide.push('ru');
@@ -59,7 +58,6 @@
                 });
             },
 
-            // Фільтр низького рейтингу
             function (items) {
                 if (settings.filter_rating === 'none') return items;
                 var limit = parseFloat(settings.filter_rating);
@@ -76,7 +74,6 @@
                 });
             },
 
-            // Фільтр переглянутого контенту
             function (items) {
                 if (!settings.filter_history) return items;
 
@@ -105,7 +102,6 @@
                 });
             },
 
-            // Фільтр слів у назві
             function (items) {
                 var words = (settings.filter_words || '').split(',').map(function(s) { return s.trim().toLowerCase(); }).filter(function(s) { return s; });
                 if (words.length === 0) return items;
@@ -131,7 +127,6 @@
         }
     };
 
-    // Допоміжні функції для проглянутого контенту
     function getWatchedEpisodesFromFavorite(id, favoriteData) {
         var card = (favoriteData.card || []).find(function (c) {
             return c.id === id && Array.isArray(c.seasons) && c.seasons.length > 0;
@@ -189,17 +184,10 @@
         return true;
     }
 
-    // Локалізація
     function addTranslations() {
         Lampa.Lang.add({
-            content_hiding: {
-                uk: 'Приховування контенту',
-                en: 'Hide Content'
-            },
-            content_hiding_desc: {
-                uk: 'Налаштування приховування небажаного контенту',
-                en: 'Settings for hiding unwanted content'
-            },
+            content_hiding: { uk: 'Приховування контенту', en: 'Hide Content' },
+            content_hiding_desc: { uk: 'Налаштування приховування небажаного контенту', en: 'Settings for hiding unwanted content' },
             filter_ru: { uk: 'Приховати російський контент', en: 'Hide Russian content' },
             filter_ru_desc: { uk: 'Приховує картки з мовою оригіналу: ru', en: 'Hides cards with original language: ru' },
             filter_asian: { uk: 'Приховати азійський контент', en: 'Hide Asian content' },
@@ -223,7 +211,6 @@
         });
     }
 
-    // Створення інтерфейсу налаштувань
     function addSettings() {
         Lampa.Settings.listener.follow('open', function (e) {
             if (e.name === 'main') {
@@ -239,7 +226,6 @@
             }
         });
 
-        // Додаємо пункт в розділ "Інтерфейс"
         Lampa.SettingsApi.addParam({
             component: 'interface',
             param: { name: 'content_hiding', type: 'static', default: true },
@@ -249,7 +235,7 @@
             },
             onRender: function (el) {
                 setTimeout(function () {
-                    var title = Lampa.Lang.translate('content_hiding');
+                    var title = Lampa.Lang.translate('content_hiding') || 'Приховування контенту';
                     $('.settings-param > div:contains("' + title + '")').parent().insertAfter($('div[data-name="interface_size"]'));
                 }, 0);
                 el.on('hover:enter', function () {
@@ -261,7 +247,6 @@
             }
         });
 
-        // Створюємо перемикачі для мов
         ['ru', 'asian', 'in', 'tr', 'ar'].forEach(function (langKey) {
             Lampa.SettingsApi.addParam({
                 component: 'content_hiding',
@@ -277,21 +262,30 @@
             });
         });
 
-        // Поле для вводу кастомних мов
+        // ВИПРАВЛЕНО: Замість type: 'input' використовуємо type: 'static' з викликом клавіатури Lampa.Input.edit
         Lampa.SettingsApi.addParam({
             component: 'content_hiding',
-            param: { name: 'filter_custom_langs', type: 'input', default: '' },
+            param: { name: 'filter_custom_langs', type: 'static', default: '' },
             field: {
                 name: Lampa.Lang.translate('filter_custom_langs'),
-                description: Lampa.Lang.translate('filter_custom_langs_desc')
+                description: settings.filter_custom_langs || Lampa.Lang.translate('filter_custom_langs_desc')
             },
-            onChange: function (value) {
-                settings.filter_custom_langs = value;
-                Lampa.Storage.set('filter_custom_langs', value);
+            onRender: function (el) {
+                el.on('hover:enter', function () {
+                    Lampa.Input.edit({
+                        title: Lampa.Lang.translate('filter_custom_langs'),
+                        value: settings.filter_custom_langs,
+                        free: true,
+                        nosave: false
+                    }, function (new_value) {
+                        settings.filter_custom_langs = new_value;
+                        Lampa.Storage.set('filter_custom_langs', new_value);
+                        el.find('.settings-param__des').text(new_value || Lampa.Lang.translate('filter_custom_langs_desc'));
+                    });
+                });
             }
         });
 
-        // Випадаючий список для рейтингу
         Lampa.SettingsApi.addParam({
             component: 'content_hiding',
             param: { 
@@ -316,7 +310,6 @@
             }
         });
 
-        // Перемикач для переглянутого
         Lampa.SettingsApi.addParam({
             component: 'content_hiding',
             param: { name: 'filter_history', type: 'trigger', default: false },
@@ -330,29 +323,37 @@
             }
         });
 
-        // Поле для вводу слів (фільтр назви)
+        // ВИПРАВЛЕНО: Замість type: 'input' використовуємо type: 'static'
         Lampa.SettingsApi.addParam({
             component: 'content_hiding',
-            param: { name: 'filter_words', type: 'input', default: '' },
+            param: { name: 'filter_words', type: 'static', default: '' },
             field: {
                 name: Lampa.Lang.translate('filter_words'),
-                description: Lampa.Lang.translate('filter_words_desc')
+                description: settings.filter_words || Lampa.Lang.translate('filter_words_desc')
             },
-            onChange: function (value) {
-                settings.filter_words = value;
-                Lampa.Storage.set('filter_words', value);
+            onRender: function (el) {
+                el.on('hover:enter', function () {
+                    Lampa.Input.edit({
+                        title: Lampa.Lang.translate('filter_words'),
+                        value: settings.filter_words,
+                        free: true,
+                        nosave: false
+                    }, function (new_value) {
+                        settings.filter_words = new_value;
+                        Lampa.Storage.set('filter_words', new_value);
+                        el.find('.settings-param__des').text(new_value || Lampa.Lang.translate('filter_words_desc'));
+                    });
+                });
             }
         });
     }
 
-    // Завантаження налаштувань
     function loadSettings() {
         for (var key in settings) {
             settings[key] = Lampa.Storage.get(key, settings[key]);
         }
     }
 
-    // Ініціалізація
     function initPlugin() {
         if (window.content_hiding_plugin) return;
         window.content_hiding_plugin = true;
@@ -361,7 +362,6 @@
         addTranslations();
         addSettings();
 
-        // Застосування фільтрів
         Lampa.Listener.follow('request_secuses', function (e) {
             if (!e.data || !Array.isArray(e.data.results)) return;
             
@@ -384,7 +384,6 @@
         });
     }
 
-    // Запуск
     if (window.appready) {
         initPlugin();
     } else {
