@@ -71,7 +71,7 @@
                     var isSpecial = item.media_type === 'video' || item.type === 'Trailer' || item.site === 'YouTube' || (item.key && item.name && item.name.toLowerCase().indexOf('trailer') !== -1);
                     if (isSpecial) return true;
                     
-                    if (!item.vote_average || item.vote_average === 0) return false; // Якщо немає рейтингу — приховуємо (за бажанням можна змінити на true)
+                    if (!item.vote_average || item.vote_average === 0) return false; 
                     return item.vote_average >= limit;
                 });
             },
