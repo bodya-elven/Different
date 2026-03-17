@@ -8,6 +8,8 @@
     var netBuffer = [];
     var uiReady = false;
     var counts = { logs: 0, errors: 0, network: 0 };
+    // Для підрахунку часу сесії
+    var startTime = performance.now();
 
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return String(unsafe);
@@ -17,7 +19,7 @@
     function formatLongText(text) {
         if (!text) return 'null';
         var str = String(text);
-        if (str.length > 250 || str.split('\n').length > 5) {
+        if (str.length > 150 || str.split('\n').length > 3) { // Ще компактніше
             return '<div class="lmc-collapsible collapsed">' + escapeHtml(str) + '</div>' +
                    '<div class="lmc-more-btn">Розгорнути <span>▼</span></div>';
         }
@@ -53,20 +55,36 @@
     function showToast(text) {
         $('.lmc-toast').remove();
         var $toast = $('<div class="lmc-toast">' + text + '</div>').appendTo('body');
-        setTimeout(function() { $toast.fadeOut(300, function() { $(this).remove(); }); }, 2000);
+        setTimeout(function() { $toast.fadeOut(300, function() { $(this).remove(); }); }, 1500);
     }
 
     var originalLog = console.log, originalWarn = console.warn, originalError = console.error, originalInfo = console.info;
 
+    // Спроба визначити плагін з URL помилки
+    function getPluginNameFromUrl(url) {
+        if (!url) return 'Unknown Script';
+        var filename = url.substring(url.lastIndexOf('/')+1);
+        if (filename.indexOf('?') > -1) filename = filename.substring(0, filename.indexOf('?'));
+        return filename || 'Inline Script';
+    }
+
     window.addEventListener('error', function(event) {
-        var msg = "Глобальна помилка: " + event.message;
+        var plugin = getPluginNameFromUrl(event.filename);
+        var msg = "Критична помилка в [" + plugin + "]: " + event.message;
         if (event.filename) msg += "\nФайл: " + event.filename + " (" + event.lineno + ":" + event.colno + ")";
         if (event.error && event.error.stack) msg += "\nСтек:\n" + event.error.stack;
-        console.error(msg);
+        
+        // Помилки йдуть і в загальну консоль, і в Errors
+        pushLogToUI(msg, 'error');
+        originalError.apply(console, [msg]);
     }, true);
 
     window.addEventListener('unhandledrejection', function(event) {
-        console.error("Необроблений Promise: " + (event.reason && event.reason.stack ? event.reason.stack : event.reason));
+        var reason = event.reason;
+        var msg = "Необроблений Promise: " + (reason && reason.stack ? reason.stack : reason);
+        // Promise errors теж йдуть в обидві вкладки
+        pushLogToUI(msg, 'error');
+        originalError.apply(console, [msg]);
     });
 
     function processMessage(args) {
@@ -92,11 +110,13 @@
         if ($logs.children().length > 300) $logs.children().first().remove();
         $(html).appendTo($logs);
 
+        // Warning НЕ дублюємо у вкладку Errors
         if (type === 'error') {
             var $errs = $('#lmc-content-errors');
             if ($errs.children().length > 100) $errs.children().first().remove();
             $errs.append(html);
         }
+        
         updateCounter(type); applySearch();
     }
 
@@ -113,7 +133,6 @@
     function pushNetToUI(method, url, status, responseText) {
         if (!uiReady) return;
         var $net = $('#lmc-content-network');
-        
         if ($net.children().length > 150) {
             if ($net.hasClass('lmc-reversed')) $net.children().last().remove();
             else $net.children().first().remove();
@@ -176,25 +195,42 @@
         }
         var lsSize = (lsTotal / 1024).toFixed(2) + ' KB';
         
+        // Поточна сторінка та плагіни
         var activeComp = window.Lampa && Lampa.Activity && Lampa.Activity.active() ? Lampa.Activity.active().component : 'None';
-        var activePlugs = window.Lampa && Lampa.Storage ? (Lampa.Storage.get('plugins')||[]).filter(function(p){return p.status;}).length : 0;
-        var uptime = Math.round(performance.now() / 1000 / 60) + ' хв';
+        var pluginsStorage = window.Lampa && Lampa.Storage ? (Lampa.Storage.get('plugins')||[]) : [];
+        var activePlugs = pluginsStorage.filter(function(p){return p.status;}).length;
+        
+        // Час сесії
+        var ms = performance.now() - startTime;
+        var uptime = Math.floor(ms / 1000 / 60) + ' хв ' + Math.floor((ms / 1000) % 60) + ' сек';
 
+        // Правильний порядок пунктів (як здається логічним)
         var data = [
-            { k: 'Source URL', v: window.location.href },
-            { k: 'Lampa Version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
-            { k: 'Platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
-            { k: 'Local Storage Used', v: lsSize },
+            { k: 'Main Source URL', v: window.location.href },
+            { k: 'Lampa Build', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
+            { k: 'Platform/OS', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
+            { k: '--- App State ---', v: '' },
+            { k: 'Current Activity', v: activeComp },
+            { k: 'Session Duration', v: uptime },
             { k: 'Active Plugins', v: activePlugs },
-            { k: 'Current Page (Activity)', v: activeComp },
-            { k: 'App Uptime', v: uptime },
+            { k: 'Plugins Installed', v: pluginsStorage.length },
+            { k: '--- Resources ---', v: '' },
+            { k: 'Local Storage Used', v: lsSize },
+            { k: '--- Environment ---', v: '' },
             { k: 'Interface Size', v: window.innerWidth + 'x' + window.innerHeight },
-            { k: 'Screen Size', v: window.screen.width + 'x' + window.screen.height },
+            { k: 'Screen Resolution', v: window.screen.width + 'x' + window.screen.height },
             { k: 'Pixel Ratio', v: window.devicePixelRatio },
-            { k: 'Is PWA', v: window.matchMedia('(display-mode: standalone)').matches ? 'true' : 'false' },
-            { k: 'Is Touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' }
+            { k: 'User Agent', v: navigator.userAgent },
+            { k: 'Is Touch Device', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' }
         ];
-        data.forEach(function(item) { $info.append('<div class="lmc-row focusable"><strong>' + item.k + ':</strong> <span style="color:#aaa;">' + escapeHtml(item.v) + '</span></div>'); });
+        
+        data.forEach(function(item) { 
+            if (!item.v) { // Роздільник
+                $info.append('<div class="lmc-section-divider">' + item.k + '</div>');
+            } else {
+                $info.append('<div class="lmc-row focusable"><strong>' + item.k + ':</strong> <span style="color:#aaa;">' + escapeHtml(item.v) + '</span></div>'); 
+            }
+        });
     }
 
     function updateExtensionsTab() {
@@ -202,7 +238,7 @@
         $ext.append('<div class="lmc-section-title">Завантажені скрипти (DOM)</div>');
         $('script').each(function() { if (this.src) $ext.append('<div class="lmc-row focusable"><span style="color:#aaa;">' + escapeHtml(this.src) + '</span></div>'); });
         if (window.Lampa && Lampa.Storage) {
-            $ext.append('<div class="lmc-section-title" style="margin-top:15px;">Встановлені плагіни (Storage)</div>');
+            $ext.append('<div class="lmc-section-title" style="margin-top:10px;">Встановлені плагіни (Storage)</div>');
             var plugins = Lampa.Storage.get('plugins') || [];
             plugins.forEach(function(p) {
                 var stat = p.status ? '<span style="color:#20c997;">[ON]</span>' : '<span style="color:#f44336;">[OFF]</span>';
@@ -214,71 +250,84 @@
         if (uiReady) return;
 
         var css = `
-            /* Іконка з правильним viewBox розміром */
+            /* Іконка використовує відносний розмір Лампи (em) та рідні класи */
             .lmc-head-btn { padding: 0 10px; display: flex; align-items: center; justify-content: center; cursor: pointer; opacity: 0.8; transition: opacity 0.3s; }
             .lmc-head-btn:hover, .lmc-head-btn.focus { opacity: 1; outline: 2px solid #20c997; background: rgba(32, 201, 151, 0.1); border-radius: 6px; }
-            .lmc-head-btn svg { width: 1.6em; height: 1.6em; stroke: #fff; fill: none; display: block; }
+            /* Примусово збільшено, viewbox налаштовано */
+            .lmc-head-btn svg { width: 1.8em; height: 1.8em; stroke: #fff; fill: none; display: block; }
 
-            #lampa-mob-console-window { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #121212; z-index: 9999999; flex-direction: column; font-family: monospace; color: #e0e0e0; }
-            #lampa-mob-console-header { display: flex; justify-content: space-between; padding: 12px 16px; background: #1e1e1e; border-bottom: 1px solid rgba(255,255,255,0.05); align-items: center; }
+            /* Компактний інтерфейс, як на скріншоті */
+            #lampa-mob-console-window { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #0c0d0f; z-index: 9999999; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #ddd; font-size: 11px; }
+            #lampa-mob-console-header { display: flex; justify-content: space-between; padding: 10px 14px; background: #1a1c1f; border-bottom: 1px solid rgba(255,255,255,0.03); align-items: center; }
             
-            #lmc-search-bar { padding: 10px 16px; background: #181818; border-bottom: 1px solid rgba(255,255,255,0.05); position: relative; display: flex; align-items: center; }
-            #lmc-search-input { flex: 1; background: #242424; color: #fff; border: 1px solid transparent; padding: 10px 35px 10px 12px; border-radius: 6px; outline: none; font-family: inherit; font-size: 14px; box-sizing: border-box; margin-right: 10px; }
-            #lmc-search-input:focus, #lmc-search-input.focus { border-color: #20c997; background: #2a2a2a; }
-            #lmc-search-clear { position: absolute; right: 85px; top: 18px; color: #888; font-size: 18px; cursor: pointer; display: none; font-weight: bold; width: 20px; height: 20px; text-align: center; line-height: 18px; }
-            #lmc-clear-logs-btn { padding: 8px 12px; background: #242424; border-radius: 6px; font-size: 11px; cursor: pointer; color: #aaa; text-transform: uppercase; border: 1px solid rgba(255,255,255,0.1); }
-            #lmc-clear-logs-btn.focus { border-color: #f44336; color: #f44336; }
+            #lmc-search-bar { padding: 8px 14px; background: #141619; border-bottom: 1px solid rgba(255,255,255,0.03); position: relative; display: flex; align-items: center; }
+            #lmc-search-input { flex: 1; background: #212429; color: #fff; border: 1px solid transparent; padding: 8px 30px 8px 10px; border-radius: 4px; outline: none; font-family: inherit; font-size: inherit; box-sizing: border-box; margin-right: 8px; }
+            #lmc-search-input:focus, #lmc-search-input.focus { border-color: #20c997; background: #2a2e33; }
+            #lmc-search-clear { position: absolute; right: 78px; top: 15px; color: #888; font-size: 16px; cursor: pointer; display: none; font-weight: bold; width: 18px; height: 18px; text-align: center; line-height: 16px; }
+            #lmc-clear-logs-btn { padding: 6px 10px; background: rgba(244, 67, 54, 0.05); border-radius: 4px; font-size: 10px; cursor: pointer; color: #f44336; text-transform: uppercase; border: 1px solid rgba(244, 67, 54, 0.2); }
+            #lmc-clear-logs-btn.focus { background: #f44336; color: #fff; }
 
-            #lampa-mob-console-tabs { display: flex; background: #121212; overflow-x: auto; white-space: nowrap; padding: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+            /* Вкладки таблетками */
+            #lampa-mob-console-tabs { display: flex; background: #0c0d0f; overflow-x: auto; white-space: nowrap; padding: 8px; border-bottom: 1px solid rgba(255,255,255,0.03); }
             #lampa-mob-console-tabs::-webkit-scrollbar { display: none; }
-            .lmc-tab { padding: 8px 14px; background: #1e1e1e; border-radius: 6px; margin-right: 8px; text-align: center; color: #aaa; font-size: 12px; cursor: pointer; border: 1px solid rgba(255,255,255,0.05); transition: all 0.2s; user-select: none; }
+            .lmc-tab { padding: 6px 12px; background: #16181b; border-radius: 16px; margin-right: 6px; text-align: center; color: #aaa; font-size: 10px; cursor: pointer; border: 1px solid rgba(255,255,255,0.03); transition: all 0.2s; user-select: none; font-weight: 500; }
             .lmc-tab.active { background: rgba(32, 201, 151, 0.1); color: #20c997; border-color: #20c997; }
-            .lmc-tab.focus { outline: 2px solid #fff; }
+            .lmc-tab.focus { outline: 1.5px solid #fff; }
 
-            .lmc-content { display: none; flex: 1; overflow-y: auto; padding: 10px 16px; font-size: 12px; word-wrap: break-word; white-space: pre-wrap; overscroll-behavior: contain; padding-bottom: 40px; flex-direction: column; }
+            /* Компактний контент */
+            .lmc-content { display: none; flex: 1; overflow-y: auto; padding: 8px 14px; word-wrap: break-word; white-space: pre-wrap; overscroll-behavior: contain; padding-bottom: 40px; flex-direction: column; }
             .lmc-content.active { display: flex; }
+            /* Реверс працює тільки для Network */
+            .lmc-content.lmc-reversed { flex-direction: column-reverse; }
 
-            .lmc-action { padding: 6px 14px; background: #242424; border-radius: 6px; font-size: 13px; cursor: pointer; color: #ddd; }
+            .lmc-action { padding: 5px 12px; background: #1e2126; border-radius: 4px; margin-left: 8px; font-size: 11px; cursor: pointer; color: #ccc; }
             .lmc-action.focus { background: #20c997; color: #000; }
             
-            .lmc-row { margin-bottom: 0; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); user-select: none; -webkit-user-select: none; cursor: pointer; transition: background 0.2s; border-radius: 4px; }
-            .lmc-row:hover { background: rgba(255,255,255,0.03); }
-            .lmc-row.focus, .lmc-network-row.focus { outline: 2px solid #20c997; background: rgba(32, 201, 151, 0.05); }
+            /* Дрібний, компактний шрифт логів */
+            .lmc-row { margin-bottom: 0; padding: 8px 0; border-bottom: 1px solid rgba(255,255,255,0.03); user-select: none; -webkit-user-select: none; cursor: pointer; transition: background 0.1s; border-radius: 2px; }
+            .lmc-row:hover { background: rgba(255,255,255,0.01); }
+            .lmc-row.focus, .lmc-network-row.focus { outline: 1.5px solid #20c997; background: rgba(32, 201, 151, 0.05); }
             
-            .lmc-time { color: #666; font-size: 11px; }
-            .lmc-prefix { color: #aaa; font-size: 11px; margin-right: 5px; font-weight: bold; }
-            .lmc-warn .lmc-prefix { color: #ffc107; }
+            .lmc-time { color: #666; font-size: 10px; margin-right: 4px; }
+            .lmc-prefix { color: #999; font-size: 10px; margin-right: 4px; font-weight: bold; }
+            .lmc-warn .lmc-prefix { color: #ffeb3b; } /* Warnings більш помітні */
+            .lmc-warn { border-left: 2px solid #ffeb3b; padding-left: 6px; }
             .lmc-error .lmc-prefix { color: #f44336; }
+            .lmc-error { border-left: 2px solid #f44336; background: rgba(244, 67, 54, 0.03); padding-left: 6px; }
             .lmc-info .lmc-prefix { color: #03a9f4; }
             
             .lmc-collapsible { overflow: hidden; pointer-events: none; }
-            .lmc-collapsible.collapsed { max-height: 65px; position: relative; }
-            .lmc-collapsible.collapsed::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 25px; background: linear-gradient(to bottom, rgba(18,18,18,0), rgba(18,18,18,1)); }
-            .lmc-more-btn { color: #888; font-size: 11px; margin-top: 6px; font-weight: bold; display: inline-block; padding: 4px 8px; background: #1e1e1e; border-radius: 4px; border: 1px solid #333; pointer-events: none; }
+            .lmc-collapsible.collapsed { max-height: 50px; position: relative; }
+            .lmc-collapsible.collapsed::after { content: ""; position: absolute; bottom: 0; left: 0; width: 100%; height: 20px; background: linear-gradient(to bottom, rgba(12,13,15,0), rgba(12,13,15,1)); }
+            .lmc-more-btn { color: #888; font-size: 10px; margin-top: 4px; font-weight: bold; display: inline-block; padding: 3px 6px; background: #16181b; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
             
-            .lmc-network-row { margin-bottom: 0; padding: 12px 10px; border-bottom: 1px solid rgba(255,255,255,0.05); user-select: none; cursor: pointer; transition: background 0.2s; border-radius: 4px; }
-            .lmc-network-row:hover { background: rgba(255,255,255,0.03); }
-            .lmc-net-head { margin-bottom: 6px; pointer-events: none; }
-            .lmc-net-status { font-weight: bold; font-size: 11px; color: #aaa; margin-right: 5px; }
+            .lmc-network-row { margin-bottom: 0; padding: 10px 0; border-bottom: 1px solid rgba(255,255,255,0.03); user-select: none; cursor: pointer; transition: background 0.1s; border-radius: 2px; }
+            .lmc-network-row:hover { background: rgba(255,255,255,0.01); }
+            .lmc-net-head { margin-bottom: 4px; pointer-events: none; font-weight: 500; }
+            .lmc-net-status { font-weight: bold; font-size: 10px; color: #aaa; margin-right: 4px; }
             .lmc-net-200 { color: #4caf50; }
             .lmc-net-err { color: #f44336; }
-            .lmc-net-url { color: #aaa; word-break: break-all; margin-left: 6px; }
-            .lmc-net-response { color: #888; font-size: 11px; background: #181818; padding: 8px; border-radius: 6px; border: 1px solid #242424; pointer-events: none; }
+            .lmc-net-url { color: #aaa; word-break: break-all; margin-left: 4px; }
+            .lmc-net-response { color: #888; font-size: 10px; background: #0c0d0f; padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.03); pointer-events: none; }
 
+            /* Storage/Cache компактніше */
             .lmc-flex-row { display: flex; justify-content: space-between; align-items: flex-start; }
-            /* Оновлені, маленькі кнопки Видалити */
-            .lmc-del-btn { background: rgba(244, 67, 54, 0.1); color: #f44336; padding: 4px 8px; border-radius: 4px; font-size: 9px; margin-left: 10px; cursor: pointer; border: 1px solid rgba(244, 67, 54, 0.3); z-index: 2; }
-            .lmc-del-btn.focus { outline: 2px solid #fff; background: #f44336; color: #fff; }
-            .lmc-section-title { font-weight: bold; color: #fff; padding: 10px 0 5px 0; border-bottom: 1px solid #333; margin-bottom: 5px; text-transform: uppercase; font-size: 11px; }
+            .lmc-del-btn { background: rgba(244, 67, 54, 0.05); color: #f44336; padding: 3px 7px; border-radius: 4px; font-size: 9px; margin-left: 8px; cursor: pointer; font-weight: 600; border: 1px solid rgba(244, 67, 54, 0.15); z-index: 2; text-transform: uppercase; }
+            .lmc-del-btn.focus { outline: 1.5px solid #fff; background: #f44336; color: #fff; }
+            .lmc-section-title { font-weight: bold; color: #fff; padding: 8px 0 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; text-transform: uppercase; font-size: 10px; }
+            
+            /* Нові роздільники для Info */
+            .lmc-section-divider { font-weight: bold; color: #20c997; padding: 12px 0 4px 0; text-transform: uppercase; font-size: 10px; border-bottom: 1px solid rgba(32, 201, 151, 0.15); margin-bottom: 6px; }
 
-            .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 8px 16px; border-radius: 20px; font-size: 13px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
+            /* Toast */
+            .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
         `;
         $('<style>').text(css).appendTo('head');
 
         $('body').append(`
             <div id="lampa-mob-console-window">
                 <div id="lampa-mob-console-header">
-                    <span style="font-weight:bold; font-size: 18px;">Console</span>
+                    <span style="font-weight:bold; font-size: 16px;">Console Tools</span>
                     <div id="lampa-mob-console-close" class="lmc-action focusable">Сховати</div>
                 </div>
                 <div id="lmc-search-bar">
@@ -291,7 +340,7 @@
                     <div class="lmc-tab focusable" data-target="lmc-content-errors">Errors - 0</div>
                     <div class="lmc-tab focusable" data-target="lmc-content-network">Network - 0</div>
                     <div class="lmc-tab focusable" data-target="lmc-content-info">Info</div>
-                    <div class="lmc-tab focusable" data-target="lmc-content-extensions">Extensions</div>
+                    <div class="lmc-tab focusable" data-target="lmc-content-extensions">Plugins</div>
                     <div class="lmc-tab focusable" data-target="lmc-content-cache">Cache</div>
                     <div class="lmc-tab focusable" data-target="lmc-content-storage">Storage</div>
                 </div>
@@ -313,14 +362,14 @@
         function injectHeaderBtn() {
             if ($('#lmc-head-btn-wrap').length) return; 
             
-            // Іконка з обрізаним viewBox, щоб вона займала весь доступний простір
+            // Іконка з обрізаним viewBox, lines=2, щоб була чіткою
             var iconSvg = '<svg viewBox="2 2 20 20" fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round">' +
                           '<path d="M4 6a2 2 0 0 1 2 -2h12a2 2 0 0 1 2 2v12a2 2 0 0 1 -2 2h-12a2 2 0 0 1 -2 -2v-12z" stroke-width="2"/>' +
                           '<path d="M4 9h16" stroke-width="2"/>' +
                           '<path d="M8 13l2 2l-2 2" stroke-width="2"/>' +
                           '<path d="M12 17h4" stroke-width="2"/>' +
                           '</svg>';
-            var btnHtml = '<div id="lmc-head-btn-wrap" class="head__action lmc-head-btn focusable" title="Console">' + iconSvg + '</div>';
+            var btnHtml = '<div id="lmc-head-btn-wrap" class="head__action lmc-head-btn focusable" title="Console Tools">' + iconSvg + '</div>';
             
             var $actions = $('.head__actions');
             if ($actions.length) {
@@ -333,10 +382,12 @@
         setInterval(injectHeaderBtn, 1000);
         injectHeaderBtn();
 
+        // Просто ховаємо вікно
         $('#lampa-mob-console-close').on('click', function () { 
             $('#lampa-mob-console-window').hide(); 
         });
 
+        // Блокуємо пульт ТБ і закриваємо консоль
         window.addEventListener('keydown', function(e) {
             if ($('#lampa-mob-console-window').is(':visible')) {
                 if (e.keyCode === 27 || e.keyCode === 8 || e.keyCode === 10009 || e.keyCode === 461) {
@@ -347,7 +398,7 @@
             }
         }, true);
 
-        // Очищення перенесено в панель пошуку
+        // Очищення тільки в панелі пошуку
         $('#lmc-clear-logs-btn').on('click', function () { 
             var activeTab = $('.lmc-content.active').attr('id');
             if(activeTab === 'lmc-content-storage' || activeTab === 'lmc-content-cache' || activeTab === 'lmc-content-info' || activeTab === 'lmc-content-extensions') {
@@ -363,8 +414,13 @@
         $('.lmc-tab').on('click', function () {
             var target = $(this).attr('data-target');
             
+            // Якщо клік по вже активній вкладці
             if ($(this).hasClass('active')) {
-                if (target === 'lmc-content-network') {
+                if (target === 'lmc-content-info') {
+                    // Автооновлення для Info без повідомлення
+                    updateInfoTab();
+                } else if (target === 'lmc-content-network') {
+                    // Реверс тільки для Network
                     var $content = $('#' + target);
                     $content.toggleClass('lmc-reversed');
                     
@@ -384,7 +440,7 @@
             $('#' + target).addClass('active');
 
             if (target === 'lmc-content-storage' || target === 'lmc-content-cache') updateStorageAndCache();
-            if (target === 'lmc-content-info') updateInfoTab();
+            if (target === 'lmc-content-info') updateInfoTab(); // Оновлюємо при відкритті
             if (target === 'lmc-content-extensions') updateExtensionsTab();
             
             applySearch();
