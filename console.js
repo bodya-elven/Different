@@ -178,36 +178,31 @@
 
     function updateInfoTab() {
         var $info = $('#lmc-content-info').empty();
-        var lsTotal = 0;
-        for (var x in localStorage) { if (localStorage.hasOwnProperty(x)) lsTotal += ((localStorage[x].length + x.length) * 2); }
-        var lsSize = (lsTotal / 1024).toFixed(2) + ' KB';
-        var activeComp = window.Lampa && Lampa.Activity && Lampa.Activity.active() ? Lampa.Activity.active().component : 'None';
-        var pluginsStorage = window.Lampa && Lampa.Storage ? (Lampa.Storage.get('plugins')||[]) : [];
-        var activePlugs = pluginsStorage.filter(function(p){return p.status;}).length;
-        var ms = performance.now() - startTime;
-        var uptime = Math.floor(ms / 1000 / 60) + ' хв ' + Math.floor((ms / 1000) % 60) + ' сек';
+        
+        // Розрахунок фізичного розміру екрана як у штатній консолі
+        var dpr = window.devicePixelRatio || 1;
+        var screenW = Math.round(window.screen.width * dpr);
+        var screenH = Math.round(window.screen.height * dpr);
 
         var data = [
-            { k: 'Main Source URL', v: window.location.href },
-            { k: 'Lampa Build', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
-            { k: 'Platform/OS', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
-            { k: '--- App State ---', v: '' },
-            { k: 'Current Activity', v: activeComp },
-            { k: 'Session Duration', v: uptime },
-            { k: 'Active Plugins', v: activePlugs },
-            { k: 'Plugins Installed', v: pluginsStorage.length },
-            { k: '--- Resources ---', v: '' },
-            { k: 'Local Storage Used', v: lsSize },
-            { k: '--- Environment ---', v: '' },
-            { k: 'Interface Size', v: window.innerWidth + 'x' + window.innerHeight },
-            { k: 'Screen Resolution', v: window.screen.width + 'x' + window.screen.height },
-            { k: 'Pixel Ratio', v: window.devicePixelRatio },
-            { k: 'User Agent', v: navigator.userAgent }
+            { k: 'location', v: window.location.href },
+            { k: 'hash', v: window.Lampa && Lampa.Storage ? Lampa.Storage.get('hash', 'unknown') : 'unknown' },
+            { k: 'build date', v: window.Lampa && Lampa.Manifest && Lampa.Manifest.time ? new Date(Lampa.Manifest.time).toLocaleString() : 'Unknown' },
+            { k: 'version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
+            { k: 'platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
+            { k: 'is PWA', v: window.matchMedia('(display-mode: standalone)').matches ? 'true' : 'false' },
+            { k: 'is touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' },
+            { k: 'is mobile', v: /Mobi|Android/i.test(navigator.userAgent) ? 'true' : 'false' },
+            { k: 'is tv', v: window.Lampa && Lampa.Platform ? Lampa.Platform.is('tv') : 'false' },
+            { k: 'touch points', v: navigator.maxTouchPoints || 0 },
+            { k: 'user agent', v: navigator.userAgent },
+            { k: 'pixel ratio', v: dpr },
+            { k: 'interface size', v: window.innerWidth + ' / ' + window.innerHeight },
+            { k: 'screen size', v: screenW + ' / ' + screenH }
         ];
         
         data.forEach(function(item) { 
-            if (!item.v) $info.append('<div class="lmc-section-divider">' + item.k + '</div>');
-            else $info.append('<div class="lmc-row selector"><strong>' + item.k + ':</strong> <span style="color:#aaa;">' + escapeHtml(item.v) + '</span></div>'); 
+            $info.append('<div class="lmc-row selector"><strong>' + item.k + ':</strong> <span style="color:#aaa;">' + escapeHtml(item.v) + '</span></div>'); 
         });
     }
 
@@ -228,9 +223,9 @@
         if (uiReady) return;
 
         var css = `
-            /* Без кольорової рамки, тільки легкий фон при фокусі */
-            .lmc-head-btn { opacity: 0.8; transition: all 0.2s; cursor: pointer; }
-            .lmc-head-btn.focus, .lmc-head-btn:hover { opacity: 1; background: rgba(255,255,255,0.1); border-radius: 4px; outline: none !important; }
+            /* Жодних рамок чи фонів при натисканні на іконку. Тільки легка зміна прозорості */
+            .lmc-head-btn { opacity: 0.8; transition: opacity 0.2s; cursor: pointer; outline: none !important; }
+            .lmc-head-btn.focus, .lmc-head-btn:hover { opacity: 1; outline: none !important; background: transparent; }
 
             #lampa-mob-console-window { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #0c0d0f; z-index: 9999999; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #ddd; font-size: 11.5px; }
             #lampa-mob-console-header { display: flex; justify-content: space-between; padding: 10px 14px; background: #1a1c1f; border-bottom: 1px solid rgba(255,255,255,0.03); align-items: center; }
@@ -283,7 +278,6 @@
             .lmc-del-btn { background: rgba(244, 67, 54, 0.05); color: #f44336; padding: 3px 7px; border-radius: 4px; font-size: 9px; margin-left: 8px; cursor: pointer; font-weight: 600; border: 1px solid rgba(244, 67, 54, 0.15); z-index: 2; text-transform: uppercase; }
             .lmc-del-btn.focus { outline: 1.5px solid #fff; background: #f44336; color: #fff; }
             .lmc-section-title { font-weight: bold; color: #fff; padding: 8px 0 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; text-transform: uppercase; font-size: 10.5px; }
-            .lmc-section-divider { font-weight: bold; color: #20c997; padding: 12px 0 4px 0; text-transform: uppercase; font-size: 10.5px; border-bottom: 1px solid rgba(32, 201, 151, 0.15); margin-bottom: 6px; }
 
             .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
         `;
@@ -326,8 +320,8 @@
         function injectHeaderBtn() {
             if ($('#lmc-head-btn-wrap').length) return; 
             
-            // Твій SVG з адаптованими стилями під Лампу (currentColor)
-            var iconSvg = '<svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">' +
+            // Твій SVG зі збільшеною товщиною ліній (stroke-width="1.5")
+            var iconSvg = '<svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">' +
                           '<path d="M3.5 4.5L6.5 7.5L3.5 10.5M8 10.5H12M1.5 1.5H13.5C14.0523 1.5 14.5 1.94772 14.5 2.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H1.5C0.947716 13.5 0.5 13.0523 0.5 12.5V2.5C0.5 1.94772 0.947715 1.5 1.5 1.5Z"/>' +
                           '</svg>';
             
@@ -344,9 +338,16 @@
         setInterval(injectHeaderBtn, 1000);
         injectHeaderBtn();
 
-        function closeConsole() {
+        // Функція закриття з відновленням фокусу Лампи
+        function closeConsole(fromHistory) {
             $('#lampa-mob-console-window').hide();
-            // Повернення фокусу на сторінку Лампи
+            
+            // Якщо закрили вручну (з пульта чи кнопки), відкочуємо доданий нами крок історії
+            if (!fromHistory && window.history.state && window.history.state.lmc_open) {
+                window.history.back();
+            }
+            
+            // Повертаємо фокус на поточну активну сторінку Лампи
             if (window.Lampa && Lampa.Controller) {
                 Lampa.Controller.toggle(Lampa.Activity.active() ? Lampa.Activity.active().component : 'content');
             }
@@ -354,6 +355,11 @@
 
         function openConsole() {
             $('#lampa-mob-console-window').css('display', 'flex');
+            
+            // Додаємо крок в історію, щоб браузер міг "повернутися" назад свайпом
+            if (!window.history.state || !window.history.state.lmc_open) {
+                window.history.pushState({lmc_open: true}, "");
+            }
             
             if (window.Lampa && Lampa.Controller) {
                 if (!window.lmc_controller_added) {
@@ -366,7 +372,7 @@
                         left: function() { Lampa.Controller.collectionDirection('left', $('#lampa-mob-console-window .selector')); },
                         down: function() { Lampa.Controller.collectionDirection('down', $('#lampa-mob-console-window .selector')); },
                         up: function() { Lampa.Controller.collectionDirection('up', $('#lampa-mob-console-window .selector')); },
-                        back: function() { closeConsole(); }
+                        back: function() { closeConsole(false); }
                     });
                     window.lmc_controller_added = true;
                 }
@@ -375,19 +381,18 @@
         }
 
         $('#lampa-mob-console-close').on('click', function () { 
-            closeConsole(); 
+            closeConsole(false); 
         });
 
-        // Свайп "Назад" на телефоні (popstate)
+        // Перехоплюємо свайп назад на телефоні
         window.addEventListener('popstate', function(e) {
             if ($('#lampa-mob-console-window').is(':visible')) {
-                e.stopImmediatePropagation();
-                e.preventDefault();
-                closeConsole(); 
+                // Браузер вже зробив крок назад в історії, тому просто ховаємо UI
+                closeConsole(true);
+                e.stopPropagation();
             }
-        }, true);
+        }, false);
 
-        // Перехоплення пульта ТБ та фікс Backspace
         window.addEventListener('keydown', function(e) {
             if ($('#lampa-mob-console-window').is(':visible')) {
                 if (e.keyCode === 8 && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) {
@@ -396,12 +401,11 @@
                 if (e.keyCode === 27 || e.keyCode === 8 || e.keyCode === 10009 || e.keyCode === 461) {
                     e.stopImmediatePropagation();
                     e.preventDefault();
-                    closeConsole();
+                    closeConsole(false);
                 }
             }
         }, true);
         
-        // Перехоплення hover:enter від пульта (клік кнопкою ОК)
         $(document).on('hover:enter', '.selector', function(e) {
             $(this).trigger('click');
             e.stopPropagation();
