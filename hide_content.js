@@ -267,3 +267,283 @@
             title_category: { uk: 'Категорія', en: 'Category' }
         });
     }
+    // Оновлення значення в меню
+    function updateSettingsValue(el, value) {
+        var valEl = el.find('.settings-param__value');
+        if (!valEl.length) {
+            valEl = $('<div class="settings-param__value"></div>');
+            el.find('.settings-param__name').after(valEl);
+        }
+        valEl.text(value || '');
+    }
+
+    // Створення меню налаштувань
+    function addSettings() {
+        Lampa.Settings.listener.follow('open', function (e) {
+            if (e.name === 'main') {
+                var render = Lampa.Settings.main().render();
+                if (render.find('[data-component="content_hiding"]').length === 0) {
+                    Lampa.SettingsApi.addComponent({ component: 'content_hiding', name: Lampa.Lang.translate('content_hiding') });
+                }
+                Lampa.Settings.main().update();
+                render.find('[data-component="content_hiding"]').addClass('hide');
+            }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'interface',
+            param: { name: 'content_hiding', type: 'static', default: true },
+            field: { name: Lampa.Lang.translate('content_hiding'), description: Lampa.Lang.translate('content_hiding_desc') },
+            onRender: function (el) {
+                setTimeout(function () {
+                    var title = Lampa.Lang.translate('content_hiding') || 'Приховування контенту';
+                    $('.settings-param > div:contains("' + title + '")').parent().insertAfter($('div[data-name="interface_size"]'));
+                }, 0);
+                el.on('hover:enter', function () {
+                    Lampa.Settings.create('content_hiding');
+                    Lampa.Controller.enabled().controller.back = function () { Lampa.Settings.create('interface'); };
+                });
+            }
+        });
+
+        ['ru', 'asian', 'in', 'tr', 'ar'].forEach(function (langKey) {
+            Lampa.SettingsApi.addParam({
+                component: 'content_hiding',
+                param: { name: 'hide_' + langKey, type: 'trigger', default: false },
+                field: { name: Lampa.Lang.translate('hide_' + langKey), description: Lampa.Lang.translate('hide_' + langKey + '_desc') },
+                onChange: function (value) {
+                    settings['hide_' + langKey] = value;
+                    Lampa.Storage.set('hide_' + langKey, value);
+                }
+            });
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'content_hiding',
+            param: { name: 'hide_custom_langs', type: 'static', default: '' },
+            field: { name: Lampa.Lang.translate('hide_custom_langs'), description: Lampa.Lang.translate('hide_custom_langs_desc') },
+            onRender: function (el) {
+                updateSettingsValue(el, settings.hide_custom_langs);
+                el.on('hover:enter', function () {
+                    Lampa.Input.edit({
+                        title: Lampa.Lang.translate('hide_custom_langs'),
+                        value: settings.hide_custom_langs,
+                        free: true,
+                        nosave: false
+                    }, function (new_value) {
+                        settings.hide_custom_langs = new_value;
+                        Lampa.Storage.set('hide_custom_langs', new_value);
+                        updateSettingsValue(el, new_value);
+                    });
+                });
+            }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'content_hiding',
+            param: { 
+                name: 'hide_rating', 
+                type: 'select', 
+                values: { 'none': Lampa.Lang.translate('hide_rating_none'), '4.0': '< 4.0', '5.0': '< 5.0', '6.0': '< 6.0', '7.0': '< 7.0' }, 
+                default: 'none' 
+            },
+            field: { name: Lampa.Lang.translate('hide_rating'), description: Lampa.Lang.translate('hide_rating_desc') },
+            onChange: function (value) {
+                settings.hide_rating = value;
+                Lampa.Storage.set('hide_rating', value);
+            }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'content_hiding',
+            param: { name: 'hide_history', type: 'trigger', default: false },
+            field: { name: Lampa.Lang.translate('hide_history'), description: Lampa.Lang.translate('hide_history_desc') },
+            onChange: function (value) {
+                settings.hide_history = value;
+                Lampa.Storage.set('hide_history', value);
+            }
+        });
+
+        Lampa.SettingsApi.addParam({
+            component: 'content_hiding',
+            param: { name: 'hide_words', type: 'static', default: '' },
+            field: { name: Lampa.Lang.translate('hide_words'), description: Lampa.Lang.translate('hide_words_desc') },
+            onRender: function (el) {
+                updateSettingsValue(el, settings.hide_words);
+                el.on('hover:enter', function () {
+                    Lampa.Input.edit({
+                        title: Lampa.Lang.translate('hide_words'),
+                        value: settings.hide_words,
+                        free: true,
+                        nosave: false
+                    }, function (new_value) {
+                        settings.hide_words = new_value;
+                        Lampa.Storage.set('hide_words', new_value);
+                        updateSettingsValue(el, new_value);
+                    });
+                });
+            }
+        });
+
+        // Менеджер Чорного списку
+        Lampa.SettingsApi.addParam({
+            component: 'content_hiding',
+            param: { name: 'hide_blacklist_manage', type: 'static' },
+            field: { name: Lampa.Lang.translate('blacklist_manage'), description: '' },
+            onRender: function (el) {
+                var updateCount = function() {
+                    var list = Lampa.Storage.get('content_blacklist', []);
+                    updateSettingsValue(el, list.length.toString());
+                };
+                updateCount();
+                
+                var showManager = function() {
+                    var list = Lampa.Storage.get('content_blacklist', []);
+                    if (list.length === 0) {
+                        Lampa.Noty.show(Lampa.Lang.translate('blacklist_empty'));
+                        Lampa.Controller.toggle('settings_component');
+                        return;
+                    }
+                    
+                    var items = [];
+                    items.push({
+                        title: Lampa.Lang.translate('blacklist_clear_all'),
+                        subtitle: Lampa.Lang.translate('blacklist_remove_action'),
+                        onSelect: function() {
+                            Lampa.Storage.set('content_blacklist', []);
+                            updateCount();
+                            Lampa.Controller.toggle('settings_component');
+                        }
+                    });
+                    
+                    list.forEach(function(item) {
+                        items.push({ title: item.title, itemData: item });
+                    });
+                    
+                    Lampa.Select.show({
+                        title: Lampa.Lang.translate('blacklist_manage'),
+                        items: items,
+                        onSelect: function(selected) {
+                            if (selected.itemData) {
+                                var newList = Lampa.Storage.get('content_blacklist', []).filter(function(i) { return i.id !== selected.itemData.id; });
+                                Lampa.Storage.set('content_blacklist', newList);
+                                Lampa.Noty.show('"' + selected.itemData.title + '" ' + Lampa.Lang.translate('blacklist_removed_suffix'));
+                                updateCount();
+                                showManager(); // Рекурсивний виклик для миттєвого оновлення та залишення в меню
+                            }
+                        },
+                        onBack: function() { Lampa.Controller.toggle('settings_component'); }
+                    });
+                };
+
+                el.on('hover:enter', showManager);
+            }
+        });
+    }
+
+    function loadSettings() {
+        for (var key in settings) settings[key] = Lampa.Storage.get(key, settings[key]);
+    }
+
+    // Реєстрація динамічного контекстного меню
+    function registerContextMenu() {
+        if (!Lampa.Manifest) Lampa.Manifest = {};
+        if (!Lampa.Manifest.plugins) Lampa.Manifest.plugins = [];
+
+        var exists = Array.isArray(Lampa.Manifest.plugins) && Lampa.Manifest.plugins.some(function(p) { return p.component === 'content_hiding_context'; });
+        if (exists) return;
+
+        var contextPlugin = {
+            type: 'video',
+            name: Lampa.Lang.translate('blacklist_add') || 'Додати до чорного списку',
+            component: 'content_hiding_context',
+            onContextMenu: function (card) {
+                if (card && card.id && isMediaContent(card)) {
+                    var blacklist = Lampa.Storage.get('content_blacklist', []);
+                    var inList = blacklist.some(function(i) { return i.id === card.id; });
+                    return {
+                        name: inList ? Lampa.Lang.translate('blacklist_remove') : Lampa.Lang.translate('blacklist_add')
+                    };
+                }
+            },
+            onContextLauch: function (card) { 
+                if (card && card.id) {
+                    toggleBlacklist(card);
+                }
+            }
+        };
+
+        if (Array.isArray(Lampa.Manifest.plugins)) {
+            Lampa.Manifest.plugins.push(contextPlugin);
+        } else {
+            Lampa.Manifest.plugins = [contextPlugin];
+        }
+    }
+
+    // Ініціалізація
+    function initPlugin() {
+        if (window.content_hiding_plugin) return;
+        window.content_hiding_plugin = true;
+
+        loadSettings();
+        addTranslations();
+        addSettings();
+        registerContextMenu(); 
+
+        Lampa.Listener.follow('line', function (e) {
+            if (e.type !== 'visible' || !needMoreButton(e.data)) return;
+            var head = $(closest(e.body, '.items-line')).find('.items-line__head');
+            if (head.find('.items-line__more').length) return;
+
+            var more = document.createElement('div');
+            more.classList.add('items-line__more', 'selector');
+            more.innerText = Lampa.Lang.translate('more');
+            more.addEventListener('hover:enter', function () {
+                Lampa.Activity.push({
+                    url: e.data.url, title: getSafeTitle(e.data) || Lampa.Lang.translate('title_category'), component: 'category_full',
+                    page: 1, genres: e.params.genres, filter: e.data.filter, source: e.data.source || (e.params.object ? e.params.object.source : '')
+                });
+            });
+            head.append(more);
+        });
+
+        Lampa.Listener.follow('request_secuses', function (e) {
+            if (!e.data || !Array.isArray(e.data.results)) return;
+            var urlStr = (e.url || (e.data && e.data.url) || '').toLowerCase();
+            if (urlStr.indexOf('extension') !== -1 || urlStr.indexOf('plugin') !== -1 || urlStr.indexOf('store') !== -1) return;
+            var componentStr = (e.component || (e.data && e.data.component) || '').toLowerCase();
+            if (componentStr.indexOf('extension') !== -1 || componentStr.indexOf('plugin') !== -1) return;
+            if (e.data.results.length === 0) return;
+            
+            var hasMediaContent = e.data.results.some(function(item) { return isMediaContent(item); });
+            if (!hasMediaContent) return;
+            
+            var originalCount = e.data.results.length;
+            e.data.results = hideProcessor.apply(e.data.results);
+            e.data.original_length = originalCount;
+
+            var currentUrlBase = urlStr.split('&page=')[0];
+            if (currentUrlBase !== lastRequestUrl) {
+                autoLoadCount = 0; 
+                lastRequestUrl = currentUrlBase;
+            }
+
+            if (e.data.results.length < 10 && e.data.page && e.data.total_pages && e.data.page < e.data.total_pages) {
+                if (autoLoadCount < 3) {
+                    autoLoadCount++;
+                    setTimeout(function() {
+                        var activeActivity = Lampa.Activity.active();
+                        if (activeActivity && activeActivity.component === 'category_full' && activeActivity.activity && typeof activeActivity.activity.append === 'function') {
+                            activeActivity.activity.append();
+                        }
+                    }, 400); 
+                } else {
+                    autoLoadCount = 0; 
+                }
+            }
+        });
+    }
+
+    if (window.appready) initPlugin();
+    else Lampa.Listener.follow('app', function (e) { if (e.type === 'ready') initPlugin(); });
+})();
