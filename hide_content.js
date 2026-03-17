@@ -2,7 +2,6 @@
 (function () {
     'use strict';
 
-    // Налаштування за замовчуванням
     var settings = {
         hide_ru: false,
         hide_asian: false,
@@ -15,10 +14,8 @@
         hide_words: ''
     };
 
-    var autoLoadCount = 0;
-    var lastRequestUrl = '';
+    var autoLoadLimits = {};
 
-    // Отримання текстової назви контенту
     function getSafeTitle(item) {
         if (!item) return 'Контент';
         var title = item.title || item.name || item.original_title || item.original_name || 'Контент';
@@ -28,7 +25,6 @@
         return String(title);
     }
 
-    // Перевірка на медіа-контент
     function isMediaContent(item) {
         if (!item) return false;
         if (item.type && typeof item.type === 'string') {
@@ -44,7 +40,6 @@
         return true;
     }
 
-    // Керування чорним списком
     function toggleBlacklist(cardData) {
         var blacklist = Lampa.Storage.get('content_blacklist', []);
         var isBlocked = false;
@@ -77,7 +72,6 @@
         }
     }
 
-    // Процесор приховування
     var hideProcessor = {
         filters: [
             function (items) {
@@ -176,7 +170,6 @@
         }
     };
 
-    // Історія переглядів
     function getWatchedEpisodesFromFavorite(id, favoriteData) {
         var card = (favoriteData.card || []).find(function (c) { return c.id === id && Array.isArray(c.seasons) && c.seasons.length > 0; });
         if (!card) return [];
@@ -230,7 +223,6 @@
         return null;
     }
 
-    // Локалізація
     function addTranslations() {
         Lampa.Lang.add({
             content_hiding: { uk: 'Приховування контенту', en: 'Hide Content' },
@@ -266,7 +258,6 @@
             title_category: { uk: 'Категорія', en: 'Category' }
         });
     }
-    // Оновлення значення в меню
     function updateSettingsValue(el, value) {
         var valEl = el.find('.settings-param__value');
         if (!valEl.length) {
@@ -276,7 +267,6 @@
         valEl.text(value || '');
     }
 
-    // Створення меню налаштувань
     function addSettings() {
         Lampa.Settings.listener.follow('open', function (e) {
             if (e.name === 'main') {
@@ -384,7 +374,6 @@
             }
         });
 
-        // Менеджер Чорного списку
         Lampa.SettingsApi.addParam({
             component: 'content_hiding',
             param: { name: 'hide_blacklist_manage', type: 'static' },
@@ -428,7 +417,7 @@
                                 Lampa.Storage.set('content_blacklist', newList);
                                 Lampa.Noty.show('"' + selected.itemData.title + '" ' + Lampa.Lang.translate('blacklist_removed_suffix'));
                                 updateCount();
-                                showManager(); // Рекурсивний виклик
+                                showManager(); 
                             }
                         },
                         onBack: function() { Lampa.Controller.toggle('settings_component'); }
@@ -444,7 +433,6 @@
         for (var key in settings) settings[key] = Lampa.Storage.get(key, settings[key]);
     }
 
-    // Реєстрація контекстного меню
     function registerContextMenu() {
         if (!Lampa.Manifest) Lampa.Manifest = {};
         if (!Lampa.Manifest.plugins) Lampa.Manifest.plugins = [];
@@ -478,7 +466,6 @@
         }
     }
 
-    // Ініціалізація
     function initPlugin() {
         if (window.content_hiding_plugin) return;
         window.content_hiding_plugin = true;
@@ -488,23 +475,45 @@
         addSettings();
         registerContextMenu(); 
 
+        // Перевірка на нестачу карток та автозавантаження в рядках (Main page)
         Lampa.Listener.follow('line', function (e) {
-            if (e.type !== 'visible' || !needMoreButton(e.data)) return;
-            var head = $(closest(e.body, '.items-line')).find('.items-line__head');
-            if (head.find('.items-line__more').length) return;
-
-            var more = document.createElement('div');
-            more.classList.add('items-line__more', 'selector');
-            more.innerText = Lampa.Lang.translate('more');
-            more.addEventListener('hover:enter', function () {
-                Lampa.Activity.push({
-                    url: e.data.url, title: getSafeTitle(e.data) || Lampa.Lang.translate('title_category'), component: 'category_full',
-                    page: 1, genres: e.params.genres, filter: e.data.filter, source: e.data.source || (e.params.object ? e.params.object.source : '')
-                });
-            });
-            head.append(more);
+            if (e.type === 'append') {
+                var data = e.data || {};
+                if (data.results && data.results.length < 10 && data.page < data.total_pages) {
+                    var urlBase = (data.url || '').split('&page=')[0];
+                    autoLoadLimits[urlBase] = autoLoadLimits[urlBase] || 0;
+                    
+                    if (autoLoadLimits[urlBase] < 3) {
+                        autoLoadLimits[urlBase]++;
+                        setTimeout(function() {
+                            if (e.line) {
+                                if (typeof e.line.append === 'function') {
+                                    e.line.append();
+                                } else if (typeof e.line.more === 'function' && Lampa.Controller.collectionAppend) {
+                                    Lampa.Controller.collectionAppend(e.line.more());
+                                }
+                            }
+                        }, 800);
+                    }
+                }
+            } else if (e.type === 'visible' && needMoreButton(e.data)) {
+                var head = $(closest(e.body, '.items-line')).find('.items-line__head');
+                if (!head.find('.items-line__more').length) {
+                    var more = document.createElement('div');
+                    more.classList.add('items-line__more', 'selector');
+                    more.innerText = Lampa.Lang.translate('more');
+                    more.addEventListener('hover:enter', function () {
+                        Lampa.Activity.push({
+                            url: e.data.url, title: getSafeTitle(e.data) || Lampa.Lang.translate('title_category'), component: 'category_full',
+                            page: 1, genres: e.params.genres, filter: e.data.filter, source: e.data.source || (e.params.object ? e.params.object.source : '')
+                        });
+                    });
+                    head.append(more);
+                }
+            }
         });
 
+        // Застосування фільтрів та автозавантаження у відкритих категоріях
         Lampa.Listener.follow('request_secuses', function (e) {
             if (!e.data || !Array.isArray(e.data.results)) return;
             var urlStr = (e.url || (e.data && e.data.url) || '').toLowerCase();
@@ -521,22 +530,19 @@
             e.data.original_length = originalCount;
 
             var currentUrlBase = urlStr.split('&page=')[0];
-            if (currentUrlBase !== lastRequestUrl) {
-                autoLoadCount = 0; 
-                lastRequestUrl = currentUrlBase;
-            }
+            if (e.data.page === 1) autoLoadLimits[currentUrlBase] = 0;
 
-            if (e.data.results.length < 10 && e.data.page && e.data.total_pages && e.data.page < e.data.total_pages) {
-                if (autoLoadCount < 3) {
-                    autoLoadCount++;
+            if (e.data.results.length < 10 && e.data.page < e.data.total_pages) {
+                autoLoadLimits[currentUrlBase] = autoLoadLimits[currentUrlBase] || 0;
+                
+                if (autoLoadLimits[currentUrlBase] < 3) {
+                    autoLoadLimits[currentUrlBase]++;
                     setTimeout(function() {
-                        var activeActivity = Lampa.Activity.active();
-                        if (activeActivity && activeActivity.component === 'category_full' && activeActivity.activity && typeof activeActivity.activity.append === 'function') {
-                            activeActivity.activity.append();
+                        var active = Lampa.Activity.active();
+                        if (active && active.component === 'category_full' && active.activity && typeof active.activity.append === 'function') {
+                            active.activity.append();
                         }
-                    }, 400); 
-                } else {
-                    autoLoadCount = 0; 
+                    }, 800); 
                 }
             }
         });
