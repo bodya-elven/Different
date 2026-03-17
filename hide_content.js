@@ -429,7 +429,7 @@
                                 Lampa.Storage.set('content_blacklist', newList);
                                 Lampa.Noty.show('"' + selected.itemData.title + '" ' + Lampa.Lang.translate('blacklist_removed_suffix'));
                                 updateCount();
-                                showManager(); // Рекурсивний виклик для миттєвого оновлення та залишення в меню
+                                showManager(); // Рекурсивний виклик для миттєвого оновлення
                             }
                         },
                         onBack: function() { Lampa.Controller.toggle('settings_component'); }
@@ -445,7 +445,7 @@
         for (var key in settings) settings[key] = Lampa.Storage.get(key, settings[key]);
     }
 
-    // Реєстрація динамічного контекстного меню
+    // Реєстрація контекстного меню
     function registerContextMenu() {
         if (!Lampa.Manifest) Lampa.Manifest = {};
         if (!Lampa.Manifest.plugins) Lampa.Manifest.plugins = [];
@@ -461,8 +461,13 @@
                 if (card && card.id && isMediaContent(card)) {
                     var blacklist = Lampa.Storage.get('content_blacklist', []);
                     var inList = blacklist.some(function(i) { return i.id === card.id; });
+                    
+                    // Динамічно змінюємо назву кнопки перед відображенням
+                    var currentName = inList ? Lampa.Lang.translate('blacklist_remove') : Lampa.Lang.translate('blacklist_add');
+                    this.name = currentName;
+
                     return {
-                        name: inList ? Lampa.Lang.translate('blacklist_remove') : Lampa.Lang.translate('blacklist_add')
+                        name: currentName
                     };
                 }
             },
