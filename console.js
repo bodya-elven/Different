@@ -20,6 +20,7 @@
         if (!text) return 'null';
         var str = String(text);
         if (str.length > 150 || str.split('\n').length > 3) {
+            // ТІЛЬКИ анімація розгортання, ЖОДНИХ кнопок "Розгорнути"
             return '<div class="lmc-collapsible collapsed">' + escapeHtml(str) + '</div>';
         }
         return escapeHtml(str);
@@ -43,12 +44,15 @@
     function applySearch() {
         var query = $('#lmc-search-input').val().toLowerCase();
         var $activeContent = $('.lmc-content.active');
-        $activeContent.children('.lmc-row, .lmc-network-row').each(function () {
+        $activeContent.children().each(function () {
             var text = $(this).text().toLowerCase();
             $(this).toggle(text.indexOf(query) !== -1);
         });
         if (query.length > 0) $('#lmc-search-clear').show();
         else $('#lmc-search-clear').hide();
+        
+        // Оновлюємо внутрішню математику скролу Лампи після пошуку
+        if (window.lmc_scroll && window.lmc_scroll.update) window.lmc_scroll.update();
     }
 
     function showToast(text) {
@@ -263,12 +267,11 @@
             .lmc-tab.active { background: rgba(32, 201, 151, 0.1); color: #20c997; border-color: #20c997; }
             .lmc-tab.focus { outline: 1.5px solid #fff; }
 
-            /* Фікс відступів Lampa.Scroll */
-            .lmc-scroll-wrapper { flex: 1; position: relative; overflow: hidden; margin-top: 5px !important; }
-            #lampa-mob-console-window .scroll__body { padding-top: 0 !important; padding-bottom: 0 !important; margin: 0 !important; }
-            #lampa-mob-console-window .scroll__content { padding-top: 0 !important; padding-bottom: 0 !important; }
+            /* Стилі для рідного скролу Лампи */
+            .lmc-scroll-wrapper { flex: 1; position: relative; overflow: hidden; margin-top: 5px; }
+            #lampa-mob-console-window .scroll__body { padding-top: 0 !important; padding-bottom: 40px !important; margin: 0 !important; }
             
-            .lmc-content { display: none; padding: 8px 14px 40px 14px; word-wrap: break-word; white-space: pre-wrap; flex-direction: column; }
+            .lmc-content { display: none; padding: 8px 14px; word-wrap: break-word; white-space: pre-wrap; flex-direction: column; }
             .lmc-content.active { display: block; }
 
             #lampa-mob-console-close { padding: 0 8px; font-size: 26px; line-height: 0.8; cursor: pointer; color: #888; transition: color 0.2s; font-weight: normal; }
@@ -300,7 +303,6 @@
             .lmc-net-url { color: #aaa; word-break: break-all; margin-left: 4px; }
             .lmc-net-response { color: #eee; font-size: 11.5px; background: #0c0d0f; padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
 
-            .lmc-flex-row { display: flex; justify-content: space-between; align-items: flex-start; }
             .lmc-item-wrap { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 1px solid rgba(255,255,255,0.07); padding: 5px 0; }
             .lmc-item-text { flex: 1; min-width: 0; padding: 5px; border-radius: 2px; cursor: pointer; user-select: none; }
             .lmc-item-text:hover { background: rgba(255,255,255,0.02); }
@@ -341,7 +343,7 @@
             </div>
         `);
 
-        // ПІДКЛЮЧЕННЯ РІДНОГО СКОРЛУ ЛАМПИ
+        // ПІДКЛЮЧЕННЯ РІДНОГО СКОРЛУ ЛАМПИ (за інструкцією)
         var scroll;
         if (window.Lampa && Lampa.Scroll) {
             scroll = new Lampa.Scroll({ mask: true, over: true, step: 250 });
@@ -381,14 +383,6 @@
             
             var btn = $('<div id="lmc-head-btn-wrap" class="head__action selector" title="Console Tools">' + iconSvg + '</div>');
             
-            // ВАЖЛИВО: hover:enter для ТВ пульта
-            btn.on('click hover:enter', function(e) {
-                e.stopPropagation();
-                if (!$('#lampa-mob-console-window').is(':visible')) {
-                    openConsole();
-                }
-            });
-            
             var $actions = $('.head__actions');
             if ($actions.length) {
                 var $reloadBtn = $actions.find('.open--reload, [data-action="reload"]').first();
@@ -420,45 +414,104 @@
                 if (!window.lmc_controller_added) {
                     Lampa.Controller.add('lmc_console', {
                         toggle: function() {
-                            Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]);
-                            Lampa.Controller.collectionFocus(false, $('#lampa-mob-console-window')[0]);
+                            // ПЕРЕДАЄМО JQUERY ОБ'ЄКТ! Без [0]
+                            Lampa.Controller.collectionSet($('#lampa-mob-console-window'));
+                            Lampa.Controller.collectionFocus(false, $('#lampa-mob-console-window'));
                         },
-                        // РІДНІ МЕТОДИ ЛАМПИ ДЛЯ НАВІГАЦІЇ
-                        right: function() { Lampa.Controller.collectionRight(); },
-                        left:  function() { Lampa.Controller.collectionLeft(); },
-                        down:  function() { Lampa.Controller.collectionDown(); },
-                        up:    function() { Lampa.Controller.collectionUp(); },
-                        back:  function() { closeConsole(); }
+                        // СПЕЦІАЛЬНИЙ МАРШРУТИЗАТОР (Щоб плагіни не стрибали на кнопки при русі вниз)
+                        right: function() { 
+                            var $f = $('#lampa-mob-console-window .selector.focus');
+                            if ($f.hasClass('lmc-item-text')) {
+                                var $btn = $f.siblings('.lmc-del-btn, .lmc-plugin-toggle');
+                                if ($btn.length) { Lampa.Controller.collectionFocus($btn[0], $('#lampa-mob-console-window')); return; }
+                            }
+                            Lampa.Controller.collectionRight(); 
+                        },
+                        left: function() { 
+                            var $f = $('#lampa-mob-console-window .selector.focus');
+                            if ($f.hasClass('lmc-del-btn') || $f.hasClass('lmc-plugin-toggle')) {
+                                var $txt = $f.siblings('.lmc-item-text');
+                                if ($txt.length) { Lampa.Controller.collectionFocus($txt[0], $('#lampa-mob-console-window')); return; }
+                            }
+                            Lampa.Controller.collectionLeft(); 
+                        },
+                        down: function() { 
+                            var $f = $('#lampa-mob-console-window .selector.focus');
+                            // Вихід з поля вводу вниз
+                            if ($f.is('#lmc-search-input') || $f.is('#lmc-search-clear')) {
+                                Lampa.Controller.collectionFocus($('#lampa-mob-console-tabs .lmc-tab.active')[0], $('#lampa-mob-console-window'));
+                                return;
+                            }
+                            // Якщо на кнопці - йдемо на наступний текст
+                            if ($f.hasClass('lmc-del-btn') || $f.hasClass('lmc-plugin-toggle')) {
+                                var $nxt = $f.closest('.lmc-item-wrap').next('.lmc-item-wrap');
+                                if ($nxt.length) { Lampa.Controller.collectionFocus($nxt.find('.lmc-item-text')[0], $('#lampa-mob-console-window')); return; }
+                            }
+                            Lampa.Controller.collectionDown(); 
+                        },
+                        up: function() { 
+                            var $f = $('#lampa-mob-console-window .selector.focus');
+                            // Якщо на вкладці - йдемо на поле пошуку
+                            if ($f.hasClass('lmc-tab')) {
+                                Lampa.Controller.collectionFocus($('#lmc-search-input')[0], $('#lampa-mob-console-window')); 
+                                return;
+                            }
+                            // Якщо на кнопці - йдемо на попередній текст або вкладки
+                            if ($f.hasClass('lmc-del-btn') || $f.hasClass('lmc-plugin-toggle')) {
+                                var $prv = $f.closest('.lmc-item-wrap').prev('.lmc-item-wrap');
+                                if ($prv.length) { Lampa.Controller.collectionFocus($prv.find('.lmc-item-text')[0], $('#lampa-mob-console-window')); return; }
+                                else { Lampa.Controller.collectionFocus($('#lampa-mob-console-tabs .lmc-tab.active')[0], $('#lampa-mob-console-window')); return; }
+                            }
+                            // Якщо це перший лог, стрибаємо на активну вкладку
+                            if ($f.hasClass('lmc-row') || $f.hasClass('lmc-network-row') || $f.hasClass('lmc-item-text')) {
+                                var $firstLog = $('#lampa-mob-console-window .lmc-content.active').find('.lmc-row:visible, .lmc-network-row:visible, .lmc-item-wrap:visible .lmc-item-text').first();
+                                if ($firstLog.length && $f[0] === $firstLog[0]) {
+                                    Lampa.Controller.collectionFocus($('#lampa-mob-console-tabs .lmc-tab.active')[0], $('#lampa-mob-console-window')); 
+                                    return;
+                                }
+                            }
+                            Lampa.Controller.collectionUp(); 
+                        },
+                        // РІДНИЙ СИСТЕМНИЙ НАЗАД (Свайп та кнопка пульта)
+                        back: function() { closeConsole(); }
                     });
                     window.lmc_controller_added = true;
                 }
                 Lampa.Controller.toggle('lmc_console');
-                
-                if (window.Navigator) {
-                    window.Navigator.focus($('#lampa-mob-console-tabs .lmc-tab.active')[0]);
-                }
             }
         }
 
-        // БЛОКУЄМО BACKSPACE В ІНПУТІ ДЛЯ КОНТРОЛЕРА ЛАМПИ (щоб не закривалась консоль при стиранні тексту)
+        // ГЛОБАЛЬНИЙ КЛІК ДЛЯ ПУЛЬТА (Перекладач hover:enter -> click)
+        $('#lampa-mob-console-window').on('hover:enter', '.selector', function(e) {
+            $(this).trigger('click');
+            if ($(this).is('input')) $(this).focus();
+            e.stopPropagation();
+            return false;
+        });
+
+        // ЗАХИСТ ВІД BACKSPACE В ПОШУКУ (Щоб не закривало консоль)
         $('#lampa-mob-console-window').on('keydown', '#lmc-search-input', function(e) {
-            if (e.keyCode === 8) {
-                e.stopPropagation();
+            if (e.keyCode === 8) { // Backspace
+                e.stopPropagation(); // Не пускаємо до Лампи
+            }
+            if (e.keyCode === 40 || e.keyCode === 38) { // Вниз / Вгору
+                e.preventDefault();
+                $(this).blur(); // Ховаємо клавіатуру
+                if (e.keyCode === 40 && window.Lampa && Lampa.Controller) {
+                    Lampa.Controller.collectionFocus($('#lampa-mob-console-tabs .lmc-tab.active')[0], $('#lampa-mob-console-window'));
+                }
             }
         });
 
-        // ЄДИНИЙ ОБРОБНИК КЛІКІВ ДЛЯ ВСІХ ЕЛЕМЕНТІВ (click + hover:enter)
-        $('#lampa-mob-console-window').on('click hover:enter', '.selector', function(e) {
+        $('#lampa-mob-console-window').on('click', '.selector', function(e) {
             var $this = $(this);
             e.stopPropagation();
 
-            // 1. Хрестик закриття
             if ($this.attr('id') === 'lampa-mob-console-close') {
                 closeConsole();
                 return;
             }
 
-            // 2. Перемикання вкладок
             if ($this.hasClass('lmc-tab')) {
                 var target = $this.attr('data-target');
                 if ($this.hasClass('active')) {
@@ -484,17 +537,17 @@
                     if (target === 'lmc-content-extensions') updateExtensionsTab();
                     
                     applySearch();
+                    if (window.lmc_scroll && window.lmc_scroll.reset) window.lmc_scroll.reset();
                 }
                 
                 if (window.Lampa && Lampa.Controller) {
                     setTimeout(function() {
-                        Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]);
+                        Lampa.Controller.collectionSet($('#lampa-mob-console-window'));
                     }, 50);
                 }
                 return;
             }
 
-            // 3. Видалення Storage/Cache
             if ($this.hasClass('lmc-del-btn')) {
                 var key = $this.attr('data-key');
                 localStorage.removeItem(key);
@@ -503,14 +556,13 @@
                 
                 if (window.Lampa && Lampa.Controller) {
                     setTimeout(function() {
-                        Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]);
-                        if (window.Navigator) window.Navigator.focus($('.lmc-tab.active')[0]);
+                        Lampa.Controller.collectionSet($('#lampa-mob-console-window'));
+                        Lampa.Controller.collectionFocus($('.lmc-tab.active')[0], $('#lampa-mob-console-window'));
                     }, 50);
                 }
                 return;
             }
 
-            // 4. Перемикання плагінів
             if ($this.hasClass('lmc-plugin-toggle')) {
                 var url = $this.attr('data-url');
                 var plugins = Lampa.Storage.get('plugins') || [];
@@ -529,45 +581,42 @@
                     updateExtensionsTab();
                     if (window.Lampa && Lampa.Controller) {
                         setTimeout(function() {
-                            Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]);
-                            if (window.Navigator) window.Navigator.focus($this[0]);
+                            Lampa.Controller.collectionSet($('#lampa-mob-console-window'));
+                            Lampa.Controller.collectionFocus($this[0], $('#lampa-mob-console-window')); 
                         }, 50);
                     }
                 }
                 return;
             }
 
-            // 5. Очищення поля пошуку
             if ($this.attr('id') === 'lmc-search-clear') {
                 $('#lmc-search-input').val('').trigger('input'); 
                 return;
             }
 
-            // 6. Розгортання логів (клік по самому рядку)
             if ($this.hasClass('lmc-row') || $this.hasClass('lmc-network-row') || $this.hasClass('lmc-item-text')) {
                 var $collapsible = $this.find('.lmc-collapsible');
                 if ($collapsible.length) {
                     $collapsible.toggleClass('collapsed');
-                    // Оновлюємо скрол Лампи після зміни висоти
                     if (window.Lampa && Lampa.Controller) {
-                        setTimeout(function() { Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]); }, 50);
+                        setTimeout(function() { Lampa.Controller.collectionSet($('#lampa-mob-console-window')); }, 50);
                     }
                 }
                 return;
             }
         });
 
-        // ПОШУК (ТРИГЕР НА ВВЕДЕННЯ ТЕКСТУ)
         $('#lmc-search-input').on('input', function() {
             applySearch();
             if (window.Lampa && Lampa.Controller) {
-                Lampa.Controller.collectionSet($('#lampa-mob-console-window')[0]);
+                Lampa.Controller.collectionSet($('#lampa-mob-console-window'));
             }
         });
 
-        // КОПІЮВАННЯ (ДОВГИЙ КЛІК)
+        // КОПІЮВАННЯ ДОВГИМ КЛІКОМ
         var pressTimer;
         $(document).on('touchstart mousedown', '.lmc-row, .lmc-network-row, .lmc-item-text', function(e) {
+            if ($(e.target).closest('.lmc-del-btn, .lmc-plugin-toggle').length) return;
             var $row = $(this);
             pressTimer = window.setTimeout(function() {
                 var clone = $row.clone();
