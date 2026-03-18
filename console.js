@@ -188,7 +188,7 @@
         var $storage = $('#lmc-content-storage').empty(), $cache = $('#lmc-content-cache').empty();
         for (var i = 0; i < localStorage.length; i++) {
             var key = localStorage.key(i), val = localStorage.getItem(key);
-            var html = '<div class="lmc-row lmc-flex-row selector"><div style="flex:1; overflow:hidden;"><strong style="color:#20c997;">' + escapeHtml(key) + '</strong>: ' + formatLongText(val) + '</div><div class="lmc-del-btn selector" data-key="' + escapeHtml(key) + '">Видалити</div></div>';
+            var html = '<div class="lmc-row lmc-flex-row selector"><div class="lmc-plugin-info"><strong style="color:#20c997;">' + escapeHtml(key) + '</strong>: ' + formatLongText(val) + '</div><div class="lmc-del-btn selector" data-key="' + escapeHtml(key) + '">Видалити</div></div>';
             if (key.indexOf('cache') > -1 || key.indexOf('hash') > -1 || key.indexOf('history') > -1) $cache.append(html); else $storage.append(html);
         }
     }
@@ -229,14 +229,12 @@
         });
     }
 
-    // Оновлена функція з кнопками вмикання/вимикання плагінів
     function updateExtensionsTab() {
         var $ext = $('#lmc-content-extensions').empty();
-        $ext.append('<div class="lmc-section-title">Завантажені скрипти (DOM)</div>');
-        $('script').each(function() { if (this.src) $ext.append('<div class="lmc-row selector"><span style="color:#aaa;">' + escapeHtml(this.src) + '</span></div>'); });
         
+        // Спочатку Встановлені плагіни (Storage)
         if (window.Lampa && Lampa.Storage) {
-            $ext.append('<div class="lmc-section-title" style="margin-top:10px;">Встановлені плагіни (Storage)</div>');
+            $ext.append('<div class="lmc-section-title">Встановлені плагіни (Storage)</div>');
             var plugins = Lampa.Storage.get('plugins') || [];
             plugins.forEach(function(p) {
                 var stat = p.status ? '<span style="color:#20c997;">[ON]</span>' : '<span style="color:#f44336;">[OFF]</span>';
@@ -244,12 +242,16 @@
                 var btnText = p.status ? 'Вимкнути' : 'Увімкнути';
 
                 var html = '<div class="lmc-row lmc-flex-row selector" style="align-items: center;">' +
-                           '<div style="flex:1; padding-right:10px;">' + stat + ' <strong>' + escapeHtml(p.name || 'Без назви') + '</strong><br><span style="color:#888;">' + escapeHtml(p.url) + '</span></div>' +
+                           '<div class="lmc-plugin-info">' + stat + ' <strong>' + escapeHtml(p.name || 'Без назви') + '</strong><br><span class="lmc-plugin-url">' + escapeHtml(p.url) + '</span></div>' +
                            '<div class="lmc-plugin-toggle selector ' + btnClass + '" data-url="' + escapeHtml(p.url) + '">' + btnText + '</div>' +
                            '</div>';
                 $ext.append(html);
             });
         }
+
+        // Потім Завантажені скрипти (DOM)
+        $ext.append('<div class="lmc-section-title" style="margin-top:10px;">Завантажені скрипти (DOM)</div>');
+        $('script').each(function() { if (this.src) $ext.append('<div class="lmc-row selector"><span class="lmc-plugin-url">' + escapeHtml(this.src) + '</span></div>'); });
     }
     function initUI() {
         if (uiReady) return;
@@ -269,7 +271,8 @@
             .lmc-tab.active { background: rgba(32, 201, 151, 0.1); color: #20c997; border-color: #20c997; }
             .lmc-tab.focus { outline: 1.5px solid #fff; }
 
-            .lmc-content { display: none; flex: 1; overflow-y: auto; padding: 8px 14px; word-wrap: break-word; white-space: pre-wrap; overscroll-behavior: contain; padding-bottom: 40px; flex-direction: column; }
+            /* POSITION RELATIVE - критично для розрахунку математики скролу */
+            .lmc-content { display: none; flex: 1; overflow-y: auto; padding: 8px 14px; word-wrap: break-word; white-space: pre-wrap; overscroll-behavior: contain; padding-bottom: 40px; flex-direction: column; position: relative; scroll-behavior: smooth; }
             .lmc-content.active { display: flex; }
 
             #lampa-mob-console-close { padding: 0 8px; font-size: 26px; line-height: 0.8; cursor: pointer; color: #888; transition: color 0.2s; font-weight: normal; }
@@ -302,13 +305,16 @@
             .lmc-net-url { color: #aaa; word-break: break-all; margin-left: 4px; }
             .lmc-net-response { color: #eee; font-size: 11.5px; background: #0c0d0f; padding: 6px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.05); pointer-events: none; }
 
+            /* Стилі для адаптації довгого тексту */
             .lmc-flex-row { display: flex; justify-content: space-between; align-items: flex-start; }
-            .lmc-del-btn { background: rgba(244, 67, 54, 0.05); color: #f44336; padding: 3px 7px; border-radius: 4px; font-size: 9px; margin-left: 8px; cursor: pointer; font-weight: 600; border: 1px solid rgba(244, 67, 54, 0.15); z-index: 2; text-transform: uppercase; }
+            .lmc-plugin-info { flex: 1; min-width: 0; padding-right: 10px; }
+            .lmc-plugin-url { color: #888; word-break: break-all; display: block; margin-top: 2px; }
+            .lmc-del-btn { flex-shrink: 0; background: rgba(244, 67, 54, 0.05); color: #f44336; padding: 3px 7px; border-radius: 4px; font-size: 9px; cursor: pointer; font-weight: 600; border: 1px solid rgba(244, 67, 54, 0.15); text-transform: uppercase; margin-left: auto;}
             .lmc-del-btn.focus { outline: 1.5px solid #fff; background: #f44336; color: #fff; }
             .lmc-section-title { font-weight: bold; color: #fff; padding: 8px 0 4px 0; border-bottom: 1px solid rgba(255,255,255,0.05); margin-bottom: 4px; text-transform: uppercase; font-size: 10.5px; }
 
             /* Стилі для кнопок плагінів */
-            .lmc-plugin-toggle { padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold; align-self: center; }
+            .lmc-plugin-toggle { flex-shrink: 0; padding: 4px 8px; border-radius: 4px; font-size: 10px; cursor: pointer; text-transform: uppercase; font-weight: bold; align-self: center; white-space: nowrap; margin-left: 10px; }
             .lmc-plug-off { background: rgba(244, 67, 54, 0.1); color: #f44336; border: 1px solid rgba(244, 67, 54, 0.2); }
             .lmc-plug-on { background: rgba(32, 201, 151, 0.1); color: #20c997; border: 1px solid rgba(32, 201, 151, 0.2); }
             .lmc-plugin-toggle.focus { outline: 1.5px solid #fff; background: rgba(255,255,255,0.1); color: #fff; }
@@ -377,20 +383,16 @@
         setInterval(injectHeaderBtn, 1000);
         injectHeaderBtn();
 
-        // НОВА ЛОГІКА ЗАКРИТТЯ: Спочатку робимо крок назад в історії
+        var lmc_is_programmatic_back = false;
+
         function closeConsole(fromHistory) {
+            $('#lampa-mob-console-window').hide();
             clearTimeout(window.lmcOpenTimeout);
             
-            // Якщо закриваємо Хрестиком (fromHistory=false) і в історії є наша модалка:
-            // Просто кажемо браузеру "назад". Він сам викличе подію popstate.
-            // Ми НЕ ховаємо консоль прямо зараз!
             if (!fromHistory && window.history.state && window.history.state.lmc_open) {
+                lmc_is_programmatic_back = true; 
                 window.history.back(); 
-                return; 
             }
-            
-            // Цей блок виконується тільки з події popstate (коли браузер вже зробив крок назад)
-            $('#lampa-mob-console-window').hide();
             
             if (window.Lampa && Lampa.Controller && prev_controller && prev_controller !== 'lmc_console') {
                 Lampa.Controller.toggle(prev_controller);
@@ -443,43 +445,37 @@
             }, 150);
         }
 
+        // ЦЕНТРУВАННЯ СКРОЛІНГУ
         $(document).on('hover:focus', '#lampa-mob-console-window .selector', function() {
             var $el = $(this);
             var $container = $el.closest('.lmc-content');
             if ($container.length) {
-                var elTop = this.offsetTop;
+                var elTop = this.offsetTop; 
                 var elHeight = this.offsetHeight;
                 var contHeight = $container[0].clientHeight;
                 var contScroll = $container[0].scrollTop;
 
-                if (elTop < contScroll) {
-                    $container[0].scrollTop = elTop - 10;
-                } else if (elTop + elHeight > contScroll + contHeight) {
-                    $container[0].scrollTop = elTop + elHeight - contHeight + 10;
+                // Якщо елемент виходить за межі видимості, центруємо його
+                if (elTop < contScroll || elTop + elHeight > contScroll + contHeight) {
+                    $container[0].scrollTop = elTop - (contHeight / 2) + (elHeight / 2);
                 }
-            } else if (this.scrollIntoViewIfNeeded) {
-                this.scrollIntoViewIfNeeded(true);
             }
         });
 
-        $('#lampa-mob-console-window').on('hover:enter', '.selector', function(e) {
-            $(this).trigger('click');
-            if ($(this).is('input')) {
-                $(this).focus();
-            }
-            e.stopPropagation();
-            return false;
-        });
-
-        $('#lampa-mob-console-close').on('click', function (e) { 
+        // Пряма прив'язка `hover:enter` замість глобального
+        $('#lampa-mob-console-close').on('click hover:enter', function (e) { 
             e.stopPropagation();
             closeConsole(false); 
         });
 
-        // ПЕРЕХОПЛЮВАЧ: Ловить системне "назад" (включаючи той, що ми самі викликали хрестиком)
         window.addEventListener('popstate', function(e) {
+            if (lmc_is_programmatic_back) {
+                lmc_is_programmatic_back = false;
+                e.stopImmediatePropagation(); 
+                return;
+            }
             if ($('#lampa-mob-console-window').is(':visible')) {
-                e.stopImmediatePropagation(); // Не даємо Лампі закрити фільм!
+                e.stopImmediatePropagation();
                 e.preventDefault();
                 closeConsole(true); 
             }
@@ -498,7 +494,13 @@
             }
         }, true);
 
-        $('.lmc-tab').on('click', function (e) {
+        // ФОКУС ІНПУТА
+        $('#lmc-search-input').on('click hover:enter', function(e) {
+            e.stopPropagation();
+            $(this).focus();
+        });
+
+        $('.lmc-tab').on('click hover:enter', function (e) {
             e.stopPropagation();
             var target = $(this).attr('data-target');
             var clickedTab = this;
@@ -541,8 +543,7 @@
             }
         });
 
-        // ПЕРЕМИКАЧ ПЛАГІНІВ (Клік)
-        $(document).on('click', '.lmc-plugin-toggle', function(e) {
+        $(document).on('click hover:enter', '.lmc-plugin-toggle', function(e) {
             e.stopPropagation();
             var url = $(this).attr('data-url');
             var plugins = Lampa.Storage.get('plugins') || [];
@@ -575,15 +576,16 @@
             }
         });
         
-        $('#lmc-search-clear').on('click', function(e) { 
+        $('#lmc-search-clear').on('click hover:enter', function(e) { 
             e.stopPropagation();
             $('#lmc-search-input').val('').trigger('input'); 
             applySearch();
             updateControllerFocus();
         });
 
-        $(document).on('click', '.lmc-row, .lmc-network-row', function(e) {
-            if ($(e.target).hasClass('lmc-del-btn') || $(e.target).hasClass('lmc-plugin-toggle')) return;
+        // Пряма прив'язка подій
+        $(document).on('click hover:enter', '.lmc-row, .lmc-network-row', function(e) {
+            if ($(e.target).closest('.lmc-del-btn, .lmc-plugin-toggle').length) return;
             var $collapsible = $(this).find('.lmc-collapsible');
             if ($collapsible.length) {
                 var isCollapsed = $collapsible.hasClass('collapsed');
@@ -593,7 +595,7 @@
             }
         });
 
-        $(document).on('click', '.lmc-del-btn', function(e) {
+        $(document).on('click hover:enter', '.lmc-del-btn', function(e) {
             e.stopPropagation(); 
             var key = $(this).attr('data-key');
             localStorage.removeItem(key);
@@ -610,7 +612,7 @@
 
         var pressTimer;
         $(document).on('touchstart mousedown', '.lmc-row, .lmc-network-row', function(e) {
-            if ($(e.target).hasClass('lmc-del-btn') || $(e.target).hasClass('lmc-plugin-toggle')) return;
+            if ($(e.target).closest('.lmc-del-btn, .lmc-plugin-toggle').length) return;
             var $row = $(this);
             pressTimer = window.setTimeout(function() {
                 var clone = $row.clone();
