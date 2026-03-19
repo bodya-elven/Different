@@ -5,13 +5,14 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.2';
+    var PLUGIN_VERSION = '1.0.3';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
     var netBuffer = [];
+    var actBuffer = []; // Буфер для подій активності
     var uiReady = false;
-    var counts = { logs: 0, errors: 0, network: 0 };
+    var counts = { logs: 0, errors: 0, network: 0, activity: 0 };
     var startTime = performance.now();
     var prev_controller = 'content'; 
 
@@ -54,15 +55,18 @@
         if (!uiReady) return;
         var tabId = type === 'log' || type === 'warn' || type === 'info' ? 'lmc-content-logs' : 
                     type === 'error' ? 'lmc-content-errors' : 
-                    type === 'net' ? 'lmc-content-network' : '';
+                    type === 'net' ? 'lmc-content-network' : 
+                    type === 'activity' ? 'lmc-content-activity' : '';
         
         if (tabId === 'lmc-content-logs') counts.logs++;
         if (type === 'error') { counts.errors++; counts.logs++; }
         if (type === 'net') counts.network++;
+        if (type === 'activity') counts.activity++;
 
         $('.lmc-tab[data-target="lmc-content-logs"]').text('Console (' + counts.logs + ')');
         $('.lmc-tab[data-target="lmc-content-errors"]').text('Errors (' + counts.errors + ')');
         $('.lmc-tab[data-target="lmc-content-network"]').text('Network (' + counts.network + ')');
+        $('.lmc-tab[data-target="lmc-content-activity"]').text('Activity (' + counts.activity + ')');
     }
 
     function applySearch() {
@@ -159,6 +163,43 @@
     console.warn = function () { interceptLog('warn', arguments); originalWarn.apply(console, arguments); };
     console.error = function () { interceptLog('error', arguments); originalError.apply(console, arguments); };
     console.info = function () { interceptLog('info', arguments); originalInfo.apply(console, arguments); };
+
+    // --- ACTIVITY ТА EVENTS TRACKER ---
+    function pushActivityToUI(source, type, component, payload) {
+        if (!uiReady) return;
+        var time = new Date().toLocaleTimeString('uk-UA', { hour12: false }).substring(0, 5);
+        var color = source === 'APP' ? '#03a9f4' : '#e91e63';
+        var formattedPayload = payload ? formatLongText(payload) : '';
+        var html = '<div class="lmc-row selector"><span class="lmc-time">' + time + ' - </span><strong style="color:'+color+';">[' + source + ']</strong> <strong>' + escapeHtml(type) + '</strong> <span style="color:#aaa;">' + escapeHtml(component) + '</span> ' + formattedPayload + '</div>';
+
+        var $act = $('#lmc-content-activity');
+        if ($act.children().length > 300) $act.children().first().remove();
+        $(html).appendTo($act);
+
+        updateCounter('activity'); applySearch();
+    }
+
+    function interceptActivity(source, type, component, payload) {
+        if (uiReady) pushActivityToUI(source, type, component, payload);
+        else actBuffer.push({ source: source, type: type, component: component, payload: payload });
+    }
+
+    // Слухаємо глобальні події Lampa
+    var setupTracker = setInterval(function() {
+        if (window.Lampa && Lampa.Listener) {
+            clearInterval(setupTracker);
+            Lampa.Listener.follow('app', function(e) {
+                var payload = Object.assign({}, e);
+                delete payload.type;
+                interceptActivity('APP', e.type || 'unknown', 'system', Object.keys(payload).length ? JSON.stringify(payload, null, 2) : '');
+            });
+            Lampa.Listener.follow('activity', function(e) {
+                var payload = Object.assign({}, e);
+                delete payload.type; delete payload.component;
+                interceptActivity('ACTIVITY', e.type || 'unknown', e.component || 'unknown', Object.keys(payload).length ? JSON.stringify(payload, null, 2) : '');
+            });
+        }
+    }, 200);
     function pushNetToUI(method, url, status, responseText) {
         if (!uiReady) return;
         var $net = $('#lmc-content-network');
@@ -217,40 +258,37 @@
 
     function updateInfoTab() {
         var $info = $('#lmc-content-info').empty();
-        var lsTotal = 0;
-        for (var x in localStorage) { if (localStorage.hasOwnProperty(x)) lsTotal += ((localStorage[x].length + x.length) * 2); }
-        var lsSize = (lsTotal / 1024).toFixed(2) + ' KB';
-        var activeComp = window.Lampa && Lampa.Activity && Lampa.Activity.active() ? Lampa.Activity.active().component : 'None';
         var ms = performance.now() - startTime;
         var uptime = Math.floor(ms / 1000 / 60) + ' хв ' + Math.floor((ms / 1000) % 60) + ' сек';
         var dpr = window.devicePixelRatio || 1;
         var screenW = Math.round(window.screen.width * dpr);
         var screenH = Math.round(window.screen.height * dpr);
+        var memUsage = (window.performance && performance.memory) ? (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB' : 'Not supported';
 
         var data = [
-            { k: 'location', v: window.location.href },
-            { k: 'active component', v: activeComp },
-            { k: 'session uptime', v: uptime },
-            { k: 'hash', v: window.Lampa && Lampa.Storage ? Lampa.Storage.get('hash', 'unknown') : 'unknown' },
-            { k: 'build date', v: window.Lampa && Lampa.Manifest && Lampa.Manifest.time ? new Date(Lampa.Manifest.time).toLocaleString() : 'Unknown' },
-            { k: 'version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
-            { k: 'platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
-            { k: 'is PWA', v: window.matchMedia('(display-mode: standalone)').matches ? 'true' : 'false' },
-            { k: 'is touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' },
-            { k: 'is mobile', v: /Mobi|Android/i.test(navigator.userAgent) ? 'true' : 'false' },
-            { k: 'is tv', v: window.Lampa && Lampa.Platform ? Lampa.Platform.is('tv') : 'false' },
-            { k: 'touch points', v: navigator.maxTouchPoints || 0 },
-            { k: 'user agent', v: navigator.userAgent },
-            { k: 'pixel ratio', v: dpr },
-            { k: 'interface size', v: window.innerWidth + ' / ' + window.innerHeight },
-            { k: 'screen size', v: screenW + ' / ' + screenH }
+            { k: 'Version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
+            { k: 'Build date', v: window.Lampa && Lampa.Manifest && Lampa.Manifest.time ? new Date(Lampa.Manifest.time).toLocaleString() : 'Unknown' },
+            { k: 'Active component', v: window.Lampa && Lampa.Activity && Lampa.Activity.active() ? Lampa.Activity.active().component : 'None' },
+            { k: 'Session uptime', v: uptime },
+            { k: 'Location', v: window.location.href },
+            { k: 'Hash', v: window.Lampa && Lampa.Storage ? Lampa.Storage.get('hash', 'unknown') : 'unknown' },
+            { k: 'Platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
+            { k: 'Is TV', v: window.Lampa && Lampa.Platform ? Lampa.Platform.is('tv') : 'false' },
+            { k: 'Is Mobile', v: /Mobi|Android/i.test(navigator.userAgent) ? 'true' : 'false' },
+            { k: 'Is PWA', v: window.matchMedia('(display-mode: standalone)').matches ? 'true' : 'false' },
+            { k: 'Is touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' },
+            { k: 'Touch points', v: navigator.maxTouchPoints || 0 },
+            { k: 'User agent', v: navigator.userAgent },
+            { k: 'Memory Usage', v: memUsage },
+            { k: 'Screen size', v: screenW + ' / ' + screenH },
+            { k: 'Interface size', v: window.innerWidth + ' / ' + window.innerHeight },
+            { k: 'Pixel ratio', v: dpr }
         ];
         
         data.forEach(function(item) { 
             $info.append('<div class="lmc-row selector"><strong>' + item.k + ':</strong> <span style="color:#aaa;">' + escapeHtml(item.v) + '</span></div>'); 
         });
     }
-
 
     function updateExtensionsTab() {
         var $ext = $('#lmc-content-extensions').empty();
@@ -281,7 +319,7 @@
                    '<div id="lmc-modal-content" class="selector"></div>' +
                    '</div>';
         $('body').append(html);
-        $('#lmc-modal-content').text(text); // Безпечне вставлення тексту
+        $('#lmc-modal-content').text(text);
 
         var prevFocus = window.Navigator.getFocusedElement();
 
@@ -294,12 +332,12 @@
             left:  function() { window.Navigator.move('left'); },
             down:  function() { 
                 var focus = window.Navigator.getFocusedElement();
-                if (focus && focus.id === 'lmc-modal-content') focus.scrollTop += 120; // Скрол тексту вниз
+                if (focus && focus.id === 'lmc-modal-content') focus.scrollTop += 120;
                 else window.Navigator.move('down');
             },
             up:    function() { 
                 var focus = window.Navigator.getFocusedElement();
-                if (focus && focus.id === 'lmc-modal-content') focus.scrollTop -= 120; // Скрол тексту вверх
+                if (focus && focus.id === 'lmc-modal-content') focus.scrollTop -= 120;
                 else window.Navigator.move('up');
             },
             enter: function() { 
@@ -320,7 +358,7 @@
         Lampa.Controller.toggle('lmc_console');
         if (prevFocus) {
             window.Navigator.focus(prevFocus);
-            scrollToFocused(); // Повертаємо екран до рядка
+            scrollToFocused(); 
         }
     }
 
@@ -386,18 +424,14 @@
 
     function injectHeaderBtn() {
         if ($('#lmc-head-btn-wrap').length) return; 
-        
         var iconSvg = '<svg viewBox="0 0 15 15" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" xmlns="http://www.w3.org/2000/svg">' +
                       '<path d="M3.5 4.5L6.5 7.5L3.5 10.5M8 10.5H12M1.5 1.5H13.5C14.0523 1.5 14.5 1.94772 14.5 2.5V12.5C14.5 13.0523 14.0523 13.5 13.5 13.5H1.5C0.947716 13.5 0.5 13.0523 0.5 12.5V2.5C0.5 1.94772 0.947715 1.5 1.5 1.5Z"/>' +
                       '</svg>';
-        
         var btn = $('<div id="lmc-head-btn-wrap" class="head__action selector" title="Console Tools">' + iconSvg + '</div>');
-        
         btn.on('click hover:enter', function(e) {
             e.stopPropagation();
             if (!$('#lampa-mob-console-window').is(':visible')) openConsole();
         });
-        
         var $actions = $('.head__actions');
         if ($actions.length) {
             var $reloadBtn = $actions.find('.open--reload, [data-action="reload"]').first();
@@ -457,8 +491,6 @@
             .lmc-plug-on { background: rgba(32, 201, 151, 0.1); color: #20c997; border: 1px solid rgba(32, 201, 151, 0.2); }
             .lmc-del-btn.focus, .lmc-plugin-toggle.focus { outline: 1.5px solid #fff; background: rgba(255,255,255,0.1); color: #fff; }
             .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
-            
-            /* Стилі для модального вікна (ТБ версія) */
             #lmc-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(12,13,15,0.98); z-index: 99999999; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
             #lmc-modal-close { align-self: flex-end; margin-bottom: 12px; padding: 8px 16px; background: rgba(255,255,255,0.05); color: #888; border-radius: 4px; cursor: pointer; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
             #lmc-modal-close.focus { background: #20c997; color: #000; border-color: #20c997; outline: none; }
@@ -467,6 +499,7 @@
         `;
         $('<style>').text(css).appendTo('head');
 
+        // Нове сортування вкладок
         $('body').append(`
             <div id="lampa-mob-console-window">
                 <div id="lampa-mob-console-header">
@@ -481,18 +514,20 @@
                     <div class="lmc-tab selector active" data-target="lmc-content-logs">Console (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-errors">Errors (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-network">Network (0)</div>
-                    <div class="lmc-tab selector" data-target="lmc-content-info">Info</div>
+                    <div class="lmc-tab selector" data-target="lmc-content-activity">Activity (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-extensions">Plugins</div>
-                    <div class="lmc-tab selector" data-target="lmc-content-cache">Cache</div>
                     <div class="lmc-tab selector" data-target="lmc-content-storage">Storage</div>
+                    <div class="lmc-tab selector" data-target="lmc-content-cache">Cache</div>
+                    <div class="lmc-tab selector" data-target="lmc-content-info">Info</div>
                 </div>
                 <div id="lmc-content-logs" class="lmc-content active"></div>
                 <div id="lmc-content-errors" class="lmc-content"></div>
                 <div id="lmc-content-network" class="lmc-content"></div>
-                <div id="lmc-content-info" class="lmc-content"></div>
+                <div id="lmc-content-activity" class="lmc-content"></div>
                 <div id="lmc-content-extensions" class="lmc-content"></div>
-                <div id="lmc-content-cache" class="lmc-content"></div>
                 <div id="lmc-content-storage" class="lmc-content"></div>
+                <div id="lmc-content-cache" class="lmc-content"></div>
+                <div id="lmc-content-info" class="lmc-content"></div>
             </div>
         `);
 
@@ -500,6 +535,7 @@
 
         logBuffer.forEach(function (item) { pushLogToUI(item.msg, item.type); }); logBuffer = [];
         netBuffer.forEach(function (item) { pushNetToUI(item.method, item.url, item.status, item.response); }); netBuffer = [];
+        actBuffer.forEach(function (item) { pushActivityToUI(item.source, item.type, item.component, item.payload); }); actBuffer = [];
 
         injectHeaderBtn();
 
@@ -606,11 +642,9 @@
                 return false;
             }
 
-            // --- ВИПРАВЛЕННЯ ФОКУСУ ДЛЯ ОЧИЩЕННЯ ПОШУКУ ---
             if ($this.attr('id') === 'lmc-search-clear') {
                 var $input = $('#lmc-search-input');
                 $input.val('').trigger('input'); 
-                
                 $input.focus();
                 if (window.Navigator) {
                     window.Navigator.focus($input[0]);
@@ -618,15 +652,12 @@
                 return false;
             }
 
-            // --- ТБ АБО МОБІЛЬНИЙ КЛІК ПО ТЕКСТУ ---
             if ($this.hasClass('lmc-row') || $this.hasClass('lmc-network-row') || $this.hasClass('lmc-item-text')) {
                 var $collapsible = $this.find('.lmc-collapsible');
                 if ($collapsible.length) {
-                    // Якщо це ТБ (Lampa.Platform.is('tv')) — показуємо модальне вікно
                     if (window.Lampa && window.Lampa.Platform && Lampa.Platform.is('tv')) {
                         showModal($collapsible.text());
                     } else {
-                        // Якщо мобільний — звичайне розгортання
                         $collapsible.toggleClass('collapsed');
                         scrollToFocused(); 
                     }
