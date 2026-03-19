@@ -5,14 +5,13 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.4';
+    var PLUGIN_VERSION = '1.0.5';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
     var netBuffer = [];
-    var actBuffer = []; 
     var uiReady = false;
-    var counts = { logs: 0, errors: 0, network: 0, activity: 0 };
+    var counts = { logs: 0, errors: 0, network: 0 };
     var startTime = performance.now();
     var prev_controller = 'content'; 
 
@@ -55,18 +54,15 @@
         if (!uiReady) return;
         var tabId = type === 'log' || type === 'warn' || type === 'info' ? 'lmc-content-logs' : 
                     type === 'error' ? 'lmc-content-errors' : 
-                    type === 'net' ? 'lmc-content-network' : 
-                    type === 'activity' ? 'lmc-content-activity' : '';
+                    type === 'net' ? 'lmc-content-network' : '';
         
         if (tabId === 'lmc-content-logs') counts.logs++;
         if (type === 'error') { counts.errors++; counts.logs++; }
         if (type === 'net') counts.network++;
-        if (type === 'activity') counts.activity++;
 
         $('.lmc-tab[data-target="lmc-content-logs"]').text('Console (' + counts.logs + ')');
         $('.lmc-tab[data-target="lmc-content-errors"]').text('Errors (' + counts.errors + ')');
         $('.lmc-tab[data-target="lmc-content-network"]').text('Network (' + counts.network + ')');
-        $('.lmc-tab[data-target="lmc-content-activity"]').text('Activity (' + counts.activity + ')');
     }
 
     function applySearch() {
@@ -163,63 +159,6 @@
     console.warn = function () { interceptLog('warn', arguments); originalWarn.apply(console, arguments); };
     console.error = function () { interceptLog('error', arguments); originalError.apply(console, arguments); };
     console.info = function () { interceptLog('info', arguments); originalInfo.apply(console, arguments); };
-
-    // --- ACTIVITY ТА EVENTS TRACKER ---
-    function pushActivityToUI(source, type, component, payload) {
-        if (!uiReady) return;
-        var time = new Date().toLocaleTimeString('uk-UA', { hour12: false }).substring(0, 5);
-        var color = source === 'APP' ? '#03a9f4' : '#e91e63';
-        var formattedPayload = payload ? formatLongText(payload) : '';
-        var html = '<div class="lmc-row selector"><span class="lmc-time">' + time + ' - </span><strong style="color:'+color+';">[' + source + ']</strong> <strong>' + escapeHtml(type) + '</strong> <span style="color:#aaa;">' + escapeHtml(component) + '</span> ' + formattedPayload + '</div>';
-
-        var $act = $('#lmc-content-activity');
-        if ($act.children().length > 300) $act.children().first().remove();
-        $(html).appendTo($act);
-
-        updateCounter('activity'); applySearch();
-    }
-
-    function interceptActivity(source, type, component, payload) {
-        if (uiReady) pushActivityToUI(source, type, component, payload);
-        else actBuffer.push({ source: source, type: type, component: component, payload: payload });
-    }
-
-    // Слухаємо глобальні події Lampa з безпечним фільтром
-    var setupTracker = setInterval(function() {
-        if (window.Lampa && Lampa.Listener) {
-            clearInterval(setupTracker);
-            
-            Lampa.Listener.follow('app', function(e) {
-                var safeApp = {};
-                for (var key in e) {
-                    if (key !== 'type' && typeof e[key] !== 'object' && typeof e[key] !== 'function') safeApp[key] = e[key];
-                }
-                interceptActivity('APP', e.type || 'unknown', 'system', Object.keys(safeApp).length ? JSON.stringify(safeApp, null, 2) : '');
-            });
-            
-            Lampa.Listener.follow('activity', function(e) {
-                // Безпечний екстрактор, щоб уникнути помилок циклічних посилань
-                var safeData = {};
-                if (e.id) safeData.id = e.id;
-                if (e.source) safeData.source = e.source;
-                if (e.page) safeData.page = e.page;
-                if (e.query) safeData.query = e.query;
-                
-                if (e.movie && typeof e.movie === 'object') {
-                    safeData.movie = e.movie.title || e.movie.name || e.movie.original_title || e.movie.id;
-                }
-                if (e.item && typeof e.item === 'object') {
-                    safeData.item = e.item.title || e.item.name || e.item.id;
-                }
-                if (e.card && typeof e.card === 'object') {
-                    safeData.card = e.card.title || e.card.name || e.card.id;
-                }
-                
-                var payloadStr = Object.keys(safeData).length ? JSON.stringify(safeData, null, 2) : '';
-                interceptActivity('ACTIVITY', e.type || 'unknown', e.component || 'unknown', payloadStr);
-            });
-        }
-    }, 200);
     function pushNetToUI(method, url, status, responseText) {
         if (!uiReady) return;
         var $net = $('#lmc-content-network');
@@ -520,7 +459,6 @@
         `;
         $('<style>').text(css).appendTo('head');
 
-        // Нове логічне сортування вкладок
         $('body').append(`
             <div id="lampa-mob-console-window">
                 <div id="lampa-mob-console-header">
@@ -535,7 +473,6 @@
                     <div class="lmc-tab selector active" data-target="lmc-content-logs">Console (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-errors">Errors (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-network">Network (0)</div>
-                    <div class="lmc-tab selector" data-target="lmc-content-activity">Activity (0)</div>
                     <div class="lmc-tab selector" data-target="lmc-content-extensions">Plugins</div>
                     <div class="lmc-tab selector" data-target="lmc-content-storage">Storage</div>
                     <div class="lmc-tab selector" data-target="lmc-content-cache">Cache</div>
@@ -544,7 +481,6 @@
                 <div id="lmc-content-logs" class="lmc-content active"></div>
                 <div id="lmc-content-errors" class="lmc-content"></div>
                 <div id="lmc-content-network" class="lmc-content"></div>
-                <div id="lmc-content-activity" class="lmc-content"></div>
                 <div id="lmc-content-extensions" class="lmc-content"></div>
                 <div id="lmc-content-storage" class="lmc-content"></div>
                 <div id="lmc-content-cache" class="lmc-content"></div>
@@ -556,7 +492,6 @@
 
         logBuffer.forEach(function (item) { pushLogToUI(item.msg, item.type); }); logBuffer = [];
         netBuffer.forEach(function (item) { pushNetToUI(item.method, item.url, item.status, item.response); }); netBuffer = [];
-        actBuffer.forEach(function (item) { pushActivityToUI(item.source, item.type, item.component, item.payload); }); actBuffer = [];
 
         injectHeaderBtn();
 
