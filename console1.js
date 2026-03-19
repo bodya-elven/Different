@@ -5,12 +5,12 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.3';
+    var PLUGIN_VERSION = '1.0.4';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
     var netBuffer = [];
-    var actBuffer = []; // Буфер для подій активності
+    var actBuffer = []; 
     var uiReady = false;
     var counts = { logs: 0, errors: 0, network: 0, activity: 0 };
     var startTime = performance.now();
@@ -184,19 +184,39 @@
         else actBuffer.push({ source: source, type: type, component: component, payload: payload });
     }
 
-    // Слухаємо глобальні події Lampa
+    // Слухаємо глобальні події Lampa з безпечним фільтром
     var setupTracker = setInterval(function() {
         if (window.Lampa && Lampa.Listener) {
             clearInterval(setupTracker);
+            
             Lampa.Listener.follow('app', function(e) {
-                var payload = Object.assign({}, e);
-                delete payload.type;
-                interceptActivity('APP', e.type || 'unknown', 'system', Object.keys(payload).length ? JSON.stringify(payload, null, 2) : '');
+                var safeApp = {};
+                for (var key in e) {
+                    if (key !== 'type' && typeof e[key] !== 'object' && typeof e[key] !== 'function') safeApp[key] = e[key];
+                }
+                interceptActivity('APP', e.type || 'unknown', 'system', Object.keys(safeApp).length ? JSON.stringify(safeApp, null, 2) : '');
             });
+            
             Lampa.Listener.follow('activity', function(e) {
-                var payload = Object.assign({}, e);
-                delete payload.type; delete payload.component;
-                interceptActivity('ACTIVITY', e.type || 'unknown', e.component || 'unknown', Object.keys(payload).length ? JSON.stringify(payload, null, 2) : '');
+                // Безпечний екстрактор, щоб уникнути помилок циклічних посилань
+                var safeData = {};
+                if (e.id) safeData.id = e.id;
+                if (e.source) safeData.source = e.source;
+                if (e.page) safeData.page = e.page;
+                if (e.query) safeData.query = e.query;
+                
+                if (e.movie && typeof e.movie === 'object') {
+                    safeData.movie = e.movie.title || e.movie.name || e.movie.original_title || e.movie.id;
+                }
+                if (e.item && typeof e.item === 'object') {
+                    safeData.item = e.item.title || e.item.name || e.item.id;
+                }
+                if (e.card && typeof e.card === 'object') {
+                    safeData.card = e.card.title || e.card.name || e.card.id;
+                }
+                
+                var payloadStr = Object.keys(safeData).length ? JSON.stringify(safeData, null, 2) : '';
+                interceptActivity('ACTIVITY', e.type || 'unknown', e.component || 'unknown', payloadStr);
             });
         }
     }, 200);
@@ -491,6 +511,7 @@
             .lmc-plug-on { background: rgba(32, 201, 151, 0.1); color: #20c997; border: 1px solid rgba(32, 201, 151, 0.2); }
             .lmc-del-btn.focus, .lmc-plugin-toggle.focus { outline: 1.5px solid #fff; background: rgba(255,255,255,0.1); color: #fff; }
             .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
+            
             #lmc-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(12,13,15,0.98); z-index: 99999999; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
             #lmc-modal-close { align-self: flex-end; margin-bottom: 12px; padding: 8px 16px; background: rgba(255,255,255,0.05); color: #888; border-radius: 4px; cursor: pointer; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
             #lmc-modal-close.focus { background: #20c997; color: #000; border-color: #20c997; outline: none; }
@@ -499,7 +520,7 @@
         `;
         $('<style>').text(css).appendTo('head');
 
-        // Нове сортування вкладок
+        // Нове логічне сортування вкладок
         $('body').append(`
             <div id="lampa-mob-console-window">
                 <div id="lampa-mob-console-header">
@@ -642,13 +663,12 @@
                 return false;
             }
 
+            // Повернення фокусу на input після стирання
             if ($this.attr('id') === 'lmc-search-clear') {
                 var $input = $('#lmc-search-input');
                 $input.val('').trigger('input'); 
                 $input.focus();
-                if (window.Navigator) {
-                    window.Navigator.focus($input[0]);
-                }
+                if (window.Navigator) window.Navigator.focus($input[0]);
                 return false;
             }
 
