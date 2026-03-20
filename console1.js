@@ -5,7 +5,7 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.6';
+    var PLUGIN_VERSION = '1.0.7';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
@@ -14,6 +14,7 @@
     var counts = { logs: 0, errors: 0, network: 0 };
     var startTime = performance.now();
     var prev_controller = 'content'; 
+    var isDeviceTV = false; // Глобальний прапорець для ТБ
 
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return String(unsafe);
@@ -270,14 +271,13 @@
         $('script').each(function() { if (this.src) $ext.append('<div class="lmc-row selector"><span class="lmc-plugin-url">' + escapeHtml(this.src) + '</span></div>'); });
     }
 
-    // ЛОГІКА ПРОГРЕСИВНОГО СКРОЛУ (АКСЕЛЕРАЦІЯ ФОКУСУ)
+    // ЛОГІКА ПРОГРЕСИВНОГО СКРОЛУ
     var moveHoldStart = 0;
     var moveHoldDir = '';
     var moveLastTime = 0;
 
     function smartMove(dir) {
         var now = performance.now();
-        // Якщо напрямок змінився або між кліками більше 300мс — це нове натискання
         if (moveHoldDir !== dir || now - moveLastTime > 300) {
             moveHoldStart = now;
             moveHoldDir = dir;
@@ -287,9 +287,8 @@
         var duration = now - moveHoldStart;
         var steps = 1;
         
-        // Збільшуємо швидкість залежно від часу утримання
-        if (duration > 2000) steps = 3;      // Тримаємо 2 сек — перестрибуємо через 2 елементи
-        else if (duration > 500) steps = 2;  // Тримаємо 0.5 сек — перестрибуємо через 1 елемент
+        if (duration > 3000) steps = 3;      // > 3 сек: стрибок через 2
+        else if (duration > 500) steps = 2;  // > 0.5 сек: стрибок через 1
 
         for (var i = 0; i < steps; i++) {
             if (window.Navigator) window.Navigator.move(dir);
@@ -355,11 +354,14 @@
         if (window.Lampa && Lampa.Controller && prev_controller && prev_controller !== 'lmc_console') {
             Lampa.Controller.toggle(prev_controller);
         }
-        // ПОВЕРНЕННЯ ФОКУСУ НА ІКОНКУ КОНСОЛІ
-        var btn = document.getElementById('lmc-head-btn-wrap');
-        if (btn && window.Navigator) {
-            window.Navigator.focus(btn);
-        }
+        
+        // ПРИМУСОВЕ ПОВЕРНЕННЯ ФОКУСУ НА ІКОНКУ
+        setTimeout(function() {
+            var btn = document.getElementById('lmc-head-btn-wrap');
+            if (btn && window.Navigator) {
+                window.Navigator.focus(btn);
+            }
+        }, 150); // Чекаємо, поки Lampa завершить свої анімації
     }
 
     function scrollToFocused() {
@@ -432,6 +434,11 @@
     function initUI() {
         if (uiReady) return;
 
+        // Визначаємо, чи це ТБ-інтерфейс (розширена перевірка)
+        if (window.Lampa && Lampa.Platform) {
+            isDeviceTV = Lampa.Platform.is('tv') || (Lampa.Platform.is('android') && !/Mobile/i.test(navigator.userAgent));
+        }
+
         var css = `
             #lampa-mob-console-window { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #0c0d0f; z-index: 9999999; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #ddd; font-size: 11.5px; }
             #lampa-mob-console-header { display: flex; justify-content: space-between; padding: 10px 14px; background: #1a1c1f; border-bottom: 1px solid rgba(255,255,255,0.03); align-items: center; flex-shrink: 0; }
@@ -490,20 +497,20 @@
             #lmc-modal-content.focus { border-color: #20c997; outline: 1px solid #20c997; }
         `;
 
-        // СПЕЦІАЛЬНІ СТИЛІ ТІЛЬКИ ДЛЯ ТЕЛЕВІЗОРІВ (зменшення шрифтів і відступів)
-        var isTV = window.Lampa && window.Lampa.Platform && Lampa.Platform.is('tv');
+        // ТВ-СТИЛІ: Шрифти рівно -0.5px, вертикальні відступи рівно -30%
         var tvCss = '';
-        if (isTV) {
+        if (isDeviceTV) {
             tvCss = `
                 #lampa-mob-console-window { font-size: 11px !important; }
-                .lmc-row { padding: 8px 4px !important; font-size: 11px !important; }
-                .lmc-network-row { padding: 9px 4px !important; font-size: 11px !important; }
+                .lmc-row { padding: 7px 4px !important; font-size: 11px !important; }
+                .lmc-network-row { padding: 8.5px 4px !important; font-size: 11px !important; }
                 .lmc-time, .lmc-prefix, .lmc-net-status, .lmc-section-title { font-size: 10px !important; }
-                .lmc-tab { font-size: 10.5px !important; padding: 5px 10px !important; }
+                .lmc-tab { font-size: 10.5px !important; padding: 4px 12px !important; }
                 .lmc-net-response { font-size: 11px !important; }
+                .lmc-item-wrap { padding: 3.5px 0 !important; }
             `;
         }
-        
+
         $('<style>').text(css + tvCss).appendTo('head');
 
         $('body').append(`
@@ -653,10 +660,11 @@
                 return false;
             }
 
+            // ПЕРЕВІРКА НА ТБ ДЛЯ МОДАЛКИ ВИКОРИСТОВУЄ ГЛОБАЛЬНИЙ isDeviceTV
             if ($this.hasClass('lmc-row') || $this.hasClass('lmc-network-row') || $this.hasClass('lmc-item-text')) {
                 var $collapsible = $this.find('.lmc-collapsible');
                 if ($collapsible.length) {
-                    if (window.Lampa && window.Lampa.Platform && Lampa.Platform.is('tv')) {
+                    if (isDeviceTV) {
                         showModal($collapsible.text());
                     } else {
                         $collapsible.toggleClass('collapsed');
