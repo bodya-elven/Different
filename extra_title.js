@@ -8,7 +8,7 @@
 
     function startPlugin() {
         var CACHE_TTL = 30 * 24 * 60 * 60 * 1000; // 30 днів
-        var CACHE_KEY = "title_cache_extra_v3";
+        var CACHE_KEY = "title_cache_extra_v4";
         var titleCache = Lampa.Storage.get(CACHE_KEY) || {};
 
         // 1. Очищення старого кешу
@@ -40,13 +40,13 @@
             extra_title_back: { uk: "Назад", en: "Back", ru: "Back" }
         });
 
-        // 3. Стилі (Applecation-стайл + тінь + відступ)
+        // 3. Стилі (Зменшено відступ до 10px, налаштовано шрифти)
         if ($('#plugin-extra-title-style').length === 0) {
             var style = '<style id="plugin-extra-title-style">' +
-                '.plugin-extra-title { margin-top: 15px; margin-bottom: 5px; width: 100%; position: relative; z-index: 10; text-align: left; }' +
+                '.plugin-extra-title { margin-top: 10px; margin-bottom: 5px; width: 100%; position: relative; z-index: 10; text-align: left; }' +
                 '.plugin-extra-title__body { ' +
-                    'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; ' +
-                    'line-height: 1.2; font-weight: 600; letter-spacing: 0.3px; ' +
+                    'font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif; ' +
+                    'line-height: 1.2; letter-spacing: 0.3px; ' +
                     'text-shadow: 0px 2px 5px rgba(0, 0, 0, 0.6); ' +
                     'display: flex; align-items: baseline; flex-wrap: wrap; justify-content: flex-start; ' +
                 '}' +
@@ -148,7 +148,6 @@
             field: { name: Lampa.Lang.translate('extra_title_size'), description: "" }
         });
 
-        // Повний масив країн
         var countryNames = {
             'us': 'США', 'usa': 'США', 'gb': 'Велика Британія', 'uk': 'Велика Британія',
             'ua': 'Україна', 'ca': 'Канада', 'hk': 'Гонконг', 'fr': 'Франція',
@@ -169,12 +168,10 @@
         function getCountryUA(iso) {
             if (!iso) return '';
             var code = iso.toLowerCase().trim();
-            // Якщо мова не українська - виводимо оригінальний код або переклад лампи
             if (!isUK) return Lampa.Lang.translate(code) || iso;
             return countryNames[code] || Lampa.Lang.translate(code) || iso; 
         }
 
-        // Рендер з перевіркою контексту активності
         function renderTitle(ukTitle, enTitle, hasLogo, year, country, activityRender) {
             if (!activityRender || !activityRender.parent().length) return;
 
@@ -197,7 +194,7 @@
             };
             var currentSize = sizes[sizeKey] || sizes['m'];
 
-            // Формуємо додаткову інформацію: Рік • Країна
+            // Формуємо додаткову інформацію (з тонкою крапкою між роком і країною)
             var infoParts = [];
             if ((infoMode === 'year' || infoMode === 'both') && year && year !== "undefined") {
                 infoParts.push(year);
@@ -205,17 +202,19 @@
             if ((infoMode === 'country' || infoMode === 'both') && country && country !== "undefined") {
                 infoParts.push(country);
             }
-            var secondaryInfo = infoParts.join(' • ');
+            var secondaryInfo = infoParts.join(' &middot; ');
 
             var infoSpan = '';
             if (secondaryInfo) {
-                var separator = displayTitle ? ' • ' : '';
-                infoSpan = '<span style="font-size: ' + currentSize.info + '; color: #fff; opacity: 0.65; margin-left: 8px;">' + separator + secondaryInfo + '</span>';
+                // Витончений роздільник між назвою та інфо
+                var separator = displayTitle ? ' &nbsp;&middot;&nbsp; ' : '';
+                // 100% непрозорість (opacity: 1) та звичайний шрифт (font-weight: 400)
+                infoSpan = '<span style="font-size: ' + currentSize.info + '; color: #fff; font-weight: 400; margin-left: 4px;">' + separator + secondaryInfo + '</span>';
             }
 
             var html = '<div class="plugin-extra-title">' +
                 '<div class="plugin-extra-title__body">' +
-                    '<span style="font-size: ' + currentSize.title + '; color: #fff; opacity: 0.85;">' + displayTitle + '</span>' + 
+                    '<span style="font-size: ' + currentSize.title + '; color: #fff; font-weight: 600;">' + displayTitle + '</span>' + 
                     infoSpan +
                 '</div>' +
            '</div>';
@@ -264,7 +263,7 @@
                 var countryList = (data.production_countries || []).map(function (c) {
                     return getCountryUA(c.iso_3166_1);
                 });
-                var countryString = countryList.join(", "); // Країни через кому
+                var countryString = countryList.join(", "); 
 
                 titleCache[card.id] = {
                     ukTitle: ukTitle || "",
