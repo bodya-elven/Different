@@ -5,7 +5,7 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.7';
+    var PLUGIN_VERSION = '1.0.8';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
@@ -14,7 +14,17 @@
     var counts = { logs: 0, errors: 0, network: 0 };
     var startTime = performance.now();
     var prev_controller = 'content'; 
-    var isDeviceTV = false; // Глобальний прапорець для ТБ
+    var isDeviceTV = false;
+
+    // ПОСИЛЕНИЙ ТВ-ДЕТЕКТОР
+    function checkIsTV() {
+        var ua = navigator.userAgent.toLowerCase();
+        if (window.Lampa && window.Lampa.Platform && window.Lampa.Platform.is('tv')) return true;
+        if (/tv|smarttv|philips|tizen|webos|bravia|netcast|viera/i.test(ua)) return true;
+        var isAndroid = (window.Lampa && window.Lampa.Platform && window.Lampa.Platform.is('android')) || /android/i.test(ua);
+        if (isAndroid && (navigator.maxTouchPoints === 0)) return true;
+        return false;
+    }
 
     function escapeHtml(unsafe) {
         if (typeof unsafe !== 'string') return String(unsafe);
@@ -224,6 +234,9 @@
         var screenW = Math.round(window.screen.width * dpr);
         var screenH = Math.round(window.screen.height * dpr);
         var memUsage = (window.performance && performance.memory) ? (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB' : 'Not supported';
+        
+        var isTVMode = checkIsTV();
+        var isApp = (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
 
         var data = [
             { k: 'Version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
@@ -233,9 +246,9 @@
             { k: 'Location', v: window.location.href },
             { k: 'Hash', v: window.Lampa && Lampa.Storage ? Lampa.Storage.get('hash', 'unknown') : 'unknown' },
             { k: 'Platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
-            { k: 'Is TV', v: window.Lampa && Lampa.Platform ? Lampa.Platform.is('tv') : 'false' },
-            { k: 'Is Mobile', v: /Mobi|Android/i.test(navigator.userAgent) ? 'true' : 'false' },
-            { k: 'Is PWA', v: window.matchMedia('(display-mode: standalone)').matches ? 'true' : 'false' },
+            { k: 'Is TV', v: isTVMode ? 'true' : 'false' },
+            { k: 'Is Mobile', v: (/Mobi|Android/i.test(navigator.userAgent) && !isTVMode) ? 'true' : 'false' },
+            { k: 'App mode', v: isApp ? 'Installed App' : 'Browser' },
             { k: 'Is touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' },
             { k: 'Touch points', v: navigator.maxTouchPoints || 0 },
             { k: 'User agent', v: navigator.userAgent },
@@ -361,7 +374,7 @@
             if (btn && window.Navigator) {
                 window.Navigator.focus(btn);
             }
-        }, 150); // Чекаємо, поки Lampa завершить свої анімації
+        }, 150); 
     }
 
     function scrollToFocused() {
@@ -370,7 +383,7 @@
         try {
             focus.scrollIntoView({ 
                 block: 'center', 
-                behavior: (window.Lampa && window.Lampa.Platform && Lampa.Platform.is('tv')) ? 'auto' : 'smooth' 
+                behavior: checkIsTV() ? 'auto' : 'smooth' 
             });
         } catch (e) {
             focus.scrollIntoView(); 
@@ -434,10 +447,7 @@
     function initUI() {
         if (uiReady) return;
 
-        // Визначаємо, чи це ТБ-інтерфейс (розширена перевірка)
-        if (window.Lampa && Lampa.Platform) {
-            isDeviceTV = Lampa.Platform.is('tv') || (Lampa.Platform.is('android') && !/Mobile/i.test(navigator.userAgent));
-        }
+        isDeviceTV = checkIsTV();
 
         var css = `
             #lampa-mob-console-window { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100vh; height: 100dvh; background: #0c0d0f; z-index: 9999999; flex-direction: column; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; color: #ddd; font-size: 11.5px; }
@@ -497,7 +507,7 @@
             #lmc-modal-content.focus { border-color: #20c997; outline: 1px solid #20c997; }
         `;
 
-        // ТВ-СТИЛІ: Шрифти рівно -0.5px, вертикальні відступи рівно -30%
+        // ТВ-СТИЛІ: Шрифти рівно -0.5px, вертикальні відступи -30%
         var tvCss = '';
         if (isDeviceTV) {
             tvCss = `
@@ -660,7 +670,6 @@
                 return false;
             }
 
-            // ПЕРЕВІРКА НА ТБ ДЛЯ МОДАЛКИ ВИКОРИСТОВУЄ ГЛОБАЛЬНИЙ isDeviceTV
             if ($this.hasClass('lmc-row') || $this.hasClass('lmc-network-row') || $this.hasClass('lmc-item-text')) {
                 var $collapsible = $this.find('.lmc-collapsible');
                 if ($collapsible.length) {
