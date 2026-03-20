@@ -5,7 +5,7 @@
     if (window.mobileConsoleInitialized) return;
     window.mobileConsoleInitialized = true;
 
-    var PLUGIN_VERSION = '1.0.8';
+    var PLUGIN_VERSION = '1.0.9';
     var PLUGIN_NAME = 'Console';
 
     var logBuffer = [];
@@ -236,7 +236,10 @@
         var memUsage = (window.performance && performance.memory) ? (performance.memory.usedJSHeapSize / 1048576).toFixed(2) + ' MB' : 'Not supported';
         
         var isTVMode = checkIsTV();
-        var isApp = (window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone);
+        
+        // Розумне визначення платформи
+        var platName = window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown';
+        if (platName === 'android' && isTVMode) platName = 'Android TV';
 
         var data = [
             { k: 'Version', v: window.Lampa && Lampa.Manifest ? Lampa.Manifest.app_version : 'Unknown' },
@@ -245,10 +248,9 @@
             { k: 'Session uptime', v: uptime },
             { k: 'Location', v: window.location.href },
             { k: 'Hash', v: window.Lampa && Lampa.Storage ? Lampa.Storage.get('hash', 'unknown') : 'unknown' },
-            { k: 'Platform', v: window.Lampa && Lampa.Platform ? Lampa.Platform.get() : 'Unknown' },
+            { k: 'Platform', v: platName },
             { k: 'Is TV', v: isTVMode ? 'true' : 'false' },
             { k: 'Is Mobile', v: (/Mobi|Android/i.test(navigator.userAgent) && !isTVMode) ? 'true' : 'false' },
-            { k: 'App mode', v: isApp ? 'Installed App' : 'Browser' },
             { k: 'Is touch', v: ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) ? 'true' : 'false' },
             { k: 'Touch points', v: navigator.maxTouchPoints || 0 },
             { k: 'User agent', v: navigator.userAgent },
@@ -300,8 +302,8 @@
         var duration = now - moveHoldStart;
         var steps = 1;
         
-        if (duration > 3000) steps = 3;      // > 3 сек: стрибок через 2
-        else if (duration > 500) steps = 2;  // > 0.5 сек: стрибок через 1
+        if (duration > 3000) steps = 3;      
+        else if (duration > 500) steps = 2;  
 
         for (var i = 0; i < steps; i++) {
             if (window.Navigator) window.Navigator.move(dir);
@@ -309,11 +311,10 @@
         scrollToFocused();
     }
 
-    // ЛОГІКА МОДАЛЬНОГО ВІКНА ДЛЯ ТВ
+    // ЛОГІКА МОДАЛЬНОГО ВІКНА ДЛЯ ТВ (БЕЗ КНОПКИ "ЗАКРИТИ")
     function showModal(text) {
         $('#lmc-modal').remove();
         var html = '<div id="lmc-modal">' +
-                   '<div id="lmc-modal-close" class="selector">Закрити</div>' +
                    '<div id="lmc-modal-content" class="selector"></div>' +
                    '</div>';
         $('body').append(html);
@@ -338,17 +339,11 @@
                 if (focus && focus.id === 'lmc-modal-content') focus.scrollTop -= 120;
                 else smartMove('up');
             },
-            enter: function() { 
-                var focus = window.Navigator.getFocusedElement();
-                if (focus && focus.id === 'lmc-modal-close') closeModal(prevFocus);
-            },
             back: function() { closeModal(prevFocus); }
         });
 
         Lampa.Controller.toggle('lmc_modal');
         window.Navigator.focus(document.getElementById('lmc-modal-content'));
-
-        $('#lmc-modal').on('hover:enter click', '#lmc-modal-close', function() { closeModal(prevFocus); });
     }
 
     function closeModal(prevFocus) {
@@ -364,17 +359,11 @@
         $('#lampa-mob-console-window').hide();
         $('#lmc-search-input').val('');
         applySearch();
+        
+        // Повертаємо контроль Лампі без втручання у фокус
         if (window.Lampa && Lampa.Controller && prev_controller && prev_controller !== 'lmc_console') {
             Lampa.Controller.toggle(prev_controller);
         }
-        
-        // ПРИМУСОВЕ ПОВЕРНЕННЯ ФОКУСУ НА ІКОНКУ
-        setTimeout(function() {
-            var btn = document.getElementById('lmc-head-btn-wrap');
-            if (btn && window.Navigator) {
-                window.Navigator.focus(btn);
-            }
-        }, 150); 
     }
 
     function scrollToFocused() {
@@ -383,7 +372,7 @@
         try {
             focus.scrollIntoView({ 
                 block: 'center', 
-                behavior: checkIsTV() ? 'auto' : 'smooth' 
+                behavior: isDeviceTV ? 'auto' : 'smooth' 
             });
         } catch (e) {
             focus.scrollIntoView(); 
@@ -501,13 +490,10 @@
             .lmc-toast { position: fixed; bottom: 40px; left: 50%; transform: translateX(-50%); background: #20c997; color: #000; padding: 6px 12px; border-radius: 16px; font-size: 11px; font-weight: bold; z-index: 99999999; box-shadow: 0 4px 15px rgba(32, 201, 151, 0.3); pointer-events: none; }
             
             #lmc-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100vh; background: rgba(12,13,15,0.98); z-index: 99999999; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; }
-            #lmc-modal-close { align-self: flex-end; margin-bottom: 12px; padding: 8px 16px; background: rgba(255,255,255,0.05); color: #888; border-radius: 4px; cursor: pointer; font-weight: bold; border: 1px solid rgba(255,255,255,0.1); }
-            #lmc-modal-close.focus { background: #20c997; color: #000; border-color: #20c997; outline: none; }
             #lmc-modal-content { flex: 1; overflow-y: auto; color: #ccc; font-size: 13px; white-space: pre-wrap; word-wrap: break-word; background: #16181b; padding: 15px; border-radius: 6px; border: 1px solid rgba(255,255,255,0.05); }
             #lmc-modal-content.focus { border-color: #20c997; outline: 1px solid #20c997; }
         `;
 
-        // ТВ-СТИЛІ: Шрифти рівно -0.5px, вертикальні відступи -30%
         var tvCss = '';
         if (isDeviceTV) {
             tvCss = `
