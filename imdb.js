@@ -858,8 +858,6 @@
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_edit_sources_btn' }, field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів' }, onChange: function() { openSourcesEditor(); } });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_text_position', type: 'select', values: { 'left': 'Зліва', 'right': 'Справа', 'top': 'Зверху', 'bottom': 'Знизу' }, "default": 'right' }, field: { name: 'Розташування оцінки', description: 'Розміщення оцінки відносно логотипу' } });
-    
-    // ОНОВЛЕНО: Змінено опис для кількості голосів
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_show_votes', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_show_votes }, field: { name: 'Кількість голосів', description: 'Показувати кількість тих, хто поставив оцінку' } });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_logo_scale_val', type: 'select', values: { 's_m3': '-3', 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2', 's_p3': '3' }, "default": 's_0' }, field: { name: 'Розмір логотипів', description: '' } });
@@ -892,7 +890,6 @@
                 Lampa.Storage.set('ratings_glow_border', false);
                 setTimeout(function() {
                     $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
-                    // ОНОВЛЕНО: Прибрано виклик повідомлення (toast)
                 }, 50);
             }
         }
@@ -939,7 +936,6 @@
     });
   }
 
-
   function initRatingsPluginUI() {
     addSettingsSection();
     var _set = Lampa.Storage.set;
@@ -953,8 +949,45 @@
     applyStylesToAll();
   }
 
+  function cleanOldCache() {
+    var tenDaysMs = 10 * 24 * 60 * 60 * 1000;
+    var now = Date.now();
+
+    try {
+      var mdbCache = Lampa.Storage.get(RATING_CACHE_KEY) || {};
+      var mdbChanged = false;
+      for (var key in mdbCache) {
+        if (mdbCache.hasOwnProperty(key)) {
+          if (now - mdbCache[key].timestamp > tenDaysMs) {
+            delete mdbCache[key];
+            mdbChanged = true;
+          }
+        }
+      }
+      if (mdbChanged) Lampa.Storage.set(RATING_CACHE_KEY, mdbCache);
+    } catch (e) {}
+
+    try {
+      var omdbCacheStr = localStorage.getItem('omdb_ratings_cache');
+      if (omdbCacheStr) {
+        var omdbCache = JSON.parse(omdbCacheStr);
+        var omdbChanged = false;
+        for (var oKey in omdbCache) {
+          if (omdbCache.hasOwnProperty(oKey)) {
+            if (now - omdbCache[oKey].timestamp > tenDaysMs) {
+              delete omdbCache[oKey];
+              omdbChanged = true;
+            }
+          }
+        }
+        if (omdbChanged) localStorage.setItem('omdb_ratings_cache', JSON.stringify(omdbCache));
+      }
+    } catch (e) {}
+  }
+
   function startPlugin() {
     window.combined_ratings_plugin = true;
+    cleanOldCache(); 
     Lampa.Listener.follow('full', function(e) {
       if (e.type === 'complite') {
         var card = e.data.movie || e.object || {};
