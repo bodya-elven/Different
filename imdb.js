@@ -734,7 +734,7 @@
     { id: 'mal', name: 'MyAnimeList', enabled: true }
   ];
 
-   function getCfg() {
+  function getCfg() {
     var parseIntDef = function(key, def) { var v = parseInt(Lampa.Storage.get(key, def), 10); return isNaN(v) ? def : v; };
     var parseFloatDef = function(key, def) { var v = parseFloat(Lampa.Storage.get(key, def)); return isNaN(v) ? def : v; };
     
@@ -769,7 +769,7 @@
       textPosition: Lampa.Storage.get('ratings_text_position', RCFG_DEFAULT.ratings_text_position),
       logoOffset: (logoInput * 2) + 'px',
       textOffset: (textInput * 2) + 'px',
-      rateSpacing: ((spaceInput * 4) - 8) + 'px', /* ВИПРАВЛЕНО: зсув базового значення на -8px */
+      rateSpacing: ((spaceInput * 4) - 6) + 'px', 
       showVotes: !!Lampa.Storage.field('ratings_show_votes', RCFG_DEFAULT.ratings_show_votes),
       bwLogos: !!Lampa.Storage.field('ratings_bw_logos', RCFG_DEFAULT.ratings_bw_logos),
       bgOpacity: rawBgOpacity,
@@ -862,13 +862,52 @@
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_logo_scale_val', type: 'select', values: { 's_m3': '-3', 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2', 's_p3': '3' }, "default": 's_0' }, field: { name: 'Розмір логотипів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_text_scale_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Розмір оцінки', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_spacing_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2', 's_p3': '3', 's_p4': '4' }, "default": 's_0' }, field: { name: 'Відступи між рейтингами', description: '' } });
+    
+    // ОНОВЛЕНО: Залишено відступи від -2 до 2
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_spacing_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Відступи між рейтингами', description: '' } });
     
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_bw_logos }, field: { name: 'Ч/Б логотипи', description: 'Підміна на чорно-білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_colorize_all }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": false }, field: { name: 'Рамка плиток рейтингів', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_glow_border', type: 'trigger', values: '', "default": false }, field: { name: 'Кольорове світіння', description: '' } });
+    
+    // ОНОВЛЕНО: Логіка взаємодії Рамки та Світіння
+    Lampa.SettingsApi.addParam({ 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Рамка плиток рейтингів', description: '' },
+        onChange: function(val) {
+            if (!val) {
+                Lampa.Storage.set('ratings_glow_border', false);
+                $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+            }
+            updateGlowBorderState();
+        }
+    });
+    
+    Lampa.SettingsApi.addParam({ 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_glow_border', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Кольорове світіння рамки', description: '' },
+        onChange: function(val) {
+            if (val && !Lampa.Storage.get('ratings_rate_border', false)) {
+                Lampa.Storage.set('ratings_glow_border', false);
+                setTimeout(function() {
+                    $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+                    lmpToast('Спочатку увімкніть Рамку плиток');
+                }, 50);
+            }
+        }
+    });
+
+    function updateGlowBorderState() {
+        var isBorderEnabled = Lampa.Storage.get('ratings_rate_border', false);
+        var $glowItem = $('.settings-param:contains("Кольорове світіння рамки")');
+        if (isBorderEnabled) {
+            $glowItem.css({ opacity: 1, 'pointer-events': 'auto' });
+        } else {
+            $glowItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+        }
+    }
     
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_cache_days', type: 'input', values: '', "default": '3' }, field: { name: 'Термін зберігання кешу (MDBList)', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити весь кеш рейтингів', description: '' }, onChange: function() { lmpRatingsClearCache(); } });
@@ -891,6 +930,9 @@
                 if (i.length && r.length) r.insertAfter(i);
             };
             move(); setTimeout(move, 10); setTimeout(move, 50);
+        }
+        if (e.type === 'create' && e.name === 'lmp_ratings') {
+            setTimeout(updateGlowBorderState, 100);
         }
         if (e.type === 'create' && e.name === 'omdb_ratings') {
             setTimeout(function() { if (Lampa.Controller.active() && Lampa.Controller.active().name === 'settings_component') { Lampa.Controller.active().onBack = function() { Lampa.Settings.create('lmp_ratings'); }; } }, 500);
