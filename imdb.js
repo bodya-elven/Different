@@ -221,6 +221,7 @@
     ratings_logo_scale_val: 's_0', 
     ratings_text_scale_val: 's_0',
     ratings_spacing_val: 's_0',
+    ratings_wide_logos: false,
     ratings_bw_logos: false,
     ratings_bg_opacity: 'v_0',
     ratings_colorize_all: true,
@@ -384,20 +385,32 @@
     var cfg = getCfg();
     var elementsToInsert = [];
 
+    var useWide = cfg.wideLogos;
+
     cfg.sourcesConfig.forEach(function(src) {
       if (!src.enabled || !data[src.id]) return;
       var itemData = data[src.id];
 
-      var iconUrl = (cfg.bwLogos && ICONS_BW[src.id]) ? ICONS_BW[src.id] : ICONS[src.id];
+      var iconUrl;
       
-      if (src.id === 'rottentomatoes') {
-          iconUrl = cfg.bwLogos ? (itemData.fresh ? ICONS_BW.rotten_good : ICONS_BW.rotten_bad) 
-                                : (itemData.fresh ? ICONS.rotten_good : ICONS.rotten_bad);
+      // Логіка підбору іконки
+      if (useWide) {
+          iconUrl = ICONS_WIDE[src.id] || (ICONS_WIDE_URL + src.id + '-wide.png');
+          if (src.id === 'rottentomatoes') {
+              iconUrl = itemData.fresh ? ICONS_WIDE.rotten_good : ICONS_WIDE.rotten_bad;
+          } else if (src.id === 'popcorn') {
+              iconUrl = ICONS_WIDE.popcorn; // Завжди одне лого для Попкорна (широке)
+          }
+      } else {
+          iconUrl = (cfg.bwLogos && ICONS_BW[src.id]) ? ICONS_BW[src.id] : ICONS[src.id];
+          if (src.id === 'rottentomatoes') {
+              iconUrl = cfg.bwLogos ? (itemData.fresh ? ICONS_BW.rotten_good : ICONS_BW.rotten_bad) 
+                                    : (itemData.fresh ? ICONS.rotten_good : ICONS.rotten_bad);
+          } else if (src.id === 'popcorn' && itemData.avg < 6) {
+              iconUrl = cfg.bwLogos ? ICONS_BW.popcorn_bad : ICONS.popcorn_bad;
+          }
       }
-      
-      if (src.id === 'popcorn' && itemData.avg < 6) {
-          iconUrl = cfg.bwLogos ? ICONS_BW.popcorn_bad : ICONS.popcorn_bad;
-      }
+
 
       var colorClass = '';
       var glowClass = '';
@@ -436,6 +449,7 @@
         rateLine.prepend(elementsToInsert);
     }
   }
+
 
 
   function fetchAdditionalRatings(card) {
@@ -770,6 +784,7 @@
       textOffset: (textInput * 2) + 'px',
       rateSpacing: ((spaceInput * 4) - 6) + 'px', 
       showVotes: !!Lampa.Storage.field('ratings_show_votes', RCFG_DEFAULT.ratings_show_votes),
+      wideLogos: !!Lampa.Storage.field('ratings_wide_logos', RCFG_DEFAULT.ratings_wide_logos),
       bwLogos: !!Lampa.Storage.field('ratings_bw_logos', RCFG_DEFAULT.ratings_bw_logos),
       bgOpacity: rawBgOpacity,
       colorizeAll: !!Lampa.Storage.field('ratings_colorize_all', RCFG_DEFAULT.ratings_colorize_all),
@@ -777,72 +792,6 @@
       glowBorder: !!Lampa.Storage.field('ratings_glow_border', RCFG_DEFAULT.ratings_glow_border),
       sourcesConfig: fullSourcesConfig
     };
-  }
-
-  function refreshConfigFromStorage() {
-    var cfg = getCfg();
-    LMP_ENH_CONFIG.apiKeys.mdblist = cfg.mdblistKey || '';
-    cfg.bwLogos ? document.body.classList.add('lmp-enh--mono') : document.body.classList.remove('lmp-enh--mono');
-    return cfg;
-  }
-
-  function applyStylesToAll() {
-    var cfg = getCfg();
-    var s = document.documentElement.style;
-    s.setProperty('--lmp-logo-offset', cfg.logoOffset);
-    s.setProperty('--lmp-text-offset', cfg.textOffset);
-    s.setProperty('--lmp-rate-spacing', cfg.rateSpacing);
-    s.setProperty('--lmp-bg-opacity', cfg.bgOpacity);
-    
-    cfg.bwLogos ? document.body.classList.add('lmp-enh--mono') : document.body.classList.remove('lmp-enh--mono');
-    cfg.rateBorder ? document.body.classList.add('lmp-enh--rate-border') : document.body.classList.remove('lmp-enh--rate-border');
-    cfg.glowBorder ? document.body.classList.add('lmp-enh--glow') : document.body.classList.remove('lmp-enh--glow');
-  }
-
-  function openSourcesEditor() {
-    var cfg = getCfg();
-    var currentOrder = JSON.parse(JSON.stringify(cfg.sourcesConfig));
-    var listContainer = $('<div class="menu-edit-list" style="padding-bottom:10px;"></div>');
-    var svgUp = '<svg width="22" height="14" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12L11 3L20 12" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-    var svgDown = '<svg width="22" height="14" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 2L11 11L20 2" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
-    var svgCheck = '<svg width="26" height="26" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1.89111" y="1.78369" width="21.793" height="21.793" rx="3.5" stroke="currentColor" stroke-width="3"/><path d="M7.44873 12.9658L10.8179 16.3349L18.1269 9.02588" stroke="currentColor" stroke-width="3" class="dot" stroke-linecap="round"/></svg>';
-
-    function updateArrowsState() {
-      var items = listContainer.find('.source-item');
-      items.each(function(idx) {
-        $(this).find('.move-up').css('opacity', idx === 0 ? '0.2' : '1');
-        $(this).find('.move-down').css('opacity', idx === items.length - 1 ? '0.2' : '1');
-      });
-    }
-
-    currentOrder.forEach(function(src) {
-      var itemSort = $('<div class="source-item" data-id="' + src.id + '" style="display:flex; align-items:center; justify-content:space-between; padding:12px; border-bottom:1px solid rgba(255,255,255,0.1);">' +
-          '<div class="source-name" style="font-size:16px; opacity: ' + (src.enabled ? '1' : '0.4') + ';">' + src.name + '</div>' +
-          '<div style="display:flex; gap:10px; align-items:center;">' +
-            '<div class="move-up selector" style="padding:6px 12px; border-radius:6px;">' + svgUp + '</div>' +
-            '<div class="move-down selector" style="padding:6px 12px; border-radius:6px;">' + svgDown + '</div>' +
-            '<div class="toggle selector" style="padding:4px; border-radius:6px; margin-left:8px;">' + svgCheck + '</div>' +
-          '</div></div>');
-      itemSort.find('.dot').attr('opacity', src.enabled ? 1 : 0);
-      itemSort.find('.move-up').on('hover:enter', function() { var p = itemSort.prev(); if(p.length){ itemSort.insertBefore(p); updateArrowsState(); }});
-      itemSort.find('.move-down').on('hover:enter', function() { var n = itemSort.next(); if(n.length){ itemSort.insertAfter(n); updateArrowsState(); }});
-      itemSort.find('.toggle').on('hover:enter', function() { src.enabled = !src.enabled; itemSort.find('.source-name').css('opacity', src.enabled ? '1' : '0.4'); itemSort.find('.dot').attr('opacity', src.enabled ? 1 : 0); });
-      listContainer.append(itemSort);
-    });
-    updateArrowsState();
-
-    Lampa.Modal.open({ title: 'Сортування та видимість', html: listContainer, size: 'small', scroll_to_center: true, onBack: function() {
-        var finalOrder = [];
-        listContainer.find('.source-item').each(function() {
-          var id = $(this).attr('data-id');
-          var s = currentOrder.find(function(x) { return x.id === id; });
-          if (s) finalOrder.push({ id: s.id, name: s.name, enabled: s.enabled });
-        });
-        Lampa.Storage.set('ratings_sources_config', finalOrder);
-        Lampa.Modal.close(); Lampa.Controller.toggle('settings_component');
-        setTimeout(function() { if (currentRatingsData) { insertRatings(currentRatingsData); applyStylesToAll(); } }, 150);
-      }
-    });
   }
 
   function addSettingsSection() {
@@ -863,6 +812,25 @@
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_text_scale_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Розмір оцінки', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_spacing_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Відступи між рейтингами', description: '' } });
     
+    Lampa.SettingsApi.addParam({ 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_wide_logos', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Широкі логотипи', description: '' },
+        onChange: function(val) {
+            if (val) {
+                Lampa.Storage.set('ratings_bw_logos', false);
+                Lampa.Storage.set('ratings_rate_border', false);
+                Lampa.Storage.set('ratings_glow_border', false);
+                $('.settings-param:contains("Ч/Б логотипи")').find('.toggle').removeClass('active');
+                $('.settings-param:contains("Рамка плиток рейтингів")').find('.toggle').removeClass('active');
+                $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+            } else {
+                lmpRatingsClearCache();
+            }
+            updateMutualExclusions();
+        }
+    });
+
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_bw_logos }, field: { name: 'Ч/Б логотипи', description: 'Підміна на чорно-білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_colorize_all }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
@@ -876,7 +844,7 @@
                 Lampa.Storage.set('ratings_glow_border', false);
                 $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
             }
-            updateGlowBorderState();
+            updateMutualExclusions();
         }
     });
     
@@ -894,13 +862,26 @@
         }
     });
 
-    function updateGlowBorderState() {
-        var isBorderEnabled = Lampa.Storage.get('ratings_rate_border', false);
+    function updateMutualExclusions() {
+        var isWide = Lampa.Storage.get('ratings_wide_logos', false);
+        var isBorder = Lampa.Storage.get('ratings_rate_border', false);
+        
+        var $bwItem = $('.settings-param:contains("Ч/Б логотипи")');
+        var $borderItem = $('.settings-param:contains("Рамка плиток рейтингів")');
         var $glowItem = $('.settings-param:contains("Кольорове світіння рамки")');
-        if (isBorderEnabled) {
-            $glowItem.css({ opacity: 1, 'pointer-events': 'auto' });
-        } else {
+
+        if (isWide) {
+            $bwItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+            $borderItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             $glowItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+        } else {
+            $bwItem.css({ opacity: 1, 'pointer-events': 'auto' });
+            $borderItem.css({ opacity: 1, 'pointer-events': 'auto' });
+            if (isBorder) {
+                $glowItem.css({ opacity: 1, 'pointer-events': 'auto' });
+            } else {
+                $glowItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+            }
         }
     }
     
@@ -909,10 +890,7 @@
 
     Lampa.SettingsApi.addComponent({ component: 'omdb_ratings', name: 'Рейтинг на постері', icon: '' });
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_ratings_back', type: 'static' }, field: { name: 'Назад', description: '' }, onRender: function(item) { item.on('hover:enter click', function() { Lampa.Settings.create('lmp_ratings'); }); } });
-    
-    // ОНОВЛЕНО: Перенесено і перейменовано OMDb ключ
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_api_key_1', type: 'input', values: '', "default": '' }, field: { name: 'OMDb API key', description: '' } });
-    
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_status', type: 'trigger', values: '', "default": true }, field: { name: 'Рейтинг на постері', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_poster_source', type: 'select', values: { 'imdb': 'IMDb', 'tmdb': 'TMDb', 'none': 'Без рейтингу' }, "default": 'imdb' }, field: { name: 'Джерело рейтингу', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_poster_size', type: 'select', values: { '0': '0', '1': '1', '2': '2', '3': '3', '4': '4' }, "default": '0' }, field: { name: 'Розмір рейтингу', description: '' } });
@@ -929,7 +907,7 @@
             move(); setTimeout(move, 10); setTimeout(move, 50);
         }
         if (e.type === 'create' && e.name === 'lmp_ratings') {
-            setTimeout(updateGlowBorderState, 100);
+            setTimeout(updateMutualExclusions, 100);
         }
         if (e.type === 'create' && e.name === 'omdb_ratings') {
             setTimeout(function() { if (Lampa.Controller.active() && Lampa.Controller.active().name === 'settings_component') { Lampa.Controller.active().onBack = function() { Lampa.Settings.create('lmp_ratings'); }; } }, 500);
