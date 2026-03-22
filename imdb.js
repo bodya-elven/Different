@@ -267,7 +267,7 @@
 
   function lmpRatingsClearCache() {
     Lampa.Storage.set(RATING_CACHE_KEY, {});
-    lmpToast('Кеш рейтингів MDBList успішно очищено');
+    lmpToast('Кеш рейтингів успішно очищено');
   }
 
   function fetchMdbListRatings(card, callback) {
@@ -876,6 +876,7 @@
         field: { name: 'Широкі логотипи', description: '' },
         onChange: function(val) {
             if (val) {
+                // При увімкненні вимикаємо лише конфліктні налаштування
                 Lampa.Storage.set('ratings_bw_logos', false);
                 Lampa.Storage.set('ratings_rate_border', false);
                 Lampa.Storage.set('ratings_glow_border', false);
@@ -886,6 +887,7 @@
             updateMutualExclusions();
         }
     });
+
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_bw_logos }, field: { name: 'Ч/Б логотипи', description: 'Підміна на чорно-білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_colorize_all }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
