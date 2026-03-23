@@ -138,18 +138,31 @@
   };
 
   var ICONS_WIDE = {
-    imdb: ICONS_WIDE_URL + 'imdb-wide.png',
-    tmdb: ICONS_WIDE_URL + 'tmdb-wide.png',
-    trakt: ICONS_WIDE_URL + 'trakt-wide.png',
-    letterboxd: ICONS_WIDE_URL + 'letterboxd-wide.png',
-    metacritic: ICONS_WIDE_URL + 'metacritic-wide.png',
-    rotten_good: ICONS_WIDE_URL + 'rt-wide.png',
-    rotten_bad: ICONS_WIDE_URL + 'rt-bad-wide.png',
-    popcorn: ICONS_WIDE_URL + 'popcorn-wide.png',
-    mdblist: ICONS_WIDE_URL + 'mdblist-wide.png',
-    mal: ICONS_WIDE_URL + 'mal-wide.png'
+    imdb: ICONS_WIDE_URL + 'imdb-wide.webp',
+    tmdb: ICONS_WIDE_URL + 'tmdb-wide.webp',
+    trakt: ICONS_WIDE_URL + 'trakt-wide.webp',
+    letterboxd: ICONS_WIDE_URL + 'letterboxd-wide.webp',
+    metacritic: ICONS_WIDE_URL + 'metacritic-wide.webp',
+    rotten_good: ICONS_WIDE_URL + 'rt-wide.webp',
+    rotten_bad: ICONS_WIDE_URL + 'rt-bad-wide.webp',
+    popcorn: ICONS_WIDE_URL + 'popcorn-wide.webp',
+    mdblist: ICONS_WIDE_URL + 'mdblist-wide.webp',
+    mal: ICONS_WIDE_URL + 'mal-wide.webp'
   };
 
+   var ICONS_WIDE_NB = {
+    imdb: ICONS_WIDE_NB_URL + 'imdb-wide-nb.webp',
+    tmdb: ICONS_WIDE_NB_URL + 'tmdb-wide-nb.webp',
+    trakt: ICONS_WIDE_NB_URL + 'trakt-wide-nb.webp',
+    letterboxd: ICONS_WIDE_NB_URL + 'letterboxd-wide-nb.webp',
+    metacritic: ICONS_WIDE_NB_URL + 'metacritic-wide-nb.webp',
+    rotten_good: ICONS_WIDE_NB_URL + 'rt-wide-nb.webp',
+    rotten_bad: ICONS_WIDE_NB_URL + 'rt-bad-wide-nb.webp',
+    popcorn: ICONS_WIDE_NB_URL + 'popcorn-wide-nb.webp',
+    mdblist: ICONS_WIDE_NB_URL + 'mdblist-wide-nb.webp',
+    mal: ICONS_WIDE_NB_URL + 'mal-wide-nb.webp'
+  };
+  
   var pluginStyles = "<style>" +
     ":root{" +
     "  --lmp-logo-offset: 0px;" +
