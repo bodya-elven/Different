@@ -893,18 +893,29 @@
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": RCFG_DEFAULT.ratings_colorize_all }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
     
-    Lampa.SettingsApi.addParam({ 
+     Lampa.SettingsApi.addParam({ 
         component: 'lmp_ratings', 
         param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": false }, 
         field: { name: 'Рамка плиток рейтингів', description: '' },
         onChange: function(val) {
             if (!val) {
+                // 1. Вимикаємо світіння в пам'яті Лампи
                 Lampa.Storage.set('ratings_glow_border', false);
+                
+                // 2. Візуально вимикаємо перемикач світіння в самому меню
                 $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+                
+                // 3. Примусово прибираємо CSS-класи світіння та рамки з екрана
+                document.body.classList.remove('lmp-enh--glow');
+                document.body.classList.remove('lmp-enh--rate-border');
+            } else {
+                // Якщо увімкнули — додаємо клас рамки
+                document.body.classList.add('lmp-enh--rate-border');
             }
             updateMutualExclusions();
         }
     });
+
     
     Lampa.SettingsApi.addParam({ 
         component: 'lmp_ratings', 
