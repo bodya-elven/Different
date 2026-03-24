@@ -1,4 +1,5 @@
-/*author: '@bodya_elven'
+/* author: '@bodya_elven' 
+*/
 
 (function() {
   'use strict';
