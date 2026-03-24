@@ -1192,14 +1192,16 @@ function applyDynamicColorToIcon($iconElement, colorData) {
     });
 
     if (brightness < 80) {
-        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(255,255,255,0.4))');
+        // Екстремально темні/чорні кольори -> Білі деталі
+        $wrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(255,255,255,0.8))'); // <--- ДОДАНО: Світла тінь (помітна!)
         $iconElement.css({
             'mix-blend-mode': 'screen',
             'filter': 'invert(1)',
             'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(0,0,0,0.6))');
+        // Усі інші кольори -> Чорні деталі залишаються
+        $wrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(0,0,0,0.8))'); // <--- ДОДАНО: Темна тінь (помітна!)
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
