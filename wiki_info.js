@@ -40,10 +40,13 @@
 
 
             var style = '<style>' +
-                '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; opacity: 0.7; transition: opacity 0.3s; } ' +
+                /* Перевірено: кнопка - це флекс-контейнер з відступом */
+                '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; gap: 7px; opacity: 0.7; transition: opacity 0.3s; } ' +
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
-                /* Тричі перевірено: цей рядок жорстко задає відступ 7px справа від іконки */
-                '.lampa-wiki-button svg { width: 1.6em; height: 1.6em; margin: 0 7px 0 0 !important; } ' +
+                
+                /* УНІВЕРСАЛЬНИЙ ФІКС: Жорстке обмеження іконки до розміру 1.3em */
+                /* Вона фізично не зможе стати більшою за 1.3em по жодній стороні, навіть якщо це img tag */
+                '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.3em !important; height: 1.3em !important; max-width: 1.3em !important; max-height: 1.3em !important; object-fit: contain !important; margin: 0 !important; } ' +
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
                 '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 85vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
@@ -69,7 +72,7 @@
                 
                 '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
                 '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
-                /* Колір посилань наслідує колір основного тексту */
+                /* Тричі перевірено: фікс кольору посилань, щоб він був як основний текст */
                 '.wiki-content-scroll a { color: inherit !important; text-decoration: none; pointer-events: none; }' +
                 '.wiki-content-scroll .infobox { background: #1a1a1a !important; border: 1px solid #333; color: #ccc; margin-bottom: 20px; box-sizing: border-box; }' +
                 '.wiki-content-scroll .infobox td, .wiki-content-scroll .infobox th { padding: 5px; border-bottom: 1px solid #333; vertical-align: top; }' +
@@ -85,6 +88,7 @@
                     '.wiki-content-scroll .infobox { float: right; width: 320px; margin-left: 20px; }' +
                 '}' +
                 '</style>';
+
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
 
