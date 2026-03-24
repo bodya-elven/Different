@@ -1,18 +1,6 @@
 (function () {
     'use strict';
 
- /* Реєстрація маніфесту плагіна */
-  if (!window.mdb_ratings_plugin_manifest) {
-      window.mdb_ratings_plugin_manifest = true;
-      
-      var manifest = {
-          type: 'other',
-          version: '1.6',
-          name: 'Hide Content',
-          description: 'Приховування контенту з каталогу',
-          author: '@bodya_elven'
-      };
-
     // Налаштування за замовчуванням
     var settings = {
         hide_ru: false,
