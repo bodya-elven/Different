@@ -1073,7 +1073,7 @@ function cleanLogoColorCache() {
     } catch (e) {}
 }
 
-unction /* Синхронне отримання кольору з кешу. author: @bodya_elven */
+/* Синхронне отримання кольору з кешу. author: @bodya_elven */
 function getCachedLogoColor(card) {
     var type = card.name ? 'tv' : 'movie';
     var id = card.id;
@@ -1088,7 +1088,7 @@ function getCachedLogoColor(card) {
     return null;
 }
 
-/* Отримання домінантного кольору логотипу з TMDB (Без проксі) */
+/* Отримання домінантного кольору логотипу з TMDB */
 function fetchLogoColor(card, apiKey) {
     return new Promise(function(resolve) {
         var type = card.name ? 'tv' : 'movie';
@@ -1120,7 +1120,7 @@ function fetchLogoColor(card, apiKey) {
                 try {
                     imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 } catch (e) {
-                    return resolve(null); // Якщо ТБ блокує Canvas, просто виходимо
+                    return resolve(null);
                 }
 
                 var r = 0, g = 0, b = 0, count = 0;
@@ -1171,7 +1171,7 @@ function applyDynamicColorToIcon($iconElement, colorData) {
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     
-    // Захист від старого кешу
+    // Захист від старого кешу (якщо яскравість відсутня, вираховуємо)
     var brightness = colorData.brightness;
     if (brightness === undefined) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
@@ -1192,7 +1192,6 @@ function applyDynamicColorToIcon($iconElement, colorData) {
     });
 
     if (brightness < 80) {
-        // Екстремально темні/чорні кольори (Чорні деталі -> білі)
         $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(255,255,255,0.4))');
         $iconElement.css({
             'mix-blend-mode': 'screen',
@@ -1200,7 +1199,6 @@ function applyDynamicColorToIcon($iconElement, colorData) {
             'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        // Усі інші кольори (Білий -> колір, Чорні деталі -> залишаються чорними)
         $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(0,0,0,0.6))');
         $iconElement.css({
             'mix-blend-mode': 'multiply',
@@ -1224,6 +1222,7 @@ function triggerDynamicColors(card) {
         tmdbApiKey = '4ef0d7355d9ffb5151e987764708ce96';
     }
 
+    // Затримка 150мс для стабільного пошуку іконок у DOM
     setTimeout(function() {
         var cachedColor = getCachedLogoColor(card);
         
@@ -1240,7 +1239,7 @@ function triggerDynamicColors(card) {
                 }
             });
         }
-    }, 150); // Затримка 150мс для стабільного пошуку іконок у DOM
+    }, 150);
 }
 
   function startPlugin() {
