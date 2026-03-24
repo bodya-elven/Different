@@ -1073,7 +1073,7 @@ function cleanLogoColorCache() {
     } catch (e) {}
 }
 
-/* Синхронне отримання кольору з кешу. author: @bodya_elven */
+/* Синхронне отримання кольору з кешу */
 function getCachedLogoColor(card) {
     var type = card.name ? 'tv' : 'movie';
     var id = card.id;
@@ -1164,44 +1164,56 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування динамічного кольору до іконки (Метод JS Wrap) */
+/* Застосування динамічного кольору до іконки (Метод подвійної обгортки для тіні) */
 function applyDynamicColorToIcon($iconElement, colorData) {
-    if (!colorData || !$iconElement.length || $iconElement.parent().hasClass('mdb-dynamic-color-wrapper')) return;
+    // Перевіряємо, чи ми вже не обгорнули цю іконку раніше
+    if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     
-    // Захист від старого кешу (якщо яскравість відсутня, вираховуємо)
     var brightness = colorData.brightness;
     if (brightness === undefined) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
     }
 
-    var $wrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
-    $wrapper.css({
+    // Зберігаємо розміри іконки
+    var w = $iconElement.width() + 'px';
+    var h = $iconElement.height() + 'px';
+
+    // 1. ЗОВНІШНІЙ БЛОК: Спеціально для тіні (його маска не обріже)
+    var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
+    $shadowWrapper.css({
         'display': 'inline-block',
-        'position': 'relative',
+        'width': w,
+        'height': h,
+        'position': 'relative'
+    });
+
+    // 2. ВНУТРІШНІЙ БЛОК: Для кольору і маски-ножиць
+    var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
+    $maskWrapper.css({
+        'display': 'block',
+        'width': '100%',
+        'height': '100%',
         'background-color': rgb,
         '-webkit-mask-image': 'url(' + iconSrc + ')',
         '-webkit-mask-size': 'contain',
         '-webkit-mask-repeat': 'no-repeat',
         '-webkit-mask-position': 'center',
-        'transition': 'background-color 0.4s ease',
-        'width': $iconElement.width() + 'px',
-        'height': $iconElement.height() + 'px'
+        'transition': 'background-color 0.4s ease'
     });
 
+    // Налаштовуємо режими змішування та кольори тіней
     if (brightness < 80) {
-        // Екстремально темні/чорні кольори -> Білі деталі
-        $wrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(255,255,255,0.8))'); // <--- ДОДАНО: Світла тінь (помітна!)
+        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(255,255,255,0.7))'); // Світла тінь
         $iconElement.css({
             'mix-blend-mode': 'screen',
             'filter': 'invert(1)',
             'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        // Усі інші кольори -> Чорні деталі залишаються
-        $wrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(0,0,0,0.8))'); // <--- ДОДАНО: Темна тінь (помітна!)
+        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(0,0,0,0.8))'); // Темна тінь
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
@@ -1209,8 +1221,10 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         });
     }
 
-    $iconElement.wrap($wrapper);
+    // Застосовуємо подвійну обгортку: іконка -> маска -> тінь
+    $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
 }
+
 
 /* Головний тригер з мікрозатримкою (Щоб іконки встигли відмалюватися) */
 function triggerDynamicColors(card) {
