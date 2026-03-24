@@ -4,7 +4,6 @@
 
 (function() {
   'use strict';
-
   /*
   |==========================================================================
   | localStorage shim & Promise & Fetch Polyfills
@@ -470,6 +469,7 @@
       insertRatings(currentRatingsData);
       applyStylesToAll();
       $('#lmp-search-loader', render).remove();
+      triggerDynamicColors(card);
       return;
     }
 
@@ -502,6 +502,7 @@
         
         insertRatings(currentRatingsData);
         applyStylesToAll();
+        triggerDynamicColors(card);
       }
     });
   }
@@ -1065,6 +1066,21 @@ function cleanLogoColorCache() {
     } catch (e) {}
 }
 
+/* Синхронне отримання кольору з кешу */
+function getCachedLogoColor(card) {
+    var type = card.name ? 'tv' : 'movie';
+    var id = card.id;
+    var cacheKey = type + '_' + id;
+    var storageKey = 'mdb_logo_colors_cache';
+    try {
+        var cache = JSON.parse(localStorage.getItem(storageKey) || '{}');
+        if (cache[cacheKey] && cache[cacheKey].timestamp > Date.now()) {
+            return cache[cacheKey].data;
+        }
+    } catch (e) {}
+    return null;
+}
+
 /* Отримання домінантного кольору логотипу з TMDB */
 function fetchLogoColor(card, apiKey) {
     return new Promise(function(resolve) {
@@ -1072,11 +1088,6 @@ function fetchLogoColor(card, apiKey) {
         var id = card.id;
         var cacheKey = type + '_' + id;
         var storageKey = 'mdb_logo_colors_cache';
-        var cache = JSON.parse(localStorage.getItem(storageKey) || '{}');
-
-        if (cache[cacheKey] && cache[cacheKey].timestamp > Date.now()) {
-            return resolve(cache[cacheKey].data);
-        }
 
         var url = 'https://api.themoviedb.org/3/' + type + '/' + id + '/images?api_key=' + apiKey;
         
@@ -1108,7 +1119,6 @@ function fetchLogoColor(card, apiKey) {
                         g += imgData[i + 1];
                         b += imgData[i + 2];
                         count++;
-                        
                         if (imgData[i] < 240 || imgData[i+1] < 240 || imgData[i+2] < 240) {
                             isWhiteText = false;
                         }
@@ -1122,14 +1132,16 @@ function fetchLogoColor(card, apiKey) {
                 b = Math.floor(b / count);
 
                 var brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                var isLight = brightness > 160;
-                var colorData = { r: r, g: g, b: b, isLight: isLight };
+                var colorData = { r: r, g: g, b: b, brightness: brightness };
 
-                cache[cacheKey] = {
-                    data: colorData,
-                    timestamp: Date.now() + (10 * 24 * 60 * 60 * 1000)
-                };
-                localStorage.setItem(storageKey, JSON.stringify(cache));
+                try {
+                    var cache = JSON.parse(localStorage.getItem(storageKey) || '{}');
+                    cache[cacheKey] = {
+                        data: colorData,
+                        timestamp: Date.now() + (10 * 24 * 60 * 60 * 1000)
+                    };
+                    localStorage.setItem(storageKey, JSON.stringify(cache));
+                } catch (e) {}
                 
                 resolve(colorData);
             };
@@ -1139,9 +1151,9 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування масок та кольору до іконок */
+/* Застосування динамічного кольору до іконки */
 function applyDynamicColorToIcon($iconElement, colorData) {
-    if (!colorData || !$iconElement.length) return;
+    if (!colorData || !$iconElement.length || $iconElement.parent().hasClass('mdb-dynamic-color-wrapper')) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
@@ -1155,45 +1167,75 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         '-webkit-mask-size': 'contain',
         '-webkit-mask-repeat': 'no-repeat',
         '-webkit-mask-position': 'center',
-        'transition': 'background-color 0.5s ease, filter 0.5s ease',
+        'transition': 'background-color 0.4s ease',
         'width': $iconElement.width() + 'px',
         'height': $iconElement.height() + 'px'
     });
 
-    if (colorData.isLight) {
-        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(0,0,0,0.8))');
+    if (colorData.brightness < 60) {
+        // Екстремально темні/чорні кольори (Чорні деталі -> білі)
+        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(255,255,255,0.4))');
         $iconElement.css({
             'mix-blend-mode': 'screen',
             'filter': 'invert(1)',
-            'opacity': '1',
-            'display': 'block',
-            'width': '100%',
-            'height': '100%'
+            'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(255,255,255,0.5))');
+        // Усі інші кольори (Білий -> колір, Чорні деталі -> залишаються чорними)
+        $wrapper.css('filter', 'drop-shadow(0px 0px 3px rgba(0,0,0,0.6))');
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
-            'opacity': '1',
-            'display': 'block',
-            'width': '100%',
-            'height': '100%'
+            'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     }
 
     $iconElement.wrap($wrapper);
 }
 
+/* Головний тригер перефарбовування */
+function triggerDynamicColors(card) {
+    var isBwIconsEnabled = Lampa.Storage.get('ratings_bw_logos', false);
+    var isDynamicColorsEnabled = Lampa.Storage.get('ratings_dynamic_colors', false);
+
+    if (!isBwIconsEnabled || !isDynamicColorsEnabled) return;
+
+    var tmdbApiKey = Lampa.Storage.get('tmdb_api_key', ''); 
+    if (!tmdbApiKey || tmdbApiKey.trim() === '' || tmdbApiKey.trim() === 'c87a543116135a4120443155bf680876') {
+        tmdbApiKey = '4ef0d7355d9ffb5151e987764708ce96';
+    }
+
+    var cachedColor = getCachedLogoColor(card);
+    
+    if (cachedColor) {
+        // Миттєве застосування з кешу без затримок
+        $('.lmp-custom-rate .source--name img').each(function() {
+            applyDynamicColorToIcon($(this), cachedColor);
+        });
+    } else {
+        // Якщо в кеші немає - робимо запит і плавно фарбуємо
+        fetchLogoColor(card, tmdbApiKey).then(function(colorData) {
+            if (colorData) {
+                $('.lmp-custom-rate .source--name img').each(function() {
+                    applyDynamicColorToIcon($(this), colorData);
+                });
+            }
+        });
+    }
+}
+
+
+
   function startPlugin() {
     window.combined_ratings_plugin = true;
     cleanOldCache(); 
+    cleanLogoColorCache(); // Чистимо кеш кольорів при старті
+    
     Lampa.Listener.follow('full', function(e) {
       if (e.type === 'complite') {
         var card = e.data.movie || e.object || {};
         setTimeout(function() { 
             fetchAdditionalRatings(card);
-            
             setTimeout(function() {
                 if (currentRatingsData && currentRatingsData.imdb && currentRatingsData.imdb.display) {
                     var k = getCardType(card) + '_' + card.id; 
@@ -1203,30 +1245,6 @@ function applyDynamicColorToIcon($iconElement, colorData) {
                         localStorage.setItem(OM, JSON.stringify(c));
                     } catch (err) {}
                 }
-
-    /* Блок ініціалізації динамічних кольорів для ч/б іконок */
-var isBwIconsEnabled = Lampa.Storage.get('ratings_bw_logos', false);
-var isDynamicColorsEnabled = Lampa.Storage.get('ratings_dynamic_colors', false);
-
-if (isBwIconsEnabled && isDynamicColorsEnabled) {
-    cleanLogoColorCache(); 
-    
-    // Беремо ключ і відсікаємо невалідний
-    var tmdbApiKey = Lampa.Storage.get('tmdb_api_key', ''); 
-    if (!tmdbApiKey || tmdbApiKey.trim() === '' || tmdbApiKey.trim() === 'c87a543116135a4120443155bf680876') {
-        tmdbApiKey = '4ef0d7355d9ffb5151e987764708ce96';
-    }
-    
-    fetchLogoColor(card, tmdbApiKey).then(function(colorData) {
-        if (colorData) {
-            $('.lmp-custom-rate .source--name img').each(function() {
-                applyDynamicColorToIcon($(this), colorData);
-            });
-        }
-    });
-}
-
-
             }, 1000); 
         }, 500);
       }
