@@ -1164,33 +1164,21 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування динамічного кольору до іконки (Метод подвійної обгортки для тіні) */
+/* Застосування динамічного кольору до іконки (Подвійна обгортка для контурної тіні) */
 function applyDynamicColorToIcon($iconElement, colorData) {
-    // Перевіряємо, чи ми вже не обгорнули цю іконку раніше
+    // Перевіряємо, чи ми вже не обгорнули цю іконку раніше (шукаємо зовнішній клас)
     if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     
+    // Захист від старого кешу
     var brightness = colorData.brightness;
     if (brightness === undefined) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
     }
 
-    // Зберігаємо розміри іконки
-    var w = $iconElement.width() + 'px';
-    var h = $iconElement.height() + 'px';
-
-    // 1. ЗОВНІШНІЙ БЛОК: Спеціально для тіні (його маска не обріже)
-    var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
-    $shadowWrapper.css({
-        'display': 'inline-block',
-        'width': w,
-        'height': h,
-        'position': 'relative'
-    });
-
-    // 2. ВНУТРІШНІЙ БЛОК: Для кольору і маски-ножиць
+    // 1. ВНУТРІШНІЙ БЛОК (Маска-трафарет і колір)
     var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
     $maskWrapper.css({
         'display': 'block',
@@ -1204,16 +1192,29 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         'transition': 'background-color 0.4s ease'
     });
 
-    // Налаштовуємо режими змішування та кольори тіней
+    // 2. ЗОВНІШНІЙ БЛОК (Контейнер, на який вішається тінь, щоб маска її не відрізала)
+    var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
+    $shadowWrapper.css({
+        'display': 'inline-block',
+        'width': $iconElement.width() + 'px',
+        'height': $iconElement.height() + 'px',
+        'position': 'relative'
+    });
+
+    // Налаштовуємо режими змішування та ЩІЛЬНІ контурні тіні
     if (brightness < 80) {
-        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(255,255,255,0.7))'); // Світла тінь
+        // Темні логотипи (чорні деталі стають білими)
+        // Тінь: біла, розмиття 1px (чіткий контур), прозорість 50%
+        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 1px rgba(255,255,255,0.5))'); 
         $iconElement.css({
             'mix-blend-mode': 'screen',
             'filter': 'invert(1)',
             'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 4px rgba(0,0,0,0.8))'); // Темна тінь
+        // Світлі/звичайні логотипи (чорні деталі залишаються чорними)
+        // Тінь: чорна, розмиття 1px (чіткий контур), прозорість 80%
+        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 1px rgba(0,0,0,0.8))');
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
@@ -1221,7 +1222,7 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         });
     }
 
-    // Застосовуємо подвійну обгортку: іконка -> маска -> тінь
+    // Обгортаємо іконку у маску, а маску — у зовнішній блок з тінню
     $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
 }
 
