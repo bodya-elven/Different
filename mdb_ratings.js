@@ -153,6 +153,18 @@
     mal: ICONS_WIDE_URL + 'mal-wide.webp'
   };
 
+var ICONS_WIDE_NB = {
+    imdb: ICONS_WIDE_URL + 'imdb-wide-nb.webp',
+    tmdb: ICONS_WIDE_URL + 'tmdb-wide-nb.webp',
+    trakt: ICONS_WIDE_URL + 'trakt-wide-nb.webp',
+    letterboxd: ICONS_WIDE_URL + 'letterboxd-wide-nb.webp',
+    metacritic: ICONS_WIDE_URL + 'metacritic-wide-nb.webp',
+    rotten_good: ICONS_WIDE_URL + 'rt-wide-nb.webp',
+    rotten_bad: ICONS_WIDE_URL + 'rt-bad-wide-nb.webp',
+    popcorn: ICONS_WIDE_URL + 'popcorn-wide-nb.webp',
+    mdblist: ICONS_WIDE_URL + 'mdblist-wide-nb.webp',
+    mal: ICONS_WIDE_URL + 'mal-wide-nb.webp'
+};
   
   var pluginStyles = "<style>" +
     ":root{" +
@@ -395,6 +407,9 @@
 
     var useWide = cfg.wideLogos;
 
+    // Беремо стан нового перемикача рамок
+    var useWideBorder = Lampa.Storage.get('ratings_wide_border', false);
+
     cfg.sourcesConfig.forEach(function(src) {
       if (!src.enabled || !data[src.id]) return;
       var itemData = data[src.id];
@@ -402,13 +417,27 @@
       var iconUrl;
       
       if (useWide) {
-          iconUrl = ICONS_WIDE[src.id] || (ICONS_WIDE_URL + src.id + '-wide.png');
-          if (src.id === 'rottentomatoes') {
-              iconUrl = itemData.fresh ? ICONS_WIDE.rotten_good : ICONS_WIDE.rotten_bad;
-          } else if (src.id === 'popcorn') {
-              iconUrl = ICONS_WIDE.popcorn; 
+          if (useWideBorder) {
+              // --- ОПЦІЯ: Широкі логотипи З РАМКОЮ ---
+              // Якщо увімкнено рамки, беремо звичайний словник ICONS_WIDE і суфікс -wide.webp
+              iconUrl = ICONS_WIDE[src.id] || (ICONS_WIDE_URL + src.id + '-wide.webp');
+              if (src.id === 'rottentomatoes') {
+                  iconUrl = itemData.fresh ? ICONS_WIDE.rotten_good : ICONS_WIDE.rotten_bad;
+              } else if (src.id === 'popcorn') {
+                  iconUrl = ICONS_WIDE.popcorn; 
+              }
+          } else {
+              // --- БАЗА: Широкі логотипи БЕЗ РАМКИ ---
+              // За замовчуванням беремо словник ICONS_WIDE_NB і суфікс -wide-nb.webp
+              iconUrl = ICONS_WIDE_NB[src.id] || (ICONS_WIDE_URL + src.id + '-wide-nb.webp');
+              if (src.id === 'rottentomatoes') {
+                  iconUrl = itemData.fresh ? ICONS_WIDE_NB.rotten_good : ICONS_WIDE_NB.rotten_bad;
+              } else if (src.id === 'popcorn') {
+                  iconUrl = ICONS_WIDE_NB.popcorn; 
+              }
           }
       } else {
+          // --- ЛОГІКА ДЛЯ КВАДРАТНИХ ІКОНОК (без змін) ---
           iconUrl = (cfg.bwLogos && ICONS_BW[src.id]) ? ICONS_BW[src.id] : ICONS[src.id];
           if (src.id === 'rottentomatoes') {
               iconUrl = cfg.bwLogos ? (itemData.fresh ? ICONS_BW.rotten_good : ICONS_BW.rotten_bad) 
@@ -417,6 +446,7 @@
               iconUrl = cfg.bwLogos ? ICONS_BW.popcorn_bad : ICONS.popcorn_bad;
           }
       }
+
 
       var colorClass = '';
       var glowClass = '';
@@ -868,38 +898,38 @@
   }
 
   function addSettingsSection() {
-    if (window.lmp_ratings_add_param_ready) return;
-    window.lmp_ratings_add_param_ready = true;
+    if (window.mdb_ratings_add_param_ready) return;
+    window.mdb_ratings_add_param_ready = true;
     $('body').append('<style>div[data-component="omdb_ratings"] { display: none !important; }</style>');
 
-    Lampa.SettingsApi.addComponent({ component: 'lmp_ratings', name: 'Рейтинги', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l3.09 6.26L22 10.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 15.14l-5-4.87 6.91-1.01L12 3z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>' });
+    Lampa.SettingsApi.addComponent({ component: 'mdb_ratings', name: 'Рейтинги', icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3l3.09 6.26L22 10.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 15.14l-5-4.87 6.91-1.01L12 3z" stroke="currentColor" stroke-width="2" fill="none" stroke-linejoin="round" stroke-linecap="round"/></svg>' });
     
     Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
+        component: 'mdb_ratings', 
         param: { name: 'lmp_poster_submenu_btn', type: 'static' }, 
         field: { name: 'Рейтинг на постері', description: 'Відображення рейтингів у каталозі' }, 
         onRender: function(item) { 
             item.on('hover:enter click', function() { 
                 Lampa.Settings.create('omdb_ratings'); 
                 Lampa.Controller.enabled().controller.back = function() { 
-                    Lampa.Settings.create('lmp_ratings'); 
+                    Lampa.Settings.create('mdb_ratings'); 
                 };
             }); 
         } 
     });
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_mdblist_key', type: 'input', values: '', "default": '' }, field: { name: 'MDBList API key', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_edit_sources_btn' }, field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів' }, onChange: function() { openSourcesEditor(); } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_mdblist_key', type: 'input', values: '', "default": '' }, field: { name: 'MDBList API key', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { type: 'button', name: 'lmp_edit_sources_btn' }, field: { name: 'Налаштувати джерела', description: 'Зміна порядку та видимості рейтингів' }, onChange: function() { openSourcesEditor(); } });
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_text_position', type: 'select', values: { 'left': 'Зліва', 'right': 'Справа', 'top': 'Зверху', 'bottom': 'Знизу' }, "default": 'right' }, field: { name: 'Розташування оцінки', description: 'Розміщення оцінки відносно логотипу' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_show_votes', type: 'trigger', values: '', "default": true }, field: { name: 'Кількість голосів', description: 'Показувати кількість тих, хто поставив оцінку' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_text_position', type: 'select', values: { 'left': 'Зліва', 'right': 'Справа', 'top': 'Зверху', 'bottom': 'Знизу' }, "default": 'right' }, field: { name: 'Розташування оцінки', description: 'Розміщення оцінки відносно логотипу' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_show_votes', type: 'trigger', values: '', "default": true }, field: { name: 'Кількість голосів', description: 'Показувати кількість тих, хто поставив оцінку' } });
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_logo_scale_val', type: 'select', values: { 's_m3': '-3', 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2', 's_p3': '3' }, "default": 's_0' }, field: { name: 'Розмір логотипів', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_text_scale_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Розмір оцінки', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_spacing_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Відступи між рейтингами', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_logo_scale_val', type: 'select', values: { 's_m3': '-3', 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2', 's_p3': '3' }, "default": 's_0' }, field: { name: 'Розмір логотипів', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_text_scale_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Розмір оцінки', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_spacing_val', type: 'select', values: { 's_m2': '-2', 's_m1': '-1', 's_0': '0', 's_p1': '1', 's_p2': '2' }, "default": 's_0' }, field: { name: 'Відступи між рейтингами', description: '' } });
     
     Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
+        component: 'mdb_ratings', 
         param: { name: 'ratings_wide_logos', type: 'trigger', values: '', "default": false }, 
         field: { name: 'Широкі логотипи', description: '' },
         onChange: function(val) {
@@ -907,21 +937,35 @@
                 Lampa.Storage.set('ratings_bw_logos', false);
                 Lampa.Storage.set('ratings_rate_border', false);
                 Lampa.Storage.set('ratings_glow_border', false);
-                $('.settings-param:contains("Ч/Б логотипи")').find('.toggle').removeClass('active');
+                $('.settings-param:contains("Білі логотипи")').find('.toggle').removeClass('active');
                 $('.settings-param:contains("Рамка плиток рейтингів")').find('.toggle').removeClass('active');
                 $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+            } else {
+                // Якщо вимкнули Широкі логотипи, примусово вимикаємо і рамки
+                Lampa.Storage.set('ratings_wide_border', false);
+                $('.settings-param:contains("Рамки широких логотипів")').find('.toggle').removeClass('active');
             }
             updateMutualExclusions();
         }
     });
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: 'Підміна на білі іконки' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": true }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
+    Lampa.SettingsApi.addParam({ 
+        component: 'mdb_ratings', 
+        param: { name: 'ratings_wide_border', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Рамки широких логотипів', description: '' },
+        onChange: function() {
+            updateMutualExclusions();
+        }
+    });
+
+
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу. Працює з увімкненими білими та широкими іконками' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": true }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
     
     Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
+        component: 'mdb_ratings', 
         param: { name: 'ratings_rate_border', type: 'trigger', values: '', "default": false }, 
         field: { name: 'Рамка плиток рейтингів', description: '' },
         onChange: function(val) {
@@ -938,7 +982,7 @@
     });
     
     Lampa.SettingsApi.addParam({ 
-        component: 'lmp_ratings', 
+        component: 'mdb_ratings', 
         param: { name: 'ratings_glow_border', type: 'trigger', values: '', "default": false }, 
         field: { name: 'Кольорове світіння рамки', description: '' },
         onChange: function(val) {
@@ -955,17 +999,26 @@
         var isWide = Lampa.Storage.get('ratings_wide_logos', false);
         var isBorder = Lampa.Storage.get('ratings_rate_border', false);
         
-        var $bwItem = $('.settings-param:contains("Ч/Б логотипи")');
+        var $bwItem = $('.settings-param:contains("Білі логотипи")');
         var $borderItem = $('.settings-param:contains("Рамка плиток рейтингів")');
         var $glowItem = $('.settings-param:contains("Кольорове світіння рамки")');
+        // Шукаємо наш новий пункт
+        var $wideBorderItem = $('.settings-param:contains("Рамки широких логотипів")');
 
         if (isWide) {
             $bwItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             $borderItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             $glowItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+            
+            // Робимо активним перемикач рамок для широких лого
+            $wideBorderItem.css({ opacity: 1, 'pointer-events': 'auto' });
         } else {
             $bwItem.css({ opacity: 1, 'pointer-events': 'auto' });
             $borderItem.css({ opacity: 1, 'pointer-events': 'auto' });
+            
+            // Блокуємо перемикач рамок, бо широкі лого вимкнені
+            $wideBorderItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+
             if (isBorder) {
                 $glowItem.css({ opacity: 1, 'pointer-events': 'auto' });
             } else {
@@ -973,12 +1026,12 @@
             }
         }
     }
+
     
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_cache_days', type: 'input', values: '', "default": '3' }, field: { name: 'Термін зберігання кешу (MDBList)', description: '' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити весь кеш рейтингів', description: '' }, onChange: function() { lmpRatingsClearCache(); } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { name: 'ratings_cache_days', type: 'input', values: '', "default": '3' }, field: { name: 'Термін зберігання кешу (MDBList)', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'mdb_ratings', param: { type: 'button', name: 'lmp_clear_cache_btn' }, field: { name: 'Очистити весь кеш рейтингів', description: '' }, onChange: function() { lmpRatingsClearCache(); } });
 
     Lampa.SettingsApi.addComponent({ component: 'omdb_ratings', name: 'Рейтинг на постері', icon: '' });
-    // Кнопку "Назад" тут ВИДАЛЕНО
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_api_key', type: 'input', values: '', "default": '' }, field: { name: 'OMDb API key', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_status', type: 'trigger', values: '', "default": true }, field: { name: 'Рейтинг на постері', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'omdb_ratings', param: { name: 'omdb_poster_source', type: 'select', values: { 'imdb': 'IMDb', 'tmdb': 'TMDb', 'none': 'Без рейтингу' }, "default": 'imdb' }, field: { name: 'Джерело рейтингу', description: '' } });
@@ -992,13 +1045,13 @@
             // МИТТЄВЕ ПЕРЕМІЩЕННЯ ПУНКТУ МЕНЮ
             var move = function() {
                 var i = $('.settings-folder div[data-component="interface"]');
-                var r = $('.settings-folder div[data-component="lmp_ratings"]');
+                var r = $('.settings-folder div[data-component="mdb_ratings"]');
                 if (i.length && r.length) r.insertAfter(i);
             };
             move(); // Запускаємо відразу
             setTimeout(move, 10); // Страховка
         }
-        if (e.type === 'create' && e.name === 'lmp_ratings') {
+        if (e.type === 'create' && e.name === 'mdb_ratings') {
             updateMutualExclusions(); // Миттєве оновлення сірих пунктів
             setTimeout(updateMutualExclusions, 50); // Страховка
         }
@@ -1088,7 +1141,7 @@ function getCachedLogoColor(card) {
     return null;
 }
 
-/* Отримання домінантного кольору логотипу з TMDB */
+/* Отримання домінантного кольору логотипу з кластеризацією */
 function fetchLogoColor(card, apiKey) {
     return new Promise(function(resolve) {
         var type = card.name ? 'tv' : 'movie';
@@ -1123,30 +1176,87 @@ function fetchLogoColor(card, apiKey) {
                     return resolve(null);
                 }
 
-                var r = 0, g = 0, b = 0, count = 0;
-                var isWhiteText = true;
+                var buckets = {};
+                var totalPixels = 0;
+                var wCount = 0, wR = 0, wG = 0, wB = 0;
+                var bCount = 0, bR = 0, bG = 0, bB = 0;
 
+                // КРОК 1: Сортуємо пікселі по "кошиках"
                 for (var i = 0; i < imgData.length; i += 16) {
-                    if (imgData[i + 3] > 50) { 
-                        r += imgData[i];
-                        g += imgData[i + 1];
-                        b += imgData[i + 2];
-                        count++;
-                        if (imgData[i] < 240 || imgData[i+1] < 240 || imgData[i+2] < 240) {
-                            isWhiteText = false;
-                        }
+                    var a = imgData[i + 3];
+                    if (a < 50) continue; // Пропускаємо прозоре
+
+                    var r = imgData[i];
+                    var g = imgData[i + 1];
+                    var b = imgData[i + 2];
+                    totalPixels++;
+
+                    var isWhite = r > 240 && g > 240 && b > 240;
+                    var isBlack = r < 25 && g < 25 && b < 25;
+
+                    if (isWhite) {
+                        wCount++; wR += r; wG += g; wB += b;
+                    } else if (isBlack) {
+                        bCount++; bR += r; bG += g; bB += b;
+                    } else {
+                        // Для градієнтів: групуємо схожі відтінки (з кроком 32 одиниці)
+                        var step = 32;
+                        var key = Math.floor(r / step) + ',' + Math.floor(g / step) + ',' + Math.floor(b / step);
+                        
+                        if (!buckets[key]) buckets[key] = { count: 0, r: 0, g: 0, b: 0 };
+                        buckets[key].count++;
+                        buckets[key].r += r;
+                        buckets[key].g += g;
+                        buckets[key].b += b;
                     }
                 }
 
-                if (count === 0 || isWhiteText) return resolve(null);
+                if (totalPixels === 0) return resolve(null);
 
-                r = Math.floor(r / count);
-                g = Math.floor(g / count);
-                b = Math.floor(b / count);
+                // КРОК 2: Застосовуємо твої правила (<10% та >50%)
+                var validBuckets = [];
+                
+                // Перевіряємо кольори: беремо тільки ті, яких більше 10%
+                for (var k in buckets) {
+                    if ((buckets[k].count / totalPixels) * 100 >= 10) {
+                        validBuckets.push(buckets[k]);
+                    }
+                }
 
-                var brightness = (r * 299 + g * 587 + b * 114) / 1000;
-                var colorData = { r: r, g: g, b: b, brightness: brightness };
+                // Перевіряємо білий та чорний: беремо ТІЛЬКИ якщо їх від 10% до 35%
+                var wPercent = (wCount / totalPixels) * 100;
+                var bPercent = (bCount / totalPixels) * 100;
 
+                if (wPercent >= 10 && wPercent <= 35) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
+                if (bPercent >= 10 && bPercent <= 35) validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
+
+                // КРОК 3: Запасний план для екстремальних градієнтів ("веселки")
+                // Якщо після чистки всі кошики зникли, беремо той колір, якого було найбільше, ігноруючи правило 10%
+                if (validBuckets.length === 0) {
+                    var maxBkt = null;
+                    for (var key in buckets) {
+                        if (!maxBkt || buckets[key].count > maxBkt.count) maxBkt = buckets[key];
+                    }
+                    if (maxBkt) validBuckets.push(maxBkt);
+                    else if (wCount > bCount) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
+                    else validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
+                }
+
+                // КРОК 4: Вибираємо переможця (найбільший кошик з тих, що вижили)
+                validBuckets.sort(function(a, b) { return b.count - a.count; });
+                var best = validBuckets[0];
+
+                if (!best || best.count === 0) return resolve(null);
+
+                // Рахуємо чистий середній колір тільки з цього переможного кошика
+                var finalR = Math.floor(best.r / best.count);
+                var finalG = Math.floor(best.g / best.count);
+                var finalB = Math.floor(best.b / best.count);
+
+                var brightness = (finalR * 299 + finalG * 587 + finalB * 114) / 1000;
+                var colorData = { r: finalR, g: finalG, b: finalB, brightness: brightness };
+
+                // Кешуємо результат
                 try {
                     var cache = JSON.parse(localStorage.getItem(storageKey) || '{}');
                     cache[cacheKey] = {
@@ -1164,9 +1274,10 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування динамічного кольору до іконки (Єдиний стиль + напівпрозора тінь) */
-function applyDynamicColorToIcon($iconElement, colorData) {
-    if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length) return;
+
+/* Застосування динамічного кольору до іконки (з плавною появою) */
+function applyDynamicColorToIcon($iconElement, colorData, isWide) {
+    if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length || $iconElement.closest('.mdb-wide-color-wrapper').length) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
@@ -1176,56 +1287,90 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
     }
 
-    // Якщо логотип чорний або дуже темно-сірий (< 20) — примусово робимо іконку білою
+    // Захист від чорного
     if (brightness < 20) {
         rgb = 'rgb(255, 255, 255)';
     }
 
-    // 1. ВНУТРІШНІЙ БЛОК (Маска-трафарет і колір)
-    var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
-    $maskWrapper.css({
-        'display': 'block',
-        'width': '100%',
-        'height': '100%',
-        'background-color': rgb,
-        '-webkit-mask-image': 'url(' + iconSrc + ')',
-        '-webkit-mask-size': 'contain',
-        '-webkit-mask-repeat': 'no-repeat',
-        '-webkit-mask-position': 'center',
-        'transition': 'background-color 0.4s ease'
-    });
+    if (isWide) {
+        // --- ЛОГІКА ДЛЯ ШИРОКИХ ЛОГО ---
+        var $wideWrapper = $('<div class="mdb-wide-color-wrapper"></div>');
+        $wideWrapper.css({
+            'display': 'inline-block',
+            'width': $iconElement.width() + 'px',
+            'height': $iconElement.height() + 'px',
+            'background-color': rgb,
+            '-webkit-mask-image': 'url(' + iconSrc + ')',
+            '-webkit-mask-size': 'contain',
+            '-webkit-mask-repeat': 'no-repeat',
+            '-webkit-mask-position': 'center',
+            'opacity': '0', // Старт з невидимості
+            'transition': 'opacity 0.4s ease, background-color 0.4s ease'
+        });
 
-    // 2. ЗОВНІШНІЙ БЛОК (Контейнер для тіні)
-    var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
-    $shadowWrapper.css({
-        'display': 'inline-block',
-        'width': $iconElement.width() + 'px',
-        'height': $iconElement.height() + 'px',
-        'position': 'relative',
-        // Єдина, легка, напівпрозора контурна тінь для всіх іконок (прозорість 0.4)
-        'filter': 'drop-shadow(1px 1px 0px rgba(0,0,0,0.4))' 
-    });
+        $iconElement.css('opacity', '0'); // Оригінал ховаємо
+        $iconElement.wrap($wideWrapper);
 
-    // Більше ніяких інверсій. Просто зберігаємо чорні деталі іконки як є
-    $iconElement.css({
-        'mix-blend-mode': 'multiply',
-        'filter': 'none',
-        'opacity': '1', 
-        'display': 'block', 
-        'width': '100%', 
-        'height': '100%'
-    });
+        // Даємо браузеру мілісекунду на рендер і плавно проявляємо
+        setTimeout(function() {
+            $iconElement.closest('.mdb-wide-color-wrapper').css('opacity', '1');
+        }, 50);
 
-    // Обгортаємо іконку
-    $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
+    } else {
+        // --- ЛОГІКА ДЛЯ КВАДРАТНИХ ІКОНОК ---
+        var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
+        $maskWrapper.css({
+            'display': 'block',
+            'width': '100%',
+            'height': '100%',
+            'background-color': rgb,
+            '-webkit-mask-image': 'url(' + iconSrc + ')',
+            '-webkit-mask-size': 'contain',
+            '-webkit-mask-repeat': 'no-repeat',
+            '-webkit-mask-position': 'center'
+        });
+
+        var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
+        $shadowWrapper.css({
+            'display': 'inline-block',
+            'width': $iconElement.width() + 'px',
+            'height': $iconElement.height() + 'px',
+            'position': 'relative',
+            'filter': 'drop-shadow(1px 1px 0px rgba(0,0,0,0.4))',
+            'opacity': '0', // Старт з невидимості
+            'transition': 'opacity 0.4s ease'
+        });
+
+        $iconElement.css({
+            'mix-blend-mode': 'multiply',
+            'filter': 'none',
+            'opacity': '1', 
+            'display': 'block', 
+            'width': '100%', 
+            'height': '100%'
+        });
+
+        $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
+
+        // Плавна поява
+        setTimeout(function() {
+            $iconElement.closest('.mdb-dynamic-shadow-wrapper').css('opacity', '1');
+        }, 50);
+    }
 }
 
 
-function triggerDynamicColors(card) {
+
+  function triggerDynamicColors(card) {
     var isBwIconsEnabled = Lampa.Storage.get('ratings_bw_logos', false);
+    var isWideLogosEnabled = Lampa.Storage.get('ratings_wide_logos', false);
     var isDynamicColorsEnabled = Lampa.Storage.get('ratings_dynamic_colors', false);
 
-    if (!isBwIconsEnabled || !isDynamicColorsEnabled) return;
+    if (!isDynamicColorsEnabled || (!isBwIconsEnabled && !isWideLogosEnabled)) return;
+
+    // МИТТЄВО ХОВАЄМО ІКОНКИ ще до того, як Лампа їх покаже (щоб не було блимання)
+    var $icons = $('.lmp-custom-rate .source--name img');
+    $icons.css('opacity', '0');
 
     var tmdbApiKey = Lampa.Storage.get('tmdb_api_key', ''); 
     if (!tmdbApiKey || tmdbApiKey.trim() === '' || tmdbApiKey.trim() === 'c87a543116135a4120443155bf680876') {
@@ -1236,19 +1381,25 @@ function triggerDynamicColors(card) {
         var cachedColor = getCachedLogoColor(card);
         
         if (cachedColor) {
-            $('.lmp-custom-rate .source--name img').each(function() {
-                applyDynamicColorToIcon($(this), cachedColor);
+            $icons.each(function() {
+                applyDynamicColorToIcon($(this), cachedColor, isWideLogosEnabled);
             });
         } else {
             fetchLogoColor(card, tmdbApiKey).then(function(colorData) {
                 if (colorData) {
-                    $('.lmp-custom-rate .source--name img').each(function() {
-                        applyDynamicColorToIcon($(this), colorData);
+                    $icons.each(function() {
+                        applyDynamicColorToIcon($(this), colorData, isWideLogosEnabled);
+                    });
+                } else {
+                    // Якщо кольору немає (напр. логотип не знайдено), плавно повертаємо оригінали
+                    $icons.css({
+                        'transition': 'opacity 0.4s ease',
+                        'opacity': '1'
                     });
                 }
             });
         }
-    }, 400);
+    }, 400); 
 }
 
   function startPlugin() {
