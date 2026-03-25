@@ -941,11 +941,14 @@ var ICONS_WIDE_NB = {
             updateMutualExclusions();
         }
     });
-Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: 'ratings_wide_nb',
-    field: { name: 'Широкі лого без рамки', description: 'Прибирає рамку в широких логотипах', type: 'trigger', default: false
-    },
-    onChange: function () {}
-});
+    Lampa.SettingsApi.addParam({ 
+        component: 'lmp_ratings', 
+        param: { name: 'ratings_wide_nb', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Широкі лого без рамки', description: 'Прибирає рамку в широких логотипах' },
+        onChange: function() {
+            updateMutualExclusions();
+        }
+    });
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: 'Підміна на білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу. Працює з увімкненими білими іконками' } });
