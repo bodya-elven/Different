@@ -915,7 +915,7 @@
         }
     });
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Ч/Б логотипи', description: 'Підміна на чорно-білі іконки' } });
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: 'Підміна на білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": true }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
@@ -1164,21 +1164,18 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування динамічного кольору до іконки (Подвійна обгортка для контурної тіні) */
+/* Застосування динамічного кольору до іконки */
 function applyDynamicColorToIcon($iconElement, colorData) {
-    // Перевіряємо, чи ми вже не обгорнули цю іконку раніше (шукаємо зовнішній клас)
     if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     
-    // Захист від старого кешу
     var brightness = colorData.brightness;
     if (brightness === undefined) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
     }
 
-    // 1. ВНУТРІШНІЙ БЛОК (Маска-трафарет і колір)
     var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
     $maskWrapper.css({
         'display': 'block',
@@ -1192,7 +1189,6 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         'transition': 'background-color 0.4s ease'
     });
 
-    // 2. ЗОВНІШНІЙ БЛОК (Контейнер, на який вішається тінь, щоб маска її не відрізала)
     var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
     $shadowWrapper.css({
         'display': 'inline-block',
@@ -1201,20 +1197,17 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         'position': 'relative'
     });
 
-    // Налаштовуємо режими змішування та ЩІЛЬНІ контурні тіні
     if (brightness < 80) {
-        // Темні логотипи (чорні деталі стають білими)
-        // Тінь: біла, розмиття 1px (чіткий контур), прозорість 50%
-        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 1px rgba(255,255,255,0.5))'); 
+
+        $shadowWrapper.css('filter', 'drop-shadow(1px 1px 0px rgba(255,255,255,0.4))'); 
         $iconElement.css({
             'mix-blend-mode': 'screen',
             'filter': 'invert(1)',
             'opacity': '1', 'display': 'block', 'width': '100%', 'height': '100%'
         });
     } else {
-        // Світлі/звичайні логотипи (чорні деталі залишаються чорними)
-        // Тінь: чорна, розмиття 1px (чіткий контур), прозорість 80%
-        $shadowWrapper.css('filter', 'drop-shadow(0px 0px 1px rgba(0,0,0,0.8))');
+
+        $shadowWrapper.css('filter', 'drop-shadow(1px 1px 0px rgba(0,0,0,0.7))');
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
@@ -1222,12 +1215,9 @@ function applyDynamicColorToIcon($iconElement, colorData) {
         });
     }
 
-    // Обгортаємо іконку у маску, а маску — у зовнішній блок з тінню
     $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
 }
 
-
-/* Головний тригер з мікрозатримкою (Щоб іконки встигли відмалюватися) */
 function triggerDynamicColors(card) {
     var isBwIconsEnabled = Lampa.Storage.get('ratings_bw_logos', false);
     var isDynamicColorsEnabled = Lampa.Storage.get('ratings_dynamic_colors', false);
@@ -1239,7 +1229,6 @@ function triggerDynamicColors(card) {
         tmdbApiKey = '4ef0d7355d9ffb5151e987764708ce96';
     }
 
-    // Затримка 150мс для стабільного пошуку іконок у DOM
     setTimeout(function() {
         var cachedColor = getCachedLogoColor(card);
         
@@ -1256,7 +1245,7 @@ function triggerDynamicColors(card) {
                 }
             });
         }
-    }, 150);
+    }, 400);
 }
 
   function startPlugin() {
