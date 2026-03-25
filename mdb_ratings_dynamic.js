@@ -952,15 +952,15 @@ var ICONS_WIDE_NB = {
     Lampa.SettingsApi.addParam({ 
         component: 'lmp_ratings', 
         param: { name: 'ratings_wide_border', type: 'trigger', values: '', "default": false }, 
-        field: { name: 'Рамки широких логотипів', description: 'Додає рамку до широких логотипів (працює разом із Широкими логотипами)' },
+        field: { name: 'Рамки широких логотипів', description: '' },
         onChange: function() {
             updateMutualExclusions();
         }
     });
 
 
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: 'Підміна на білі іконки' } });
-    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу. Працює з увімкненими білими іконками' } });
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: '' } });
+    Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу. Працює з увімкненими білими та широкими іконками' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_colorize_all', type: 'trigger', values: '', "default": true }, field: { name: 'Кольорові оцінки рейтингів', description: '' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bg_opacity', type: 'select', values: { 'v_0': '0%', 'v_0.1': '10%', 'v_0.2': '20%', 'v_0.3': '30%', 'v_0.4': '40%', 'v_0.5': '50%', 'v_0.6': '60%', 'v_0.8': '80%', 'v_1': '100%' }, "default": 'v_0' }, field: { name: 'Темний фон плитки', description: '' } });
     
