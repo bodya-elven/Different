@@ -407,7 +407,8 @@ var ICONS_WIDE_NB = {
 
     var useWide = cfg.wideLogos;
 
-    var useWideNb = Lampa.Storage.get('ratings_wide_nb', false);
+    // Беремо стан нового перемикача рамок
+    var useWideBorder = Lampa.Storage.get('ratings_wide_border', false);
 
     cfg.sourcesConfig.forEach(function(src) {
       if (!src.enabled || !data[src.id]) return;
@@ -416,26 +417,27 @@ var ICONS_WIDE_NB = {
       var iconUrl;
       
       if (useWide) {
-          if (useWideNb) {
-
-              // Якщо немає в словнику ICONS_WIDE_NB, підставляємо суфікс -wide-nb.webp
+          if (useWideBorder) {
+              // --- ОПЦІЯ: Широкі логотипи З РАМКОЮ ---
+              // Якщо увімкнено рамки, беремо звичайний словник ICONS_WIDE і суфікс -wide.webp
+              iconUrl = ICONS_WIDE[src.id] || (ICONS_WIDE_URL + src.id + '-wide.webp');
+              if (src.id === 'rottentomatoes') {
+                  iconUrl = itemData.fresh ? ICONS_WIDE.rotten_good : ICONS_WIDE.rotten_bad;
+              } else if (src.id === 'popcorn') {
+                  iconUrl = ICONS_WIDE.popcorn; 
+              }
+          } else {
+              // --- БАЗА: Широкі логотипи БЕЗ РАМКИ ---
+              // За замовчуванням беремо словник ICONS_WIDE_NB і суфікс -wide-nb.webp
               iconUrl = ICONS_WIDE_NB[src.id] || (ICONS_WIDE_URL + src.id + '-wide-nb.webp');
               if (src.id === 'rottentomatoes') {
                   iconUrl = itemData.fresh ? ICONS_WIDE_NB.rotten_good : ICONS_WIDE_NB.rotten_bad;
               } else if (src.id === 'popcorn') {
                   iconUrl = ICONS_WIDE_NB.popcorn; 
               }
-          } else {
-
-              iconUrl = ICONS_WIDE[src.id] || (ICONS_WIDE_URL + src.id + '-wide.png');
-              if (src.id === 'rottentomatoes') {
-                  iconUrl = itemData.fresh ? ICONS_WIDE.rotten_good : ICONS_WIDE.rotten_bad;
-              } else if (src.id === 'popcorn') {
-                  iconUrl = ICONS_WIDE.popcorn; 
-              }
           }
       } else {
-
+          // --- ЛОГІКА ДЛЯ КВАДРАТНИХ ІКОНОК (без змін) ---
           iconUrl = (cfg.bwLogos && ICONS_BW[src.id]) ? ICONS_BW[src.id] : ICONS[src.id];
           if (src.id === 'rottentomatoes') {
               iconUrl = cfg.bwLogos ? (itemData.fresh ? ICONS_BW.rotten_good : ICONS_BW.rotten_bad) 
@@ -444,6 +446,7 @@ var ICONS_WIDE_NB = {
               iconUrl = cfg.bwLogos ? ICONS_BW.popcorn_bad : ICONS.popcorn_bad;
           }
       }
+
 
       var colorClass = '';
       var glowClass = '';
@@ -934,21 +937,27 @@ var ICONS_WIDE_NB = {
                 Lampa.Storage.set('ratings_bw_logos', false);
                 Lampa.Storage.set('ratings_rate_border', false);
                 Lampa.Storage.set('ratings_glow_border', false);
-                $('.settings-param:contains("Ч/Б логотипи")').find('.toggle').removeClass('active');
+                $('.settings-param:contains("Білі логотипи")').find('.toggle').removeClass('active');
                 $('.settings-param:contains("Рамка плиток рейтингів")').find('.toggle').removeClass('active');
                 $('.settings-param:contains("Кольорове світіння рамки")').find('.toggle').removeClass('active');
+            } else {
+                // Якщо вимкнули Широкі логотипи, примусово вимикаємо і рамки
+                Lampa.Storage.set('ratings_wide_border', false);
+                $('.settings-param:contains("Рамки широких логотипів")').find('.toggle').removeClass('active');
             }
             updateMutualExclusions();
         }
     });
+
     Lampa.SettingsApi.addParam({ 
         component: 'lmp_ratings', 
-        param: { name: 'ratings_wide_nb', type: 'trigger', values: '', "default": false }, 
-        field: { name: 'Широкі лого без рамки', description: 'Прибирає рамку в широких логотипах' },
+        param: { name: 'ratings_wide_border', type: 'trigger', values: '', "default": false }, 
+        field: { name: 'Рамки широких логотипів', description: 'Додає рамку до широких логотипів (працює разом із Широкими логотипами)' },
         onChange: function() {
             updateMutualExclusions();
         }
     });
+
 
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_bw_logos', type: 'trigger', values: '', "default": false }, field: { name: 'Білі логотипи', description: 'Підміна на білі іконки' } });
     Lampa.SettingsApi.addParam({ component: 'lmp_ratings', param: { name: 'ratings_dynamic_colors', type: 'trigger', values: '', "default": false }, field: { name: 'Динамічний колір іконок', description: 'Перефарбовує іконки у домінантний колір логотипу. Працює з увімкненими білими іконками' } });
@@ -990,28 +999,25 @@ var ICONS_WIDE_NB = {
         var isWide = Lampa.Storage.get('ratings_wide_logos', false);
         var isBorder = Lampa.Storage.get('ratings_rate_border', false);
         
-        // Зверни увагу: тут вже змінено на "Білі логотипи"
-        var $bwItem = $('.settings-param:contains("Білі логотипи")'); 
+        var $bwItem = $('.settings-param:contains("Білі логотипи")');
         var $borderItem = $('.settings-param:contains("Рамка плиток рейтингів")');
         var $glowItem = $('.settings-param:contains("Кольорове світіння рамки")');
-        // Додаємо наш новий пункт
-        var $wideNbItem = $('.settings-param:contains("Широкі лого без рамки")');
+        // Шукаємо наш новий пункт
+        var $wideBorderItem = $('.settings-param:contains("Рамки широких логотипів")');
 
         if (isWide) {
-            // Якщо Широкі лого ввімкнені, блокуємо несумісні налаштування
             $bwItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             $borderItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             $glowItem.css({ opacity: 0.5, 'pointer-events': 'none' });
             
-            // А новий пункт "Без рамки", навпаки, робимо активним
-            $wideNbItem.css({ opacity: 1, 'pointer-events': 'auto' });
+            // Робимо активним перемикач рамок для широких лого
+            $wideBorderItem.css({ opacity: 1, 'pointer-events': 'auto' });
         } else {
-            // Якщо Широкі лого вимкнені, повертаємо все як було
             $bwItem.css({ opacity: 1, 'pointer-events': 'auto' });
             $borderItem.css({ opacity: 1, 'pointer-events': 'auto' });
             
-            // Новий пункт "Без рамки" блокуємо (бо основні широкі лого вимкнені)
-            $wideNbItem.css({ opacity: 0.5, 'pointer-events': 'none' });
+            // Блокуємо перемикач рамок, бо широкі лого вимкнені
+            $wideBorderItem.css({ opacity: 0.5, 'pointer-events': 'none' });
 
             if (isBorder) {
                 $glowItem.css({ opacity: 1, 'pointer-events': 'auto' });
@@ -1269,10 +1275,9 @@ function fetchLogoColor(card, apiKey) {
 }
 
 
-/* Застосування динамічного кольору до іконки (Ефект плавного напливу за 1с) - ВИПРАВЛЕНО */
+/* Застосування динамічного кольору до іконки (з плавною появою) */
 function applyDynamicColorToIcon($iconElement, colorData, isWide) {
-    // ВИПРАВЛЕНО: тепер шукаємо контейнер по всьому дереву вгору через .closest()
-    if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-color-container').length) return;
+    if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-shadow-wrapper').length || $iconElement.closest('.mdb-wide-color-wrapper').length) return;
 
     var rgb = 'rgb(' + colorData.r + ',' + colorData.g + ',' + colorData.b + ')';
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
@@ -1282,121 +1287,120 @@ function applyDynamicColorToIcon($iconElement, colorData, isWide) {
         brightness = (colorData.r * 299 + colorData.g * 587 + colorData.b * 114) / 1000;
     }
 
+    // Захист від чорного
     if (brightness < 20) {
         rgb = 'rgb(255, 255, 255)';
     }
 
-    // Загальний контейнер-обгортка
-    var $container = $('<div class="mdb-dynamic-color-container"></div>');
-    $container.css({
-        'display': 'inline-block',
-        'position': 'relative',
-        'width': $iconElement.width() + 'px',
-        'height': $iconElement.height() + 'px'
-    });
-
     if (isWide) {
-        // --- ШИРОКІ ЛОГОТИПИ (Накладання кольорової плівки поверх) ---
-        $iconElement.wrap($container);
-        
-        var $overlay = $('<div class="mdb-wide-color-overlay"></div>');
-        $overlay.css({
-            'position': 'absolute',
-            'top': '0',
-            'left': '0',
+        // --- ЛОГІКА ДЛЯ ШИРОКИХ ЛОГО ---
+        var $wideWrapper = $('<div class="mdb-wide-color-wrapper"></div>');
+        $wideWrapper.css({
+            'display': 'inline-block',
+            'width': $iconElement.width() + 'px',
+            'height': $iconElement.height() + 'px',
+            'background-color': rgb,
+            '-webkit-mask-image': 'url(' + iconSrc + ')',
+            '-webkit-mask-size': 'contain',
+            '-webkit-mask-repeat': 'no-repeat',
+            '-webkit-mask-position': 'center',
+            'opacity': '0', // Старт з невидимості
+            'transition': 'opacity 0.4s ease, background-color 0.4s ease'
+        });
+
+        $iconElement.css('opacity', '0'); // Оригінал ховаємо
+        $iconElement.wrap($wideWrapper);
+
+        // Даємо браузеру мілісекунду на рендер і плавно проявляємо
+        setTimeout(function() {
+            $iconElement.closest('.mdb-wide-color-wrapper').css('opacity', '1');
+        }, 50);
+
+    } else {
+        // --- ЛОГІКА ДЛЯ КВАДРАТНИХ ІКОНОК ---
+        var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
+        $maskWrapper.css({
+            'display': 'block',
             'width': '100%',
             'height': '100%',
             'background-color': rgb,
             '-webkit-mask-image': 'url(' + iconSrc + ')',
             '-webkit-mask-size': 'contain',
             '-webkit-mask-repeat': 'no-repeat',
-            '-webkit-mask-position': 'center',
-            'opacity': '0', 
-            'transition': 'opacity 1s ease' 
-        });
-
-        $iconElement.after($overlay);
-
-        setTimeout(function() {
-            $overlay.css('opacity', '1');
-        }, 50);
-
-    } else {
-        // --- КВАДРАТНІ ІКОНКИ (Плавна зміна кольору фону) ---
-        var $maskWrapper = $('<div class="mdb-dynamic-color-wrapper"></div>');
-        $maskWrapper.css({
-            'display': 'block',
-            'width': '100%',
-            'height': '100%',
-            'background-color': 'rgb(255, 255, 255)', 
-            '-webkit-mask-image': 'url(' + iconSrc + ')',
-            '-webkit-mask-size': 'contain',
-            '-webkit-mask-repeat': 'no-repeat',
-            '-webkit-mask-position': 'center',
-            'transition': 'background-color 1s ease' 
+            '-webkit-mask-position': 'center'
         });
 
         var $shadowWrapper = $('<div class="mdb-dynamic-shadow-wrapper"></div>');
         $shadowWrapper.css({
-            'display': 'block',
-            'width': '100%',
-            'height': '100%',
+            'display': 'inline-block',
+            'width': $iconElement.width() + 'px',
+            'height': $iconElement.height() + 'px',
             'position': 'relative',
-            'filter': 'drop-shadow(1px 1px 0px rgba(0,0,0,0.4))'
+            'filter': 'drop-shadow(1px 1px 0px rgba(0,0,0,0.4))',
+            'opacity': '0', // Старт з невидимості
+            'transition': 'opacity 0.4s ease'
         });
 
         $iconElement.css({
             'mix-blend-mode': 'multiply',
             'filter': 'none',
+            'opacity': '1', 
             'display': 'block', 
             'width': '100%', 
             'height': '100%'
         });
 
-        $iconElement.wrap($container).wrap($shadowWrapper).wrap($maskWrapper);
+        $iconElement.wrap($shadowWrapper).wrap($maskWrapper);
 
+        // Плавна поява
         setTimeout(function() {
-            $iconElement.closest('.mdb-dynamic-color-wrapper').css('background-color', rgb);
+            $iconElement.closest('.mdb-dynamic-shadow-wrapper').css('opacity', '1');
         }, 50);
     }
 }
 
 
 
-
-function triggerDynamicColors(card) {
+  function triggerDynamicColors(card) {
     var isBwIconsEnabled = Lampa.Storage.get('ratings_bw_logos', false);
     var isWideLogosEnabled = Lampa.Storage.get('ratings_wide_logos', false);
     var isDynamicColorsEnabled = Lampa.Storage.get('ratings_dynamic_colors', false);
 
     if (!isDynamicColorsEnabled || (!isBwIconsEnabled && !isWideLogosEnabled)) return;
 
+    // МИТТЄВО ХОВАЄМО ІКОНКИ ще до того, як Лампа їх покаже (щоб не було блимання)
+    var $icons = $('.lmp-custom-rate .source--name img');
+    $icons.css('opacity', '0');
+
     var tmdbApiKey = Lampa.Storage.get('tmdb_api_key', ''); 
     if (!tmdbApiKey || tmdbApiKey.trim() === '' || tmdbApiKey.trim() === 'c87a543116135a4120443155bf680876') {
         tmdbApiKey = '4ef0d7355d9ffb5151e987764708ce96';
     }
 
-    // Іконки одразу видимі! Плагін тихенько йде за кольором...
     setTimeout(function() {
         var cachedColor = getCachedLogoColor(card);
         
         if (cachedColor) {
-            $('.lmp-custom-rate .source--name img').each(function() {
+            $icons.each(function() {
                 applyDynamicColorToIcon($(this), cachedColor, isWideLogosEnabled);
             });
         } else {
             fetchLogoColor(card, tmdbApiKey).then(function(colorData) {
                 if (colorData) {
-                    $('.lmp-custom-rate .source--name img').each(function() {
+                    $icons.each(function() {
                         applyDynamicColorToIcon($(this), colorData, isWideLogosEnabled);
                     });
+                } else {
+                    // Якщо кольору немає (напр. логотип не знайдено), плавно повертаємо оригінали
+                    $icons.css({
+                        'transition': 'opacity 0.4s ease',
+                        'opacity': '1'
+                    });
                 }
-                // Якщо colorData немає (помилка), ми нічого не робимо — оригінали і так на екрані
             });
         }
-    }, 300); 
+    }, 400); 
 }
-
 
   function startPlugin() {
     window.combined_ratings_plugin = true;
