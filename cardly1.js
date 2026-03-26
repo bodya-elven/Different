@@ -1,7 +1,7 @@
 (function () {
     "use strict";
 
-    // 1. Завантажуємо ідеальний фон (Шукаємо постер без тексту 'xx' або 'null')
+    // Пошук та завантаження постера без тексту
     function loadOriginalPoster(e, render, data) {
         var tmdbPath = null;
         var isMobile = window.innerWidth <= 768;
@@ -40,7 +40,7 @@
         }
     }
 
-    // 2. Встановлюємо Логотип замість тексту
+    // Встановлення логотипу
     function applyLogoAndTitle(render, data, e) {
         var images = data.images || (e.data && e.data.images) || (e.object && e.object.card && e.object.card.images);
         if (!images || !images.logos || !images.logos.length) return;
@@ -66,30 +66,21 @@
         }
     }
 
-    // 3. Обробка UI та ЖОРСТКЕ видалення рамок Lampa
+    // Обробка UI
     function applyCardifyUI(e) {
         var render = e.object.activity.render();
         var component = e.object.activity.component;
         var data = e.data && e.data.movie ? e.data.movie : (e.object && e.object.card ? e.object.card : null);
 
-        // --- ЯДЕРНИЙ УДАР ПО РАМКАХ LAMPA (JS) ---
         if (window.innerWidth <= 768) {
             setTimeout(function() {
                 var $render = $(render);
-                
-                // 1. Вбиваємо відступи головного контейнера екрану
                 $render.parents('.activity__body').first().attr('style', 'padding-left: 0 !important; padding-right: 0 !important; overflow-x: hidden !important; width: 100vw !important;');
-                
-                // 2. Вбиваємо сірий фон, кути та відступи першого блоку (де лежить наш плагін)
                 $render.parents('.scroll__item').first().attr('style', 'background: transparent !important; padding: 0 !important; margin: 0 !important; width: 100vw !important; border-radius: 0 !important; box-shadow: none !important;');
-                
-                // 3. Робимо всі нижні блоки (Актори, Схожі) гарантовано темними
                 $render.parents('.scroll__item').first().nextAll('.scroll__item').attr('style', 'background: #141414 !important; padding: 1.5em !important; width: 100vw !important; border-radius: 0 !important;');
-                
-                // 4. Фізично видаляємо елементи Lampa, які малюють затемнення зверху
                 $render.find('.full-start__bg').remove();
                 $render.parents('.full-start__wrapper').attr('style', 'background: transparent !important; border-radius: 0 !important; padding: 0 !important; margin: 0 !important;');
-            }, 50); // Виконуємо одразу після того, як Lampa побудувала сторінку
+            }, 50);
         }
 
         var details = render.find(".full-start-new__details");
@@ -133,7 +124,8 @@
             }
         }
     }
-    // 4. Ініціалізація HTML-шаблону
+
+    // HTML-шаблон
     function initTemplatesAndStyles() {
         Lampa.Template.add(
             "full_start_new",
@@ -223,14 +215,23 @@
     </div>`
         );
     }
-    // 5. Запуск плагіна, CSS та підключення до ядра
+
+    // Запуск плагіна
     function startPlugin() {
         initTemplatesAndStyles();
 
-        // АНТИКЕШ: Перезаписуємо стилі напряму в head, щоб Lampa не підтягувала старе
         $('#cardify-mobile-styles').remove();
         var style = `
         <style id="cardify-mobile-styles">
+        /* Прозорість верхнього меню */
+        body.cardify-transparent-header .head,
+        body.cardify-transparent-header .head__bg {
+            background: transparent !important;
+            background-color: transparent !important;
+            box-shadow: none !important;
+            border: none !important;
+        }
+
         .cardify{-webkit-transition:all .3s;-o-transition:all .3s;-moz-transition:all .3s;transition:all .3s}
         .cardify .full-start-new__body{height:80vh; position: relative; z-index: 2;}
         .cardify .full-start-new__right{display:-webkit-box;display:-webkit-flex;display:-moz-box;display:-ms-flexbox;display:flex;-webkit-box-align:end;-webkit-align-items:flex-end;-moz-box-align:end;-ms-flex-align:end;align-items:flex-end}
@@ -249,14 +250,11 @@
         .cardify .full-start-new__rate-line>*:last-child{margin-right:0 !important}
         .cardify.nodisplay{-webkit-transform:translate3d(0,50%,0);-moz-transform:translate3d(0,50%,0);transform:translate3d(0,50%,0);opacity:0}
 
-        /* Логотипи та субтитри */
         .cardify-logo { max-width: 45%; max-height: 40px; object-fit: contain; margin-bottom: 0.5em; filter: drop-shadow(0px 2px 8px rgba(0,0,0,0.8)); }
         .cardify-sub-title { font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-bottom: 0.5em; text-transform: uppercase; letter-spacing: 1px; }
 
-        /* Приховуємо вікові обмеження, 4K та інше */
         .full-start__tag, .full-start__pg, .full-start__status { display: none !important; }
 
-        /* ТВ ВЕРСІЯ (Залишаємо як було) */
         .cardify-custom-bg {
             position: absolute; top: 0; left: 0; right: 0; height: 100vh;
             background-size: cover; background-position: center top; z-index: 0; opacity: 0; transition: opacity 0.5s ease;
@@ -265,10 +263,8 @@
         }
         .cardify-custom-bg.loaded { opacity: 1; }
 
-        /* АДАПТАЦІЯ ДЛЯ ТЕЛЕФОНІВ */
         @media (max-width: 768px) {
             
-            /* 1. РОЗШИРЮЄМО НА ВЕСЬ ЕКРАН */
             body, html, .activity, .activity__body {
                 overflow-x: hidden !important;
                 width: 100vw !important;
@@ -285,7 +281,6 @@
                 box-sizing: border-box !important;
             }
 
-            /* 2. ЗНИЩУЄМО ВЕРХНЮ ПЛАШКУ LAMPA */
             .activity[data-component="full"] .activity__body > .scroll__item:first-child,
             .full-start__wrapper, .full-start__bg, .full-start-new, .cardify {
                 background: transparent !important;
@@ -295,7 +290,6 @@
                 margin: 0 !important;
             }
 
-            /* 3. УСІ НИЖНІ БЛОКИ (Актори, Схожі) НА ТЕМНОМУ ФОНІ */
             .activity[data-component="full"] .activity__body > .scroll__item:not(:first-child) {
                 background: rgba(20,20,20,0.85) !important;
                 padding: 1.5em !important;
@@ -303,7 +297,6 @@
             
             .cardify .full-start-new__left { display: none !important; }
             
-            /* 4. ФІКСОВАНИЙ ФОН: Чистий постер без плівки */
             .cardify-custom-bg {
                 position: fixed !important;
                 top: 0 !important; left: 0 !important;
@@ -316,7 +309,6 @@
             }
             .cardify-custom-bg::after { display: none !important; }
 
-            /* 5. ГРАДІЄНТ НА РУХОМОМУ БЛОЦІ: ВЕРХ 100% ПРОЗОРИЙ */
             .cardify .full-start-new__body {
                 height: auto !important;
                 min-height: 85vh;
@@ -326,7 +318,6 @@
                 padding-bottom: 1.5em !important;
                 box-sizing: border-box;
                 width: 100vw !important;
-                /* Зверху 0%, з середини починає темніти до 85% */
                 background: linear-gradient(to bottom, rgba(20,20,20,0) 0%, rgba(20,20,20,0) 25%, rgba(20,20,20,0.5) 60%, rgba(20,20,20,0.85) 100%) !important;
             }
             
@@ -343,7 +334,6 @@
             
             .full-start-new__title { font-size: 2.2em !important; }
             
-            /* 6. ГОРИЗОНТАЛЬНИЙ СКРОЛЛ КНОПОК */
             .cardify-buttons-scroll {
                 display: flex;
                 overflow-x: auto;
@@ -384,12 +374,36 @@
             field: { name: "Показывать рейтинг" }
         });
 
+        // Контроль прозорості хедера
+        Lampa.Listener.follow('activity', function (e) {
+            if (e.type === 'start' && e.component === 'full') {
+                $('body').addClass('cardify-transparent-header');
+            }
+            if (e.type === 'destroy' && e.component === 'full') {
+                $('body').removeClass('cardify-transparent-header');
+            }
+        });
+
         Lampa.Listener.follow("full", function (e) {
             if (e.type == "complite") {
                 applyCardifyUI(e);
             }
         });
     }
+
+    // Реєстрація плагіна в маніфесті
+    if (window.Lampa && Lampa.Manifest) {
+        Lampa.Manifest.plugins = Object.assign(Lampa.Manifest.plugins || {}, {
+            cardly: {
+                type: 'other',
+                version: 'cardly1 v2.1',
+                name: 'Cardly',
+                description: 'Кастомний інтерфейс картки фільму (модифікований Cardify)',
+                author: '@bodya_elven'
+            }
+        });
+    }
+
 
     if (window.appready) {
         startPlugin();
