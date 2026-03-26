@@ -266,13 +266,16 @@
         .cardify-logo { max-width: 45%; max-height: 40px; object-fit: contain; margin-bottom: 0.5em; filter: drop-shadow(0px 2px 8px rgba(0,0,0,0.8)); }
         .cardify-sub-title { font-size: 0.55em; font-weight: 500; opacity: 0.75; margin-bottom: 0.5em; text-transform: uppercase; letter-spacing: 1px; }
 
-        .full-start__tag, .full-start__pg, .full-start__status { display: none !important; }
+        /* Приховуємо вікові обмеження, 4K, та стандартний темний градієнт Lampa */
+        .full-start__tag, .full-start__pg, .full-start__status, .full-start__bg { display: none !important; }
 
+        /* ТВ ВЕРСІЯ: Фон на весь екран (піднімаємо під саме меню) */
         .cardify-custom-bg {
-            position: absolute; top: 0; left: 0; right: 0; height: 100vh;
-            background-size: cover; background-position: center top; z-index: 0; opacity: 0; transition: opacity 0.5s ease;
+            position: fixed; top: 0; left: 0; right: 0; height: 100vh; width: 100vw;
+            background-size: cover; background-position: center top; z-index: -1; opacity: 0; transition: opacity 0.5s ease;
             -webkit-mask-image: linear-gradient(to bottom, white 50%, rgba(255,255,255,0) 100%);
             mask-image: linear-gradient(to bottom, white 50%, rgba(255,255,255,0) 100%);
+            pointer-events: none;
         }
         .cardify-custom-bg.loaded { opacity: 1; }
 
