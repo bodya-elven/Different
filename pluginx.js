@@ -453,7 +453,12 @@
                     }, function() { Lampa.Noty.show('Помилка мережі'); });
                 };
 
-                events.onFocus = function (target) { hidePreview(); if (element.preview && !element.is_grid) previewTimeout = setTimeout(function () { showPreview($(target), element.preview); }, 1000); };
+                var originalFocus = events.onFocus;
+                events.onFocus = function (target) { 
+                    if (typeof originalFocus === 'function') originalFocus(target); 
+                    hidePreview(); 
+                    if (element.preview && !element.is_grid) previewTimeout = setTimeout(function () { showPreview($(target), element.preview); }, 1000); 
+                };
                 
                 events.onMenu = function () {
                     hidePreview(); var bmarks = window.Lampa.Storage.get('pluginx_bookmarks', []); var isBookmarked = bmarks.some(function(b) { return b.url === element.url; }); var toggleBookmark = function() { var currentBmarks = window.Lampa.Storage.get('pluginx_bookmarks', []); var idx = currentBmarks.findIndex(function(b) { return b.url === element.url; }); if (idx !== -1) { currentBmarks.splice(idx, 1); Lampa.Noty.show('Видалено з обраного'); } else { currentBmarks.unshift(element); Lampa.Noty.show('Додано до обраного'); } window.Lampa.Storage.set('pluginx_bookmarks', currentBmarks); };
