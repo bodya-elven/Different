@@ -143,176 +143,119 @@
         };
 
 
-        //======= АДАПТЕР LENKINO (Strict Mobile Version) =======//
+        //======= АДАПТЕР LENKINO (Final Strict Mobile) =======//
         Adapters['lenkino'] = {
-            domain: LENKINO_DOMAIN,
+            domain: 'https://mob.lenkino.love',
             parse: function(doc, obj) {
-                var currentDomain = (obj.url && obj.url.startsWith('http')) ? obj.url.match(/^https?:\/\/[^\/]+/)[0] : this.domain;
-                var targetPath = (obj.url || '').replace(/^https?:\/\/[^\/]+/, '').split('?')[0];
+                var currentDomain = this.domain;
+                var targetPath = (obj.url || '').replace(this.domain, '').split('?')[0];
                 if (!targetPath) targetPath = '/';
 
-                // 1. ПЕРЕВІРКА НА 404 (Зупинка пагінації)
-                if (doc.querySelector('.error-404, .itm-msg') || doc.documentElement.innerHTML.indexOf('404 / Страница не найдена') !== -1) {
-                    return [];
-                }
+                // 1. ПЕРЕВІРКА НА 404 (Зупинка)
+                if (doc.querySelector('.error-404') || doc.documentElement.innerHTML.indexOf('404 / Страница не найдена') !== -1) return [];
 
-                // 2. КАТЕГОРІЇ (/categories) - СТИЛЬ .is-categories-grid
+                // 2. КАТЕГОРІЇ (sxn sxn-grp)
                 if (targetPath === '/categories' || obj.is_categories) {
-                    var resCat = [], grp = doc.querySelector('.sxn.sxn-grp');
+                    var resC = [], grp = doc.querySelector('.sxn.sxn-grp');
                     if (grp) {
-                        var items = grp.querySelectorAll('.grd.grd-cat .item');
-                        for (var i = 0; i < items.length; i++) {
-                            var lC = items[i].querySelector('a.len_pucl');
-                            var tC = items[i].querySelector('.itm-tit'), iC = items[i].querySelector('img');
-                            if (lC && tC) {
-                                var sC = iC ? (iC.getAttribute('data-srcset') || iC.getAttribute('src')) : '';
-                                if (sC) sC = sC.split(',')[0].split(' ')[0].trim();
-                                if (sC && sC.indexOf('//') === 0) sC = 'https:' + sC; else if (sC && sC.indexOf('/') === 0) sC = currentDomain + sC;
-                                
-                                resCat.push({
-                                    name: tC.textContent.trim(),
-                                    url: lC.getAttribute('href'),
-                                    picture: sC,
-                                    img: sC,
-                                    is_grid: true,
-                                    grid_class: 'is-categories-grid'
-                                });
+                        var cats = grp.querySelectorAll('.grd.grd-cat .item');
+                        for (var i = 0; i < cats.length; i++) {
+                            var linkC = cats[i].querySelector('a.len_pucl'), titleC = cats[i].querySelector('.itm-tit'), imgC = cats[i].querySelector('img');
+                            if (linkC && titleC) {
+                                var srcC = imgC ? (imgC.getAttribute('data-srcset') || imgC.getAttribute('src')) : '';
+                                if (srcC) srcC = srcC.split(',')[0].split(' ')[0].trim();
+                                if (srcC && srcC.indexOf('/') === 0) srcC = currentDomain + srcC;
+                                resC.push({ name: titleC.textContent.trim(), url: linkC.getAttribute('href'), picture: srcC, img: srcC, is_grid: true });
                             }
                         }
                     }
-                    return resCat;
+                    return resC;
                 }
 
-                // 3. МОДЕЛІ (/pornstars) - СТИЛЬ .is-models-grid
+                // 3. МОДЕЛІ (#list_models_models_list_items)
                 if (targetPath === '/pornstars' || obj.is_models) {
-                    var resM = [], containerM = doc.querySelector('#list_models_models_list_items');
-                    if (containerM) {
-                        var mdls = containerM.querySelectorAll('.item');
+                    var resM = [], contM = doc.querySelector('#list_models_models_list_items');
+                    if (contM) {
+                        var mdls = contM.querySelectorAll('.item');
                         for (var m = 0; m < mdls.length; m++) {
-                            var lM = mdls[m].querySelector('a.len_pucl'), iM = mdls[m].querySelector('img'), tM = mdls[m].querySelector('.itm-tit'), cM = mdls[m].querySelector('.itm-opt li');
-                            if (lM) {
-                                var sM = iM ? (iM.getAttribute('data-srcset') || iM.getAttribute('src')) : '';
-                                if (sM) sM = sM.split(',')[0].split(' ')[0].trim();
-                                if (sM && sM.indexOf('/') === 0) sM = currentDomain + sM;
-                                
-                                resM.push({
-                                    name: formatTitle(tM ? tM.textContent.trim() : '', cM ? cM.textContent.trim() : '', '☰'),
-                                    url: lM.getAttribute('href'),
-                                    picture: sM,
-                                    img: sM,
-                                    is_grid: true,
-                                    grid_class: 'is-models-grid'
-                                });
+                            var linkM = mdls[m].querySelector('a.len_pucl'), imgM = mdls[m].querySelector('img'), titM = mdls[m].querySelector('.itm-tit'), optM = mdls[m].querySelector('.itm-opt li');
+                            if (linkM) {
+                                var srcM = imgM ? (imgM.getAttribute('data-srcset') || imgM.getAttribute('src')) : '';
+                                if (srcM) srcM = srcM.split(',')[0].split(' ')[0].trim();
+                                if (srcM && srcM.indexOf('/') === 0) srcM = currentDomain + srcM;
+                                resM.push({ name: formatTitle(titM ? titM.textContent.trim() : '', optM ? optM.textContent.trim() : '', '☰'), url: linkM.getAttribute('href'), picture: srcM, img: srcM, is_grid: true, is_models_grid: true });
                             }
                         }
                     }
                     return resM;
                 }
 
-                // 4. СТУДІЇ (/channels) - СТИЛЬ .is-categories-grid
+                // 4. СТУДІЇ (#list_content_sources_sponsors_list_items)
                 if (targetPath.indexOf('/channels') !== -1 || obj.is_studios) {
-                    var resS = [], containerS = doc.querySelector('#list_content_sources_sponsors_list_items');
-                    if (containerS) {
-                        var stus = containerS.querySelectorAll('.item');
+                    var resS = [], contS = doc.querySelector('#list_content_sources_sponsors_list_items');
+                    if (contS) {
+                        var stus = contS.querySelectorAll('.item');
                         for (var s = 0; s < stus.length; s++) {
-                            var lS = stus[s].querySelector('a.len_pucl'), iS = stus[s].querySelector('img'), tS = stus[s].querySelector('.itm-tit');
-                            var noImg = stus[s].querySelector('.no-img');
-                            if (lS) {
-                                var sS = iS ? (iS.getAttribute('data-srcset') || iS.getAttribute('src')) : '';
-                                if (sS) sS = sS.split(',')[0].split(' ')[0].trim();
-                                if (sS && sS.indexOf('/') === 0) sS = currentDomain + sS;
-                                
-                                resS.push({
-                                    name: noImg ? '' : (tS ? tS.textContent.trim() : ''),
-                                    url: lS.getAttribute('href'),
-                                    picture: sS,
-                                    img: sS,
-                                    is_grid: true,
-                                    grid_class: 'is-categories-grid'
-                                });
+                            var linkS = stus[s].querySelector('a.len_pucl'), imgS = stus[s].querySelector('img'), titS = stus[s].querySelector('.itm-tit'), noImg = stus[s].querySelector('.no-img');
+                            if (linkS) {
+                                var srcS = imgS ? (imgS.getAttribute('data-srcset') || imgS.getAttribute('src')) : '';
+                                if (srcS) srcS = srcS.split(',')[0].split(' ')[0].trim();
+                                if (srcS && srcS.indexOf('/') === 0) srcS = currentDomain + srcS;
+                                resS.push({ name: noImg ? '' : (titS ? titS.textContent.trim() : ''), url: linkS.getAttribute('href'), picture: srcS, img: srcS, is_grid: true });
                             }
                         }
                     }
                     return resS;
                 }
 
-                // 5. ВІДЕО ТА ПОШУК (Головна та Пошукові контейнери)
+                // 5. ВІДЕО ТА ПОШУК (Точні ID)
                 var resV = [];
-                var isSearch = targetPath.indexOf('/search/') !== -1;
-                var listId = isSearch ? '#list_videos_search_videos_list_items' : '#list_videos_videos_list_items';
-                var containerV = doc.querySelector(listId);
-                
-                // Якщо контейнера немає, спробуємо знайти в Related
-                var els = containerV ? containerV.querySelectorAll('.item') : doc.querySelectorAll('#list_videos_related_videos_items .item');
+                var listId = targetPath.indexOf('/search/') !== -1 ? '#list_videos_search_videos_list_items' : '#list_videos_videos_list_items';
+                var contV = doc.querySelector(listId);
+                var els = contV ? contV.querySelectorAll('.item') : doc.querySelectorAll('#list_videos_related_videos_items .item');
 
                 for (var v = 0; v < els.length; v++) {
-                    var linkV = els[v].querySelector('a.len_pucl'), titV = els[v].querySelector('.itm-tit'), imgV = els[v].querySelector('img'), durV = els[v].querySelector('.itm-dur');
-                    if (linkV) {
-                        var srcV = imgV ? (imgV.getAttribute('data-srcset') || imgV.getAttribute('src')) : '';
-                        if (srcV) srcV = srcV.split(',')[0].split(' ')[0].trim();
-                        if (srcV && srcV.indexOf('/') === 0) srcV = currentDomain + srcV;
-                        
-                        var prvV = imgV ? imgV.getAttribute('data-preview') : '';
-                        if (prvV && prvV.indexOf('/') === 0) prvV = currentDomain + prvV;
-
-                        resV.push({
-                            name: formatTitle(titV ? titV.textContent.trim() : '', durV ? durV.textContent.trim() : '', '▶'),
-                            url: linkV.getAttribute('href'),
-                            picture: srcV,
-                            img: srcV,
-                            preview: prvV
-                        });
+                    var lV = els[v].querySelector('a.len_pucl'), tV = els[v].querySelector('.itm-tit'), iV = els[v].querySelector('img'), dV = els[v].querySelector('.itm-dur');
+                    if (lV) {
+                        var sV = iV ? (iV.getAttribute('data-srcset') || iV.getAttribute('src')) : '';
+                        if (sV) sV = sV.split(',')[0].split(' ')[0].trim();
+                        if (sV && sV.indexOf('/') === 0) sV = currentDomain + sV;
+                        var pV = iV ? iV.getAttribute('data-preview') : '';
+                        if (pV && pV.indexOf('/') === 0) pV = currentDomain + pV;
+                        resV.push({ name: formatTitle(tV ? tV.textContent.trim() : '', dV ? dV.textContent.trim() : '', '▶'), url: lV.getAttribute('href'), picture: sV, img: sV, preview: pV });
                     }
                 }
                 return resV;
             },
-            getFilter: function() { 
-                return [ { title: '🗄️ Категорії', action: 'categories' }, { title: '👸 Моделі', action: 'models' }, { title: '🎬 Студії', action: 'studios' } ]; 
-            },
+            getFilter: function() { return [ { title: '🗄️ Категорії', action: 'categories' }, { title: '👸 Моделі', action: 'models' }, { title: '🎬 Студії', action: 'studios' } ]; },
             getSort: function(doc) {
-                var act = 'Новые', items = [];
-                // Шукаємо блок btns-s тільки всередині основних контейнерів списків
-                var container = doc.querySelector('#list_videos_videos_list, #list_videos_search_videos_list, #list_content_sources_sponsors_list, #list_models_models_list');
+                var act = 'Новые', items = [], container = doc.querySelector('#list_videos_videos_list, #list_videos_search_videos_list, #list_content_sources_sponsors_list, #list_models_models_list');
                 var btns = container ? container.querySelector('.btns.btns-s') : null;
-                
                 if (btns) {
                     var links = btns.querySelectorAll('a, span.act');
                     for (var i = 0; i < links.length; i++) {
                         var t = links[i].textContent.trim();
-                        // Ігноруємо кнопку "Фильтр" у моделях
                         if (!t || links[i].classList.contains('flt-opn')) continue;
-                        
                         if (links[i].tagName === 'SPAN' || links[i].classList.contains('act')) {
-                            act = t;
-                            items.push({ title: '⇅ ' + t, action: 'none' });
+                            act = t; items.push({ title: '⇅ ' + t, action: 'none' });
                         } else {
                             var h = links[i].getAttribute('href');
-                            var u = h.startsWith('http') ? h : this.domain + (h.startsWith('/') ? '' : '/') + h;
-                            items.push({ title: t, url: u });
+                            items.push({ title: t, url: h.startsWith('http') ? h : this.domain + (h.startsWith('/') ? '' : '/') + h });
                         }
                     }
                 }
                 return { active: act, items: items };
             },
             getMenu: function(doc) {
-                var m = [], added = [];
-                // Збір моделей зі сторінки відео
-                var mEls = doc.querySelectorAll('.itm-opt-mdl, .grd-mdl a, .itm-mdl a, a[href*="/pornstar/"]');
+                var m = [], added = [], mEls = doc.querySelectorAll('.itm-opt-mdl, .grd-mdl a, .itm-mdl a, a[href*="/pornstar/"]');
                 for (var i = 0; i < mEls.length; i++) {
-                    var tM = mEls[i].textContent.trim(), hM = mEls[i].getAttribute('href');
-                    if (tM && hM && added.indexOf(tM) === -1 && tM.length > 1) {
-                        m.push({ title: tM, action: 'direct', url: hM });
-                        added.push(tM);
-                    }
+                    var t = mEls[i].textContent.trim(), h = mEls[i].getAttribute('href');
+                    if (t && h && added.indexOf(t) === -1 && t.length > 1) { m.push({ title: t, action: 'direct', url: h }); added.push(t); }
                 }
-                // Збір студій
                 var sEls = doc.querySelectorAll('.vid-aut a, .itm-aut a, a[href*="/channel/"]');
                 for (var j = 0; j < sEls.length; j++) {
-                    var tS = sEls[j].textContent.trim(), hS = sEls[j].getAttribute('href');
-                    if (tS && hS && added.indexOf(tS) === -1) {
-                        m.push({ title: tS, action: 'direct', url: hS });
-                        added.push(tS);
-                    }
+                    var ts = sEls[j].textContent.trim(), hs = sEls[j].getAttribute('href');
+                    if (ts && hs && added.indexOf(ts) === -1) { m.push({ title: ts, action: 'direct', url: hs }); added.push(ts); }
                 }
                 m.push({ title: 'Категорії', action: 'cats_custom', sel: '.vid-cat a, .itm-tag a' }, { title: 'Схожі відео', action: 'sim' });
                 return m;
@@ -321,22 +264,13 @@
                 var str = [], u = doc.documentElement.innerHTML.match(/video_url:[\t ]+'([^']+)'/), a = doc.documentElement.innerHTML.match(/video_alt_url:[\t ]+'([^']+)'/);
                 if (u && u[1]) str.push({ title: 'Standard', url: u[1] });
                 if (a && a[1]) str.push({ title: 'HD Quality', url: a[1] });
-                
                 if (str.length > 0) {
-                    var currentDomain = (el.url && el.url.startsWith('http')) ? el.url.match(/^https?:\/\/[^\/]+/)[0] : this.domain;
-                    var pData = { 
-                        title: el.name, 
-                        url: str[str.length - 1].url, 
-                        quality: str, 
-                        headers: { 'Referer': currentDomain + '/', 'Origin': currentDomain } 
-                    };
-                    Lampa.Player.play(pData);
-                    Lampa.Player.playlist([pData]);
-                } else {
-                    Lampa.Noty.show('Відео не знайдено');
-                }
+                    var pData = { title: el.name, url: str[str.length - 1].url, quality: str, headers: { 'Referer': this.domain + '/', 'Origin': this.domain } };
+                    Lampa.Player.play(pData); Lampa.Player.playlist([pData]);
+                } else Lampa.Noty.show('Відео не знайдено');
             }
         };
+
 
         //======= АДАПТЕР LONGVIDEOS =======//
         Adapters['longvideos'] = {
