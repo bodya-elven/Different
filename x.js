@@ -176,40 +176,11 @@
             domain: LENKINO_DOMAIN,
             parse: function(doc, obj) {
                 var currentDomain = this.domain, html = doc.documentElement.innerHTML;
+                
+                // Перевірка на сторінку 404 (якщо пагінація вийшла за межі, наприклад у пошуку)
                 if (html.indexOf('404 / Страница не найдена') !== -1) return [];
 
-                if (obj.is_categories || (obj.url && obj.url.indexOf('/categories') !== -1)) {
-                    var resC = [], grp = doc.querySelector('.sxn.sxn-grp');
-                    var cats = grp ? grp.querySelectorAll('.grd.grd-cat .item') : doc.querySelectorAll('.grd.grd-cat .item');
-                    for (var i = 0; i < cats.length; i++) {
-                        var lC = cats[i].querySelector('a.len_pucl'), tC = cats[i].querySelector('.itm-tit'), iC = cats[i].querySelector('img');
-                        if (lC && tC) {
-                            var sC = iC ? (iC.getAttribute('data-srcset') || iC.getAttribute('src')) : '';
-                            if (sC) sC = sC.split(',')[0].split(' ')[0].trim();
-                            if (sC && sC.indexOf('/') === 0) sC = currentDomain + sC;
-                            resC.push({ name: tC.textContent.trim(), url: lC.getAttribute('href'), picture: sC, img: sC, is_grid: true });
-                        }
-                    }
-                    if (resC.length > 0) return resC;
-                }
-
-                if (obj.is_models || (obj.url && obj.url.indexOf('/pornstars') !== -1)) {
-                    var resM = [], contM = doc.querySelector('#list_models_models_list_items');
-                    if (contM) {
-                        var mdls = contM.querySelectorAll('.item');
-                        for (var m = 0; m < mdls.length; m++) {
-                            var lM = mdls[m].querySelector('a.len_pucl'), iM = mdls[m].querySelector('img'), tM = mdls[m].querySelector('.itm-tit'), oM = mdls[m].querySelector('.itm-opt li');
-                            if (lM) {
-                                var sM = iM ? (iM.getAttribute('data-srcset') || iM.getAttribute('src')) : '';
-                                if (sM) sM = sM.split(',')[0].split(' ')[0].trim();
-                                if (sM && sM.indexOf('/') === 0) sM = currentDomain + sM;
-                                resM.push({ name: formatTitle(tM ? tM.textContent.trim() : '', oM ? oM.textContent.trim() : '', '☰'), url: lM.getAttribute('href'), picture: sM, img: sM, is_grid: true, is_models_grid: true });
-                            }
-                        }
-                    }
-                    if (resM.length > 0) return resM;
-                }
-
+                // 1. Студії
                 if (obj.is_studios || (obj.url && obj.url.indexOf('/channels') !== -1)) {
                     var resS = [], contS = doc.querySelector('#list_content_sources_sponsors_list_items');
                     if (contS) {
@@ -220,18 +191,63 @@
                                 var sS = iS ? (iS.getAttribute('data-srcset') || iS.getAttribute('src')) : '';
                                 if (sS) sS = sS.split(',')[0].split(' ')[0].trim();
                                 if (sS && sS.indexOf('/') === 0) sS = currentDomain + sS;
-                                resS.push({ name: noImg ? '' : (tS ? tS.textContent.trim() : ''), url: lS.getAttribute('href'), picture: sS, img: sS, is_grid: true });
+                                resS.push({ 
+                                    name: noImg ? '' : (tS ? tS.textContent.trim() : ''), // Якщо пуста студія - не беремо назву
+                                    url: lS.getAttribute('href'), 
+                                    picture: noImg ? '' : sS, // Якщо пуста студія - не беремо картинку
+                                    img: noImg ? '' : sS, 
+                                    is_grid: true // Використовує стандартну сітку is-categories-grid
+                                });
                             }
                         }
                     }
                     if (resS.length > 0) return resS;
                 }
 
+                // 2. Моделі
+                if (obj.is_models || (obj.url && obj.url.indexOf('/pornstars') !== -1)) {
+                    var resM = [], contM = doc.querySelector('#list_models_models_list_items');
+                    if (contM) {
+                        var mdls = contM.querySelectorAll('.item');
+                        for (var m = 0; m < mdls.length; m++) {
+                            var lM = mdls[m].querySelector('a.len_pucl'), iM = mdls[m].querySelector('img'), tM = mdls[m].querySelector('.itm-tit');
+                            if (lM) {
+                                var sM = iM ? (iM.getAttribute('data-srcset') || iM.getAttribute('src')) : '';
+                                if (sM) sM = sM.split(',')[0].split(' ')[0].trim();
+                                if (sM && sM.indexOf('/') === 0) sM = currentDomain + sM;
+                                resM.push({ 
+                                    name: tM ? tM.textContent.trim() : '', 
+                                    url: lM.getAttribute('href'), 
+                                    picture: sM, 
+                                    img: sM, 
+                                    is_grid: true, 
+                                    is_models_grid: true 
+                                });
+                            }
+                        }
+                    }
+                    if (resM.length > 0) return resM;
+                }
+
+                // 3. Категорії
+                if (obj.is_categories || (obj.url && obj.url.indexOf('/categories') !== -1)) {
+                    var resC = [], cats = doc.querySelectorAll('.grd.grd-cat .item');
+                    for (var c = 0; c < cats.length; c++) {
+                        var lC = cats[c].querySelector('a.len_pucl'), tC = cats[c].querySelector('.itm-tit'), iC = cats[c].querySelector('img');
+                        if (lC && tC) {
+                            var sC = iC ? (iC.getAttribute('data-srcset') || iC.getAttribute('src')) : '';
+                            if (sC) sC = sC.split(',')[0].split(' ')[0].trim();
+                            if (sC && sC.indexOf('/') === 0) sC = currentDomain + sC;
+                            resC.push({ name: tC.textContent.trim(), url: lC.getAttribute('href'), picture: sC, img: sC, is_grid: true });
+                        }
+                    }
+                    if (resC.length > 0) return resC;
+                }
+
+                // 4. Відео (Головна, сторінки категорій, пошук)
                 var resV = [], els = [];
-                var vMain = doc.querySelector('#list_videos_videos_list_items'), vSearch = doc.querySelector('#list_videos_search_videos_list_items'), vRel = doc.querySelector('#list_videos_related_videos_items');
-                if (vSearch) els = vSearch.querySelectorAll('.item');
-                else if (vMain) els = vMain.querySelectorAll('.item');
-                else if (vRel) els = vRel.querySelectorAll('.item');
+                var vMain = doc.querySelector('#list_videos_videos_list_items, #list_videos_search_videos_list_items, #list_videos_related_videos_items');
+                if (vMain) els = vMain.querySelectorAll('.item');
                 else els = doc.querySelectorAll('.grd-vid .item');
 
                 for (var v = 0; v < els.length; v++) {
@@ -242,21 +258,31 @@
                         if (srcV && srcV.indexOf('/') === 0) srcV = currentDomain + srcV;
                         var prvV = imgV ? imgV.getAttribute('data-preview') : '';
                         if (prvV && prvV.indexOf('/') === 0) prvV = currentDomain + prvV;
-                        resV.push({ name: formatTitle(titV ? titV.textContent.trim() : '', durV ? durV.textContent.trim() : '', '▶'), url: linkV.getAttribute('href'), picture: srcV, img: srcV, preview: prvV });
+                        resV.push({ 
+                            name: formatTitle(titV ? titV.textContent.trim() : '', durV ? durV.textContent.trim() : '', '▶'), 
+                            url: linkV.getAttribute('href'), 
+                            picture: srcV, 
+                            img: srcV, 
+                            preview: prvV 
+                        });
                     }
                 }
                 return resV;
             },
             getFilter: function() { return [ { title: '🗄️ Категорії', action: 'categories' }, { title: '👸 Моделі', action: 'models' }, { title: '🎬 Студії', action: 'studios' } ]; },
             getSort: function(doc) {
-                var act = 'Новые', items = [], btns = doc.querySelector('.btns.btns-s');
+                var act = 'Новые', items = [], btns = doc.querySelector('.tabs .btns.btns-s');
                 if (btns) {
                     var links = btns.querySelectorAll('a, span.act');
                     for (var i = 0; i < links.length; i++) {
+                        if (links[i].classList.contains('flt-opn')) continue; // Ігноруємо кнопку фільтра
                         var t = links[i].textContent.trim();
-                        if (!t || links[i].classList.contains('flt-opn')) continue;
-                        if (links[i].tagName === 'SPAN' || links[i].classList.contains('act')) { act = t; items.push({ title: '⇅ ' + t, action: 'none' }); } 
-                        else {
+                        if (!t) continue;
+                        
+                        if (links[i].tagName === 'SPAN' || links[i].classList.contains('act')) { 
+                            act = t; 
+                            items.push({ title: '⇅ ' + t, action: 'none' }); 
+                        } else {
                             var h = links[i].getAttribute('href');
                             var u = (h.indexOf('http') === 0) ? h : this.domain + (h.startsWith('/') ? '' : '/') + h;
                             items.push({ title: t, url: u });
@@ -289,6 +315,7 @@
                 } else Lampa.Noty.show('Відео не знайдено');
             }
         };
+
 
         // ======= АДАПТЕР LONGVIDEOS =======
         Adapters['longvideos'] = {
