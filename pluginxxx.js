@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.0.2',
+        version: '2.0.3',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -487,7 +487,6 @@
             pornhub: {
                 title: 'Pornhub',
                 domain: 'https://www.pornhub.com',
-                ph_sorts: [{title:"Новые",val:"cm"},{title:"Популярные",val:"mv"},{title:"Лучшие",val:"tr"},{title:"Горячие",val:"ht"}],
                 getHomeUrl: function() { return this.domain + '/video'; },
                 getSearchUrl: function(query) { return this.domain + '/video/search?search=' + encodeURIComponent(query); },
                 getUrl: function(object, page) {
@@ -576,7 +575,9 @@
                                 var nameV = imgV.getAttribute('title') || imgV.getAttribute('alt') || (linkV.textContent || '').trim(), urlV = linkV.getAttribute('href');
                                 if (urlV && urlV.indexOf('javascript') === -1) {
                                     if (urlV.indexOf('http') !== 0) urlV = this.domain + '/' + urlV.replace(/^\//, '');
-                                    var imgSrcV = imgV.getAttribute('data-mediumthumb') || imgV.getAttribute('data-thumb_url') || imgV.getAttribute('src') || ''; if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
+                                    var imgSrcV = linkV.getAttribute('data-poster') || imgV.getAttribute('src') || imgV.getAttribute('data-mediumthumb') || imgV.getAttribute('data-thumb_url') || ''; 
+if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
+
                                     var pUrl = imgV.getAttribute('data-mediabook') || ''; if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
                                     var timeText = timeV ? (timeV.textContent || '').trim() : '';
                                     if (nameV) results.push({ name: window.pluginx_formatTitle(nameV, timeText, '▶'), url: urlV, picture: imgSrcV, img: imgSrcV, preview: pUrl });
