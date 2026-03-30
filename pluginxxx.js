@@ -1115,6 +1115,12 @@ if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
                     
                     window.pluginx_smartRequest(element.url, function (htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html'), menu = [];
+                        
+                        // Додаємо кнопку відтворення у вбудованому плеєрі ТІЛЬКИ для відео з Pornhub
+                        if (!element.is_grid && targetSite === 'pornhub') {
+                            menu.push({ title: '▶ Відтворити в плеєрі Lampa', action: 'play_lampa_internal' });
+                        }
+                        
                         menu.push({ title: isBookmarked ? '★ Видалити з обраного' : '☆ Додати до обраного', action: 'bookmark' });
                         if (!element.is_grid) {
                             var adapterActions = Adapters[targetSite].getMenu(doc, htmlText, element);
@@ -1123,6 +1129,20 @@ if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
                         
                         Lampa.Select.show({ title: 'Дії', items: menu, onSelect: function (a) { 
                             if (a.action === 'bookmark') toggleBookmark(); 
+                            // Обробка нашої нової кнопки
+                            else if (a.action === 'play_lampa_internal') {
+                                window.pluginx_smartRequest(element.url, function(hText) {
+                                    var d = new DOMParser().parseFromString(hText, 'text/html');
+                                    Adapters[targetSite].getStreams(hText, d, element, function(videoStreams) {
+                                        if (videoStreams.length > 0) {
+                                            var playData = { title: element.name, url: videoStreams[0].url, quality: videoStreams, player: 'inner' };
+                                            if (videoStreams[0].headers) playData.headers = videoStreams[0].headers;
+                                            Lampa.Player.play(playData); 
+                                            Lampa.Player.playlist([playData]);
+                                        } else Lampa.Noty.show('Не вдалося отримати відео');
+                                    }, function() { Lampa.Noty.show('Помилка відтворення'); });
+                                }, function() { Lampa.Noty.show('Помилка мережі'); });
+                            }
                             else if (a.action === 'play_direct') { Lampa.Player.play({ title: element.name, url: a.url, headers: a.headers }); Lampa.Player.playlist([{ title: element.name, url: a.url, headers: a.headers }]); } 
                             else if (a.action === 'sim' || a.action === 'direct') { Lampa.Activity.push({ url: a.url, title: a.title || 'Схожі', component: 'pluginx_comp', site: targetSite, page: 1, is_related: (a.action === 'sim') }); }                             
                             else if (a.action === 'cats_custom') {
@@ -1136,6 +1156,7 @@ if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
                         }, onBack: function () { Lampa.Controller.toggle('content'); } });
                     });
                 };
+
                 var originalFocus = events.onFocus;
                 events.onFocus = function (target) {
                     if (typeof originalFocus === 'function') originalFocus(target);
