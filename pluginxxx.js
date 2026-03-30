@@ -1064,7 +1064,8 @@ if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
 
             comp.cardRender = function (card, element, events) {
                             // Зберігаємо початкове посилання і вішаємо радар помилок
-                var imgEl = card.find('.card__img')[0];
+                var imgEl = card.querySelector('.card__img');
+
                 if (imgEl && element.picture) {
                     imgEl.setAttribute('data-src-original', element.picture);
                     imgEl.onerror = function() {
