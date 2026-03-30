@@ -487,6 +487,7 @@
             pornhub: {
                 title: 'Pornhub',
                 domain: 'https://www.pornhub.com',
+                ph_sorts: [{title:"Новые",val:"cm"},{title:"Популярные",val:"mv"},{title:"Лучшие",val:"tr"},{title:"Горячие",val:"ht"}],
                 getHomeUrl: function() { return this.domain + '/video'; },
                 getSearchUrl: function(query) { return this.domain + '/video/search?search=' + encodeURIComponent(query); },
                 getUrl: function(object, page) {
