@@ -497,30 +497,26 @@
                 getFilters: function(doc, currentUrl) {
                     var items = [], activeTitle = 'Сортування';
                     
-                    // 1. Шукаємо контейнер з фільтрами на сторінці
-                    var filterContainer = doc.querySelector('.subFilterList, #subFilterListVideos, .filterList');
+                    // Шукаємо посилання в усіх можливих контейнерах фільтрів PH
+                    var filterLinks = doc.querySelectorAll('.subFilterList li a, #subFilterListVideos li a, .filterList li a, .video_filter_tabs li a');
                     
-                    if (filterContainer) {
-                        // 2. Намагаємося знайти активний пункт (зазвичай має клас 'active' або 'selected')
-                        var activeEl = filterContainer.querySelector('li.active, li.selected');
-                        if (activeEl) {
-                            activeTitle = (activeEl.textContent || '').trim();
-                        }
+                    filterLinks.forEach(function(a) {
+                        var href = a.getAttribute('href');
+                        var title = (a.textContent || '').trim();
+                        var li = a.parentElement;
                         
-                        // 3. Збираємо всі посилання на інші варіанти сортування
-                        var links = filterContainer.querySelectorAll('li a');
-                        for (var i = 0; i < links.length; i++) {
-                            var a = links[i];
-                            var href = a.getAttribute('href');
-                            var title = (a.textContent || '').trim();
+                        if (href && href.indexOf('javascript') === -1 && title) {
+                            // Зшиваємо посилання
+                            if (href.indexOf('http') !== 0) href = 'https://www.pornhub.com/' + href.replace(/^\//, '');
                             
-                            // Додаємо в список лише ті, що не є активними зараз і мають назву
-                            if (href && href.indexOf('javascript') === -1 && title && title !== activeTitle) {
-                                if (href.indexOf('http') !== 0) href = this.domain + '/' + href.replace(/^\//, '');
+                            // Якщо елемент активний — це наш заголовок
+                            if (li.classList.contains('active') || li.classList.contains('selected') || a.classList.contains('active')) {
+                                activeTitle = title;
+                            } else {
                                 items.push({ title: title, url: href });
                             }
                         }
-                    }
+                    });
                     
                     return { subtitle: activeTitle, items: items };
                 },
