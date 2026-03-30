@@ -509,195 +509,117 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
             // =========================================================================
-            // АДАПТЕР: PORNHUB CS (CloudStream Logic)
+            // АДАПТЕР: PORNHUB CS (Тільки логіка CloudStream)
             // =========================================================================
             pornhub: {
                 title: 'Pornhub CS',
                 domain: 'https://www.pornhub.com',
+                
+                // В CloudStream категорії захардкоджені, тому ми просто беремо головну і пошук
                 getHomeUrl: function() { return this.domain + '/video'; },
                 getSearchUrl: function(query) { return this.domain + '/video/search?search=' + encodeURIComponent(query); },
+                
                 getUrl: function(object, page) {
+                    // CloudStream логіка: якщо є "video?", додаємо &page=, інакше ?page=
                     var target = object.url || (this.domain + '/video');
-                    if (page > 1) target = target + (target.indexOf('?') === -1 ? '?' : '&') + 'page=' + page;
+                    if (page > 1) {
+                        target = target + (target.indexOf('?') === -1 ? '?' : '&') + 'page=' + page;
+                    }
                     return target;
                 },
-                getFilters: function(doc, currentUrl) {
-                    var items = [], activeTitle = '';
-                    var filterItems = doc.querySelectorAll('.subFilterList li, #subFilterListVideos li, .filterList li, .video_filter_tabs li');
-                    filterItems.forEach(function(li) {
-                        var a = li.querySelector('a');
-                        var title = (li.textContent || '').trim();
-                        if (li.classList.contains('active') || li.classList.contains('selected')) {
-                            if (title) activeTitle = title;
-                        } else if (a) {
-                            var href = a.getAttribute('href');
-                            if (href && href.indexOf('javascript') === -1 && title) {
-                                if (href.indexOf('http') !== 0) href = 'https://www.pornhub.com/' + href.replace(/^\//, '');
-                                items.push({ title: title, url: href });
-                            }
-                        }
-                    });
-                    if (!activeTitle) activeTitle = 'Сортування';
-                    return { subtitle: activeTitle, items: items };
-                },
-                getNavItems: function() {
-                    return [
-                        { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories', is_categories: true },
-                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars', is_models: true },
-                        { title: '🎬 Студії', action: 'nav', url: this.domain + '/channels', is_studios: true }
-                    ];
-                },
+                
+                // CloudStream не має динамічних фільтрів, тому повертаємо порожнє
+                getFilters: function(doc, currentUrl) { return { subtitle: '', items: [] }; },
+                getNavItems: function() { return []; },
+                
                 parse: function(doc, currentUrl, object) {
-                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
                     
-                    if (targetPath.indexOf('/categories') !== -1 || object.is_categories) {
-                        var cEls = doc.querySelectorAll('li.catPic');
-                        for (var c = 0; c < cEls.length; c++) {
-                            var elC = cEls[c], linkC = elC.querySelector('a'), imgC = elC.querySelector('img'), strongTitle = elC.querySelector('.categoryTitleWrapper strong');
-                            if (linkC && imgC) {
-                                var nameC = strongTitle ? (strongTitle.textContent || '').trim() : (imgC.getAttribute('alt') || '').replace(' Porn Category', '').trim();
-                                var urlC = linkC.getAttribute('href'); 
-                                if (urlC && urlC.indexOf('http') !== 0) urlC = this.domain + '/' + urlC.replace(/^\//, '');
-                                var imgSrc = imgC.getAttribute('data-path') || imgC.getAttribute('src') || ''; 
-                                if (imgSrc && imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc;
-                                if (nameC) results.push({ name: nameC, url: urlC, picture: imgSrc, img: imgSrc, is_grid: true });
-                            }
-                        }
-                    } else if (targetPath.indexOf('/pornstars') !== -1 || targetPath.indexOf('/model') !== -1 || targetPath.indexOf('/channels') !== -1 || object.is_models || object.is_studios) {
-                        var isStudios = targetPath.indexOf('/channels') !== -1 || object.is_studios;
-                        var sel = isStudios ? '.channelsList li, .channelsUL li' : '#pornstarListSection li, ul.pornstarList li, .pornstarIndexContainer li, .modelIndexContainer li';
-                        var mEls = doc.querySelectorAll(sel);
-                        for (var m = 0; m < mEls.length; m++) {
-                            var elM = mEls[m];
-                            var linkM = elM.querySelector('a.pornstarLink, a.js-popUnder, a');
-                            var imgM = elM.querySelector('img.pornstarThumb, img');
-                            if (linkM && imgM) {
-                                var urlM = linkM.getAttribute('href');
-                                if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + '/' + urlM.replace(/^\//, '');
-                                var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
-                                if (imgSrcM && imgSrcM.indexOf('//') === 0) imgSrcM = 'https:' + imgSrcM;
-                                var rawName = imgM.getAttribute('alt') || '';
-                                if (!rawName) {
-                                    var titleM = elM.querySelector('.performerCardName, .pornstarName, .title');
-                                    rawName = titleM ? (titleM.textContent || '').trim() : (isStudios ? 'Studio' : 'Model');
-                                }
-                                var countDiv = elM.querySelector('.videos.performerCount');
-                                var countText = countDiv ? (countDiv.textContent || '').trim() : '';
-                                if (rawName) results.push({ name: window.pluginx_formatTitle(rawName, countText, '☰'), url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: !isStudios, is_noimg: isStudios });
-                            }
-                        }
-                    } else {
-                        // CS Парсинг Відео (суворо по li.pcVideoListItem)
-                        var vEls = doc.querySelectorAll('li.pcVideoListItem, li.videoblock');
-                        for (var v = 0; v < vEls.length; v++) {
-                            var elV = vEls[v]; 
-                            if (elV.className.indexOf('marker-next-videos') !== -1) continue;
+                    // CloudStream: document.select("div.gridWrapper li.pcVideoListItem")
+                    var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem');
+                    
+                    for (var v = 0; v < vEls.length; v++) {
+                        var el = vEls[v];
+                        var img = el.querySelector('img');
+                        var a = el.querySelector('a');
+                        
+                        if (img && a) {
+                            // CloudStream: title = img.attr("alt"), href = a.attr("href"), poster = img.attr("src")
+                            var title = img.getAttribute('alt');
+                            var href = a.getAttribute('href');
+                            var posterUrl = img.getAttribute('src');
                             
-                            var linkV = elV.querySelector('a.linkVideoThumb, a.title, .title a, a');
-                            var imgV = elV.querySelector('img');
-                            var timeV = elV.querySelector('.duration');
-                            
-                            if (linkV && imgV) {
-                                // Беремо ім'я суворо з alt картинки (як у CS)
-                                var nameV = imgV.getAttribute('alt') || imgV.getAttribute('title') || (linkV.textContent || '').trim();
-                                var urlV = linkV.getAttribute('href');
+                            if (title && href) {
+                                if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
+                                if (posterUrl && posterUrl.indexOf('//') === 0) posterUrl = 'https:' + posterUrl;
                                 
-                                if (urlV && urlV.indexOf('javascript') === -1) {
-                                    if (urlV.indexOf('http') !== 0) urlV = this.domain + '/' + urlV.replace(/^\//, '');
-                                    
-                                    // Пріоритет посилань на зображення як у CS
-                                    var imgSrcV = imgV.getAttribute('data-mediumthumb') || imgV.getAttribute('data-poster') || imgV.getAttribute('src') || imgV.getAttribute('data-thumb_url') || ''; 
-                                    if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
-
-                                    var pUrl = imgV.getAttribute('data-mediabook') || ''; 
-                                    if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
-                                    
-                                    var timeText = timeV ? (timeV.textContent || '').trim() : '';
-                                    
-                                    if (nameV) results.push({ 
-                                        name: window.pluginx_formatTitle(nameV, timeText, '▶'), 
-                                        url: urlV, 
-                                        picture: imgSrcV, 
-                                        img: imgSrcV, 
-                                        preview: pUrl 
-                                    });
-                                }
+                                results.push({
+                                    name: title,
+                                    url: href,
+                                    picture: posterUrl,
+                                    img: posterUrl
+                                });
                             }
                         }
                     }
                     return results;
                 },
+                
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var str = [];
+                    // CloudStream: script:containsData(var flashvars)
                     var match = htmlText.match(/var\s+flashvars_\d+\s*=\s*(\{[\s\S]+?\});/);
+                    
                     if (match) {
                         try {
                             var fv = JSON.parse(match[1]);
                             if (fv.mediaDefinitions) {
-                                var defs = fv.mediaDefinitions.filter(function(d){ return d.videoUrl && d.videoUrl !== ''; });
-                                defs.sort(function(a, b) { return (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0); });
-                                for(var k=0; k<defs.length; k++) {
-                                    var qTitle = defs[k].quality || 'MP4';
-                                    if (typeof qTitle === 'number' || !isNaN(qTitle)) qTitle += 'p';
-                                    
-                                    // Абсолютно чисте посилання, без |Referer=
-                                    var cleanUrl = defs[k].videoUrl.replace(/\\/g, '');
-                                    
-                                    // Передаємо CS магію в системні заголовки
-                                    str.push({ 
-                                        title: qTitle, 
-                                        url: cleanUrl,
-                                        headers: { 
-                                            'Referer': 'https://www.pornhub.com/',
-                                            'Cookie': 'hasVisited=1; accessAgeDisclaimerPH=1',
-                                            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0'
-                                        }
-                                    });
+                                for (var k = 0; k < fv.mediaDefinitions.length; k++) {
+                                    var def = fv.mediaDefinitions[k];
+                                    if (def.videoUrl && def.videoUrl !== '') {
+                                        var quality = def.quality || 'Unknown';
+                                        if (!isNaN(quality)) quality += 'p';
+                                        
+                                        // Абсолютно чисте посилання, як у CloudStream
+                                        var cleanUrl = def.videoUrl.replace(/\\/g, '');
+                                        
+                                        // Передаємо магічні Cookies та Headers з CloudStream
+                                        str.push({ 
+                                            title: quality, 
+                                            url: cleanUrl,
+                                            headers: { 
+                                                'Referer': 'https://www.pornhub.com/',
+                                                'Cookie': 'hasVisited=1; accessAgeDisclaimerPH=1',
+                                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0'
+                                            }
+                                        });
+                                    }
                                 }
+                                // Сортування від кращої якості до гіршої
+                                str.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
                             }
                         } catch(e) {}
                     }
                     if (str.length > 0) startPlayback(str); else onError();
                 },
+                
                 getMenu: function(doc, htmlText, element) {
-                    var menu = [], phStreams = [];
-                    var match = htmlText.match(/var\s+flashvars_\d+\s*=\s*(\{[\s\S]+?\});/);
-                    if (match) {
-                        try {
-                            var fv = JSON.parse(match[1]);
-                            if (fv.mediaDefinitions) {
-                                var defs = fv.mediaDefinitions.filter(function(d){ return d.videoUrl && d.videoUrl !== ''; });
-                                defs.sort(function(a, b) { return (parseInt(b.quality) || 0) - (parseInt(a.quality) || 0); });
-                                for(var k=0; k<defs.length; k++) {
-                                    var qTitle = defs[k].quality || 'MP4'; 
-                                    if (typeof qTitle === 'number' || !isNaN(qTitle)) qTitle += 'p';
-                                    
-                                    var cleanUrl = defs[k].videoUrl.replace(/\\/g, '');
-                                    var csHeaders = { 
-                                        'Referer': 'https://www.pornhub.com/',
-                                        'Cookie': 'hasVisited=1; accessAgeDisclaimerPH=1'
-                                    };
-                                    
-                                    phStreams.push({ title: qTitle, url: cleanUrl, headers: csHeaders });
-                                }
-                            }
-                        } catch(e) {}
-                    }
-                    if (phStreams.length > 1) {
-                        // Відтворення альтернативної якості одразу із заголовками
-                        menu.push({ title: 'Відтворити в ' + phStreams[1].title, action: 'play_direct', url: phStreams[1].url, headers: phStreams[1].headers });
+                    var menu = [];
+                    
+                    // CloudStream: Актори (document.select("a.pstar-list-btn"))
+                    var actors = doc.querySelectorAll('a.pstar-list-btn');
+                    for (var i = 0; i < actors.length; i++) {
+                        var actorName = (actors[i].textContent || '').trim();
+                        var actorHref = actors[i].getAttribute('href');
+                        if (actorName && actorHref) {
+                            menu.push({ title: actorName, action: 'direct', url: this.domain + actorHref });
+                        }
                     }
                     
-                    var phModels = doc.querySelectorAll('.pornstarsWrapper .pstar-list-btn');
-                    for (var p = 0; p < phModels.length; p++) {
-                        menu.push({ title: (phModels[p].textContent || '').trim(), action: 'direct', url: this.domain + '/' + phModels[p].getAttribute('href').replace(/^\//, '') });
-                    }
                     menu.push({ title: 'Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
             },
-
 
             // =========================================================================
             // АДАПТЕР: PORNDISH
