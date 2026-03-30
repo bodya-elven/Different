@@ -1063,14 +1063,16 @@ if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
             };
 
             comp.cardRender = function (card, element, events) {
-                            // Зберігаємо початкове посилання і вішаємо радар помилок
-                var imgEl = card.querySelector('.card__img');
-
-                if (imgEl && element.picture) {
-                    imgEl.setAttribute('data-src-original', element.picture);
-                    imgEl.onerror = function() {
-                        if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
-                    };
+                // Бронебійний варіант: отримуємо реальний HTML з об'єкта Lampa.Card
+                var $card = (typeof card.render === 'function') ? card.render() : $(card);
+                if ($card && typeof $card.find === 'function') {
+                    var imgEl = $card.find('.card__img')[0];
+                    if (imgEl && element.picture) {
+                        imgEl.setAttribute('data-src-original', element.picture);
+                        imgEl.onerror = function() {
+                            if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
+                        };
+                    }
                 }
                 
                 events.onEnter = function () {
