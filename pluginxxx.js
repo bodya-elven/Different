@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.1.4',
+        version: '2.1.5',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -573,11 +573,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
-                    // 2. Моделі (тільки головна сторінка моделей, виключаємо профілі)
-                    else if (targetPath === '/pornstars' || object.is_models) {
-                        // Шукаємо за гнучким класом самої картки або елементом списку
+                    // 2. Моделі (тільки списки, жорстко відкидаємо профілі)
+                    else if ((targetPath.indexOf('/pornstars') !== -1 || object.is_models) && targetPath.indexOf('/model/') === -1 && targetPath.indexOf('/pornstar/') === -1) {
                         var mEls = doc.querySelectorAll('.performerCard, ul.pornstarList li');
-                        
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
                             var linkM = elM.querySelector('a');
@@ -612,6 +610,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
+
                     // 3. Студії (окремий парсер)
                     else if (targetPath === '/channels' || object.is_studios) {
                         var cEls = doc.querySelectorAll('.channelsList li, .channelsUL li, .channelCard');
