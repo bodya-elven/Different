@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.2',
+        version: '2.2.3',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -521,23 +521,30 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 getUrl: function(object, page) {
                     var target = object.url || (this.domain + '/video');
                     if (page > 1) {
-                        target = target + (target.indexOf('?') === -1 ? '?' : '&') + 'page=' + page;
+                        var sep = target.indexOf('?') === -1 ? '?' : '&';
+                        target = target + sep + 'page=' + page;
                     }
                     return target;
                 },
                 
                 getFilters: function(doc, currentUrl) {
+                    // 1. Прибираємо сортування в категоріях (як ти просив)
+                    if (currentUrl.indexOf('/categories') !== -1) return null;
+
                     var items = [], activeTitle = '';
-                    // .filterListItem li — сортування на десктопних профілях
-                    var filterItems = doc.querySelectorAll('.subFilterList li, #subFilterListVideos li, .filterList li, .filterListItem li');
                     
+                    // Визначаємо, де шукати сортування: у студіях чи в іншому місці
+                    var isChannelsList = (currentUrl.indexOf('/channels') !== -1 && currentUrl.indexOf('/channels/') === -1);
+                    var selector = isChannelsList ? '#mainMenuChannels ul li' : '.subFilterList li, #subFilterListVideos li, .filterList li, .filterListItem li';
+                    
+                    var filterItems = doc.querySelectorAll(selector);
                     filterItems.forEach(function(li) {
-                        // Фільтр Хедера (innerHeaderSubMenu)
-                        if (li.closest && li.closest('.innerHeaderSubMenu')) return;
+                        if (window.pluginx_isInsideHeader(li)) return; // Глобальна чистка хедера
 
                         var a = li.querySelector('a');
                         var title = (li.textContent || '').trim();
-                        if (li.classList.contains('active') || li.classList.contains('selected')) {
+                        
+                        if (li.classList.contains('active') || li.classList.contains('selected') || li.id === 'browse') {
                             if (title) activeTitle = title;
                         } else if (a) {
                             var href = a.getAttribute('href');
@@ -547,6 +554,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     });
+                    
+                    if (items.length === 0) return null;
                     if (!activeTitle) activeTitle = 'Сортування';
                     return { subtitle: activeTitle, items: items };
                 },
@@ -563,20 +572,19 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
                     
-                    // 1. Захист від помилки "addClass" (знімаємо режим моделі для сторінок відео)
+                    // Захист від помилок інтерфейсу
                     if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
                         object.is_models = false;
                     }
 
-                    // 2. Детектор помилки 404
                     var isErrorPage = (doc.body.textContent || '').indexOf('Error Page Not Found') !== -1;
 
-                    // --- КАТЕГОРІЇ ---
+                    // --- БЛОК 1: КАТЕГОРІЇ ---
                     if (targetPath.indexOf('/categories') !== -1 || object.is_categories) {
                         var cEls = doc.querySelectorAll('li.catPic');
                         for (var c = 0; c < cEls.length; c++) {
                             var elC = cEls[c];
-                            if (elC.closest && elC.closest('.innerHeaderSubMenu')) continue; // Очищення від сміття
+                            if (window.pluginx_isInsideHeader(elC)) continue;
 
                             var linkC = elC.querySelector('a'), imgC = elC.querySelector('img');
                             if (linkC && imgC) {
@@ -588,12 +596,12 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
-                    // --- МОДЕЛІ (Каталог) ---
+                    // --- БЛОК 2: МОДЕЛІ ---
                     else if ((targetPath.indexOf('/pornstars') !== -1 || object.is_models) && targetPath.indexOf('/model/') === -1 && targetPath.indexOf('/pornstar/') === -1) {
                         var mEls = doc.querySelectorAll('li.performerCard, .performerCard');
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
-                            if (elM.closest && elM.closest('.innerHeaderSubMenu')) continue; // Видаляємо дублікати з шапки
+                            if (window.pluginx_isInsideHeader(elM)) continue;
 
                             var linkM = elM.querySelector('a'), imgM = elM.querySelector('img');
                             if (linkM && imgM) {
@@ -605,7 +613,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                                 if (rawName && urlM) {
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
-                                    // Примусово додаємо /videos для переходу
                                     if (urlM.indexOf('/videos') === -1) urlM = urlM.replace(/\/$/, '') + '/videos';
                                     var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
                                     results.push({ name: window.pluginx_formatTitle(rawName, countText, '☰'), url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: true });
@@ -613,29 +620,53 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
-                    // --- ВІДЕО (Профілі + Головна) ---
+                    // --- БЛОК 3: СТУДІЇ (CHANNELS) ---
+                    else if ((targetPath === '/channels' || object.is_studios) && targetPath.indexOf('/channels/') === -1) {
+                        var sEls = doc.querySelectorAll('li.wrap.mainChannels, #allChannelsSection li');
+                        for (var s = 0; s < sEls.length; s++) {
+                            var elS = sEls[s];
+                            if (window.pluginx_isInsideHeader(elS)) continue;
+
+                            var linkS = elS.querySelector('a.usernameLink, .avatar a');
+                            var imgS = elS.querySelector('.avatar img');
+                            
+                            if (linkS && imgS) {
+                                var urlS = linkS.getAttribute('href');
+                                var nameS = (imgS.getAttribute('alt') || '').trim();
+                                var statsLi = elS.querySelectorAll('.descriptionContainer ul li');
+                                var statsText = (statsLi.length >= 3) ? (statsLi[2].textContent || '').replace('Videos', 'V:').trim() : '';
+
+                                if (nameS && urlS) {
+                                    if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
+                                    if (urlS.indexOf('/videos') === -1) urlS = urlS.replace(/\/$/, '') + '/videos';
+                                    var imgSrcS = imgS.getAttribute('src') || imgS.getAttribute('data-thumb_url') || '';
+                                    results.push({ name: window.pluginx_formatTitle(nameS, statsText, '🎬'), url: urlS, picture: imgSrcS, img: imgSrcS, is_grid: true, is_noimg: true });
+                                }
+                            }
+                        }
+                    }
+                    // --- БЛОК 4: ВІДЕО ---
                     else {
                         var vEls;
-                        // Використання точних ID для відсікання "5 рекламних відео"
+                        // Снайперські ID для точного парсингу
                         if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
-                            vEls = doc.querySelectorAll('#mostRecentVideosSection li, #pornstarsVideoSection li');
+                            vEls = doc.querySelectorAll('#mostRecentVideosSection li, #pornstarsVideoSection li, #allChannelsSection li, ul.videoList li');
                         } else {
                             vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, .videoBox');
                         }
                         
                         for (var v = 0; v < vEls.length; v++) {
                             var el = vEls[v];
-                            // Глобальна заборона на контент із шапки (innerHeaderSubMenu)
-                            if (el.closest && el.closest('.innerHeaderSubMenu')) continue;
+                            if (window.pluginx_isInsideHeader(el)) continue;
 
                             var img = el.querySelector('img');
                             var a = el.querySelector('a.thumbnailTitle, a.js-videoPreview, a');
-                            var timeEl = el.querySelector('var.duration, .duration .time');
+                            var timeEl = el.querySelector('var.duration, .duration .time, .duration');
                             
                             if (img && a) {
-                                var title = img.getAttribute('alt') || (a.textContent || '').trim();
+                                var title = img.getAttribute('alt') || img.getAttribute('title') || (a.textContent || '').trim();
                                 var href = a.getAttribute('href');
-                                var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb');
+                                var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
                                 
                                 if (title && href && href.indexOf('viewkey=') !== -1) {
@@ -645,7 +676,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
 
-                        // --- FALLBACK КНОПКА (Якщо /videos порожній або 404) ---
+                        // FALLBACK: Сторінку /videos не знайдено
                         if ((results.length === 0 || isErrorPage) && currentUrl.indexOf('/videos') !== -1) {
                             var baseUrl = currentUrl.split('/videos')[0]; 
                             results.push({
@@ -691,6 +722,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
+                    // Тільки Актори та Схожі відео. Зайвий пункт "Відтворити в Лампа" видалено.
                     var actors = doc.querySelectorAll('.pornstarsWrapper a.pstar-list-btn, a.pstar-list-btn');
                     for (var i = 0; i < actors.length; i++) {
                         var name = (actors[i].textContent || '').trim();
@@ -700,10 +732,11 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             menu.push({ title: name, action: 'direct', url: href });
                         }
                     }
-                    menu.push({ title: 'Схожі відео', action: 'sim', url: element.url });
+                    menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
             },
+
 
             // =========================================================================
             // АДАПТЕР: PORNDISH
