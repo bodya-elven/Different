@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.1.8',
+        version: '2.1.9',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -509,7 +509,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
             // =========================================================================
-            // АДАПТЕР: PORNHUB 
+            // АДАПТЕР: PORNHUB (Фінальна версія: CloudStream + Ідеальний Парсинг Моделей)
             // =========================================================================
             pornhub: {
                 title: 'Pornhub',
@@ -528,7 +528,14 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getFilters: function(doc, currentUrl) {
                     var items = [], activeTitle = '';
-                    var filterItems = doc.querySelectorAll('.subFilterList li, #subFilterListVideos li, .filterList li, .video_filter_tabs li');
+                    
+                    // РОЗВИЛКА: Чи ми на сторінці профілю моделі/студії?
+                    var isProfilePage = currentUrl.indexOf('/model/') !== -1 || currentUrl.indexOf('/pornstar/') !== -1 || currentUrl.indexOf('/channels/') !== -1;
+                    
+                    // Якщо профіль - шукаємо суворо за ID, щоб відсікти приховані мобільні меню. Якщо головна - шукаємо широко.
+                    var selector = isProfilePage ? '#subFilterListVideos li' : '.subFilterList li, #subFilterListVideos li, .filterList li, .video_filter_tabs li';
+                    
+                    var filterItems = doc.querySelectorAll(selector);
                     filterItems.forEach(function(li) {
                         var a = li.querySelector('a');
                         var title = (li.textContent || '').trim();
@@ -557,6 +564,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 parse: function(doc, currentUrl, object) {
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
+                    
+                    // ЗАПОБІЖНИК: Знімаємо прапорець "моделей" на сторінках відео (щоб уникнути помилки addClass)
                     if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1) {
                         object.is_models = false;
                     }
@@ -599,7 +608,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 if (rawName && urlM) {
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
                                     
-                                    // МАГІЯ: Примусово додаємо /videos до посилання на модель
+                                    // МАГІЯ: Додаємо /videos до профілю моделі для чистого парсингу
                                     if (urlM.indexOf('/videos') === -1) urlM = urlM.replace(/\/$/, '') + '/videos';
 
                                     var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
@@ -617,13 +626,11 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
-
-                    // 3. Студії (окремий парсер)
-                    else if (targetPath === '/channels' || object.is_studios) {
-                        var cEls = doc.querySelectorAll('.channelsList li, .channelsUL li, .channelCard');
-                        
-                        for (var s = 0; s < cEls.length; s++) {
-                            var elS = cEls[s];
+                    // 3. Студії
+                    else if (targetPath.indexOf('/channels') !== -1 || object.is_studios) {
+                        var sEls = doc.querySelectorAll('.channelsList li, .channelsUL li, .channelCard');
+                        for (var s = 0; s < sEls.length; s++) {
+                            var elS = sEls[s];
                             var linkS = elS.querySelector('a');
                             var imgS = elS.querySelector('img');
                             
@@ -638,6 +645,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 
                                 if (rawNameS && urlS) {
                                     if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
+                                    if (urlS.indexOf('/videos') === -1) urlS = urlS.replace(/\/$/, '') + '/videos';
+                                    
                                     var imgSrcS = imgS.getAttribute('data-thumb_url') || imgS.getAttribute('src') || ''; 
                                     if (imgSrcS && imgSrcS.indexOf('//') === 0) imgSrcS = 'https:' + imgSrcS;
                                     
@@ -653,24 +662,19 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     }
-                  
-
-                    // 4. Відео (всі інші сторінки, включно з профілями моделей /videos)
+                    // 4. Відео (Головна сторінка + Профілі моделей)
                     else {
-                        // ПОВЕРТАЄМО РОБОЧИЙ СЕЛЕКТОР (без складних CSS-правил, щоб ТБ не "сліпнув")
-                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, #mostRecentVideosSection li, .videoBox, ul.videoList li');
+                        // ЖОРСТКИЙ СЕЛЕКТОР: pcVideoListItem (головна) + js-hide-not-interested (вбиває 5 рекламних відео на моделях)
+                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, .js-hide-not-interested ul.videoList li');
                         
                         for (var v = 0; v < vEls.length; v++) {
                             var el = vEls[v];
                             
-                            // ПРОГРАМНИЙ ФІЛЬТР СМІТТЯ:
-                            // Якщо в елемента немає класу відео і немає ідентифікатора data-video-id — це 100% сміття/реклама
+                            // ПРОГРАМНИЙ ФІЛЬТР: якщо це не сітка і немає data-video-id - це 100% сміття
                             var isGridVideo = el.className.indexOf('pcVideoListItem') !== -1 || el.className.indexOf('videoBox') !== -1;
                             var isModelVideo = el.getAttribute('data-video-id');
                             
-                            if (!isGridVideo && !isModelVideo) {
-                                continue; // Пропускаємо ліві блоки
-                            }
+                            if (!isGridVideo && !isModelVideo) continue;
                             
                             var img = el.querySelector('img');
                             var a = el.querySelector('a.thumbnailTitle, a.js-videoPreview, a');
@@ -682,7 +686,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
                                 
-                                // Фінальна перевірка, що це клікабельне відео
                                 if (title && href && href.indexOf('javascript') === -1 && href.indexOf('viewkey=') !== -1) {
                                     if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
                                     if (posterUrl && posterUrl.indexOf('//') === 0) posterUrl = 'https:' + posterUrl;
@@ -697,8 +700,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     }
-
-
                     return results;
                 },
                 
