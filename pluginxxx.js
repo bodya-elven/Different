@@ -557,6 +557,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 parse: function(doc, currentUrl, object) {
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
+                    if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1) {
+                        object.is_models = false;
+                    }
                     
                     // 1. Категорії
                     if (targetPath.indexOf('/categories') !== -1 || object.is_categories) {
