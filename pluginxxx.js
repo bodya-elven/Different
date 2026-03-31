@@ -376,10 +376,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 }
             },
 
-            // Блок Longvideos
-            longvideos: {
-                title: 'LongVideos',
-                domain: 'https://www.longvideos.xxx',
+            // Блок Porn36
+            porn36: {
+                title: 'Porn36',
+                domain: 'https://www.porn36.com',
                 getHomeUrl: function() { return this.domain + '/latest-updates/'; },
                 getSearchUrl: function(query) { return this.domain + '/search/' + encodeURIComponent(query) + '/relevance/'; },
                 getUrl: function(object, page) {
@@ -420,12 +420,12 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return [
                         { title: '🗄️ Категорії', action: 'custom_select', fetchUrl: this.domain + '/categories/', parseSelect: function(doc) {
                             var links = doc.querySelectorAll('.list-categories__row--list a'), menu = [];
-                            for(var i=0; i<links.length; i++) { var h = links[i].getAttribute('href'); if(h) menu.push({title: (links[i].textContent || '').trim(), url: h.startsWith('http') ? h : 'https://www.longvideos.xxx' + h, is_categories: true}); }
+                            for(var i=0; i<links.length; i++) { var h = links[i].getAttribute('href'); if(h) menu.push({title: (links[i].textContent || '').trim(), url: h.startsWith('http') ? h : 'https://www.porn36.com' + h, is_categories: true}); }
                             return menu;
                         }},
                         { title: '🔥 Трендові запити', action: 'custom_select', fetchUrl: this.domain + '/categories/', parseSelect: function(doc) {
                             var links = doc.querySelectorAll('.tags__item'), menu = [];
-                            for(var i=0; i<links.length; i++) { var h = links[i].getAttribute('href'); if(h) menu.push({title: (links[i].textContent || '').trim(), url: h.startsWith('http') ? h : 'https://www.longvideos.xxx' + h, is_trends: true}); }
+                            for(var i=0; i<links.length; i++) { var h = links[i].getAttribute('href'); if(h) menu.push({title: (links[i].textContent || '').trim(), url: h.startsWith('http') ? h : 'https://www.porn36.com' + h, is_trends: true}); }
                             return menu;
                         }},
                         { title: '👸 Моделі', action: 'nav', url: this.domain + '/models/', is_models: true },
