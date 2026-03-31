@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.1',
+        version: '2.2.2',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -509,7 +509,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
             // =========================================================================
-            // АДАПТЕР: PORNHUB 
+            // АДАПТЕР: PORNHUB (DEKTOP-READY VERSION + AUTO-FALLBACK)
             // =========================================================================
             pornhub: {
                 title: 'Pornhub',
@@ -528,10 +528,13 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getFilters: function(doc, currentUrl) {
                     var items = [], activeTitle = '';
-                    // .filterListItem li — це саме той клас із твого десктопного коду
-                    var filterItems = doc.querySelectorAll('.subFilterList li, #subFilterListVideos li, .filterListItem li');
+                    // .filterListItem li — сортування на десктопних профілях
+                    var filterItems = doc.querySelectorAll('.subFilterList li, #subFilterListVideos li, .filterList li, .filterListItem li');
                     
                     filterItems.forEach(function(li) {
+                        // Фільтр Хедера (innerHeaderSubMenu)
+                        if (li.closest && li.closest('.innerHeaderSubMenu')) return;
+
                         var a = li.querySelector('a');
                         var title = (li.textContent || '').trim();
                         if (li.classList.contains('active') || li.classList.contains('selected')) {
@@ -547,7 +550,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     if (!activeTitle) activeTitle = 'Сортування';
                     return { subtitle: activeTitle, items: items };
                 },
-
+                
                 getNavItems: function() {
                     return [
                         { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories', is_categories: true },
@@ -559,148 +562,99 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 parse: function(doc, currentUrl, object) {
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
-                    if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1) {
+                    
+                    // 1. Захист від помилки "addClass" (знімаємо режим моделі для сторінок відео)
+                    if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
                         object.is_models = false;
                     }
-                    
-                    // 1. Категорії
+
+                    // 2. Детектор помилки 404
+                    var isErrorPage = (doc.body.textContent || '').indexOf('Error Page Not Found') !== -1;
+
+                    // --- КАТЕГОРІЇ ---
                     if (targetPath.indexOf('/categories') !== -1 || object.is_categories) {
                         var cEls = doc.querySelectorAll('li.catPic');
                         for (var c = 0; c < cEls.length; c++) {
-                            var elC = cEls[c], linkC = elC.querySelector('a'), imgC = elC.querySelector('img'), strongTitle = elC.querySelector('.categoryTitleWrapper strong');
+                            var elC = cEls[c];
+                            if (elC.closest && elC.closest('.innerHeaderSubMenu')) continue; // Очищення від сміття
+
+                            var linkC = elC.querySelector('a'), imgC = elC.querySelector('img');
                             if (linkC && imgC) {
-                                var nameC = strongTitle ? (strongTitle.textContent || '').trim() : (imgC.getAttribute('alt') || '').replace(' Porn Category', '').trim();
+                                var nameC = (imgC.getAttribute('alt') || '').replace(' Porn Category', '').trim();
                                 var urlC = linkC.getAttribute('href'); 
                                 if (urlC && urlC.indexOf('http') !== 0) urlC = this.domain + '/' + urlC.replace(/^\//, '');
-                                var imgSrc = imgC.getAttribute('data-path') || imgC.getAttribute('src') || ''; 
-                                if (imgSrc && imgSrc.indexOf('//') === 0) imgSrc = 'https:' + imgSrc;
+                                var imgSrc = imgC.getAttribute('src') || ''; 
                                 if (nameC) results.push({ name: nameC, url: urlC, picture: imgSrc, img: imgSrc, is_grid: true });
                             }
                         }
                     } 
-                    // 2. Моделі (тільки списки акторок)
+                    // --- МОДЕЛІ (Каталог) ---
                     else if ((targetPath.indexOf('/pornstars') !== -1 || object.is_models) && targetPath.indexOf('/model/') === -1 && targetPath.indexOf('/pornstar/') === -1) {
-                        // Селектор за твоїм кодом: li.performerCard
                         var mEls = doc.querySelectorAll('li.performerCard, .performerCard');
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
-                            var linkM = elM.querySelector('a');
-                            var imgM = elM.querySelector('img');
-                            
+                            if (elM.closest && elM.closest('.innerHeaderSubMenu')) continue; // Видаляємо дублікати з шапки
+
+                            var linkM = elM.querySelector('a'), imgM = elM.querySelector('img');
                             if (linkM && imgM) {
                                 var urlM = linkM.getAttribute('href');
-                                
-                                // ШУКАЄМО ІМ'Я: спочатку в спеціальному спані performerCardName, якщо ні - в alt картинки
                                 var nameEl = elM.querySelector('.performerCardName');
                                 var rawName = nameEl ? (nameEl.textContent || '').trim() : imgM.getAttribute('alt');
-                                
-                                if (!rawName) rawName = 'Model';
-                                
-                                // ШУКАЄМО КІЛЬКІСТЬ ВІДЕО: тег span.performerCount
                                 var countDiv = elM.querySelector('.performerCount');
                                 var countText = countDiv ? (countDiv.textContent || '').trim() : '';
 
                                 if (rawName && urlM) {
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
-                                    
-                                    // Додаємо /videos для переходу на чисту десктопну сторінку
+                                    // Примусово додаємо /videos для переходу
                                     if (urlM.indexOf('/videos') === -1) urlM = urlM.replace(/\/$/, '') + '/videos';
-
-                                    // Беремо картинку з data-thumb_url (як у твоєму коді) або src
                                     var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
-                                    if (imgSrcM && imgSrcM.indexOf('//') === 0) imgSrcM = 'https:' + imgSrcM;
-                                    
-                                    results.push({ 
-                                        name: window.pluginx_formatTitle(rawName, countText, '☰'), 
-                                        url: urlM, 
-                                        picture: imgSrcM, 
-                                        img: imgSrcM, 
-                                        is_grid: true, 
-                                        is_models: true
-                                    });
+                                    results.push({ name: window.pluginx_formatTitle(rawName, countText, '☰'), url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: true });
                                 }
                             }
                         }
-                    }
-
-
-                    // 3. Студії (окремий парсер)
-                    else if (targetPath === '/channels' || object.is_studios) {
-                        var cEls = doc.querySelectorAll('.channelsList li, .channelsUL li, .channelCard');
-                        
-                        for (var s = 0; s < cEls.length; s++) {
-                            var elS = cEls[s];
-                            var linkS = elS.querySelector('a');
-                            var imgS = elS.querySelector('img');
-                            
-                            if (linkS && imgS) {
-                                var urlS = linkS.getAttribute('href');
-                                var rawNameS = imgS.getAttribute('alt');
-                                
-                                if (!rawNameS) {
-                                    var titleS = elS.querySelector('.title');
-                                    rawNameS = titleS ? (titleS.textContent || '').trim() : 'Studio';
-                                }
-                                
-                                if (rawNameS && urlS) {
-                                    if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
-                                    var imgSrcS = imgS.getAttribute('data-thumb_url') || imgS.getAttribute('src') || ''; 
-                                    if (imgSrcS && imgSrcS.indexOf('//') === 0) imgSrcS = 'https:' + imgSrcS;
-                                    
-                                    results.push({ 
-                                        name: window.pluginx_formatTitle(rawNameS, '', '☰'), 
-                                        url: urlS, 
-                                        picture: imgSrcS, 
-                                        img: imgSrcS, 
-                                        is_grid: true, 
-                                        is_noimg: true 
-                                    });
-                                }
-                            }
-                        }
-                    }
-                  
-
-                    // 4. Відео (всі інші сторінки: головна, пошук, моделі)
+                    } 
+                    // --- ВІДЕО (Профілі + Головна) ---
                     else {
                         var vEls;
-                        // Якщо ми в профілі моделі/студії — б'ємо СУВОРО в ID основного списку
-                        // Це відріже блоки "Featured" та "Recommended", які стоять вище в коді
-                        if (currentUrl.indexOf('/model/') !== -1 || currentUrl.indexOf('/pornstar/') !== -1 || currentUrl.indexOf('/channels/') !== -1) {
-                            vEls = doc.querySelectorAll('#mostRecentVideosSection li.pcVideoListItem');
+                        // Використання точних ID для відсікання "5 рекламних відео"
+                        if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
+                            vEls = doc.querySelectorAll('#mostRecentVideosSection li, #pornstarsVideoSection li');
                         } else {
-                            // На головній та в пошуку — стандартний пошук
                             vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, .videoBox');
                         }
                         
                         for (var v = 0; v < vEls.length; v++) {
                             var el = vEls[v];
+                            // Глобальна заборона на контент із шапки (innerHeaderSubMenu)
+                            if (el.closest && el.closest('.innerHeaderSubMenu')) continue;
+
                             var img = el.querySelector('img');
                             var a = el.querySelector('a.thumbnailTitle, a.js-videoPreview, a');
-                            var timeEl = el.querySelector('var.duration, .duration .time, .duration');
+                            var timeEl = el.querySelector('var.duration, .duration .time');
                             
                             if (img && a) {
-                                var title = img.getAttribute('alt') || img.getAttribute('title') || (a.textContent || '').trim();
+                                var title = img.getAttribute('alt') || (a.textContent || '').trim();
                                 var href = a.getAttribute('href');
-                                var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
+                                var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
                                 
-                                if (title && href && href.indexOf('javascript') === -1 && href.indexOf('viewkey=') !== -1) {
+                                if (title && href && href.indexOf('viewkey=') !== -1) {
                                     if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
-                                    if (posterUrl && posterUrl.indexOf('//') === 0) posterUrl = 'https:' + posterUrl;
-                                    
-                                    results.push({
-                                        name: window.pluginx_formatTitle(title, timeText, '▶'),
-                                        url: href,
-                                        picture: posterUrl,
-                                        img: posterUrl
-                                    });
+                                    results.push({ name: window.pluginx_formatTitle(title, timeText, '▶'), url: href, picture: posterUrl, img: posterUrl });
                                 }
                             }
                         }
+
+                        // --- FALLBACK КНОПКА (Якщо /videos порожній або 404) ---
+                        if ((results.length === 0 || isErrorPage) && currentUrl.indexOf('/videos') !== -1) {
+                            var baseUrl = currentUrl.split('/videos')[0]; 
+                            results.push({
+                                name: '⚠️ Сторінку не знайдено. Відкрити основний профіль?',
+                                url: baseUrl,
+                                picture: '', img: '', is_grid: false
+                            });
+                        }
                     }
-
-
                     return results;
                 },
                 
@@ -716,16 +670,14 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     if (def.videoUrl && def.videoUrl !== '') {
                                         var quality = def.quality || 'Unknown';
                                         if (!isNaN(quality)) quality += 'p';
-                                        
                                         var cleanUrl = def.videoUrl.replace(/\\/g, '');
-                                        
                                         str.push({ 
                                             title: quality, 
                                             url: cleanUrl,
                                             headers: { 
                                                 'Referer': 'https://www.pornhub.com/',
                                                 'Cookie': 'hasVisited=1; accessAgeDisclaimerPH=1',
-                                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:147.0) Gecko/20100101 Firefox/147.0'
+                                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) Gecko/20100101 Firefox/147.0'
                                             }
                                         });
                                     }
@@ -739,13 +691,13 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
-                    var actors = doc.querySelectorAll('.pornstarsWrapper .pstar-list-btn, a.pstar-list-btn');
+                    var actors = doc.querySelectorAll('.pornstarsWrapper a.pstar-list-btn, a.pstar-list-btn');
                     for (var i = 0; i < actors.length; i++) {
-                        var actorName = (actors[i].textContent || '').trim();
-                        var actorHref = actors[i].getAttribute('href');
-                        if (actorName && actorHref) {
-                            if (actorHref.indexOf('http') !== 0) actorHref = this.domain + (actorHref.charAt(0) === '/' ? '' : '/') + actorHref;
-                            menu.push({ title: actorName, action: 'direct', url: actorHref });
+                        var name = (actors[i].textContent || '').trim();
+                        var href = actors[i].getAttribute('href');
+                        if (name && href) {
+                            if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
+                            menu.push({ title: name, action: 'direct', url: href });
                         }
                     }
                     menu.push({ title: 'Схожі відео', action: 'sim', url: element.url });
