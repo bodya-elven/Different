@@ -657,30 +657,24 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                     // 4. Відео (всі інші сторінки, включно з профілями моделей /videos)
                     else {
-                        // Обмежуємо пошук: на головній шукаємо в gridWrapper, а в профілях моделей — СУВОРО в pageWrapper
-                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, .pageWrapper ul.videoList li');
+                        // ІДЕАЛЬНО ЖОРСТКИЙ СЕЛЕКТОР: 
+                        // Беремо pcVideoListItem для головної + ТІЛЬКИ ті li зі списку videoList, які мають атрибут data-video-id
+                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, ul.videoList li[data-video-id]');
                         
                         for (var v = 0; v < vEls.length; v++) {
                             var el = vEls[v];
                             
-                            // Захист від пустих карток або рекламних блоків, що маскуються під відео
-                            if (el.className.indexOf('marker-next-videos') !== -1) continue;
-                            
                             var img = el.querySelector('img');
-                            // На сторінці моделі посилання лежить в a.js-videoPreview
                             var a = el.querySelector('a.thumbnailTitle, a.js-videoPreview, a');
-                            // Тривалість відео
                             var timeEl = el.querySelector('var.duration, .duration .time, .duration');
                             
                             if (img && a) {
                                 var title = img.getAttribute('alt') || img.getAttribute('title') || (a.textContent || '').trim();
                                 var href = a.getAttribute('href');
-                                
-                                // Беремо найкраще зображення
                                 var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
                                 
-                                // Сувора перевірка: це має бути посилання саме на перегляд відео (viewkey=)
+                                // Перевірка, що це точно відео
                                 if (title && href && href.indexOf('javascript') === -1 && href.indexOf('viewkey=') !== -1) {
                                     if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
                                     if (posterUrl && posterUrl.indexOf('//') === 0) posterUrl = 'https:' + posterUrl;
