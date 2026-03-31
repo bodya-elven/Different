@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.1.2',
+        version: '2.1.3',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -576,28 +576,51 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     // 2. Моделі та Студії
                     else if (targetPath.indexOf('/pornstars') !== -1 || targetPath.indexOf('/model') !== -1 || targetPath.indexOf('/channels') !== -1 || object.is_models || object.is_studios) {
                         var isStudios = targetPath.indexOf('/channels') !== -1 || object.is_studios;
-                        var sel = isStudios ? '.channelsList li, .channelsUL li' : '#pornstarListSection li, ul.pornstarList li, .pornstarIndexContainer li, .modelIndexContainer li';
+                        
+                        // Жорсткі селектори (тільки цільові списки, без сміття)
+                        var sel = isStudios ? 'ul.channelsList li, ul.channelsUL li' : 'ul#pornstarListSection li, ul.pornstarList li';
                         var mEls = doc.querySelectorAll(sel);
+                        
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
-                            var linkM = elM.querySelector('a.pornstarLink, a.js-popUnder, a');
-                            var imgM = elM.querySelector('img.pornstarThumb, img');
+                            var linkM = elM.querySelector('a');
+                            var imgM = elM.querySelector('img');
+                            
                             if (linkM && imgM) {
                                 var urlM = linkM.getAttribute('href');
-                                if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + '/' + urlM.replace(/^\//, '');
-                                var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
-                                if (imgSrcM && imgSrcM.indexOf('//') === 0) imgSrcM = 'https:' + imgSrcM;
-                                var rawName = imgM.getAttribute('alt') || '';
+                                var imgSrcM = imgM.getAttribute('src') || imgM.getAttribute('data-thumb_url') || ''; 
+                                
+                                // Беремо ідеально чисте ім'я виключно з alt картинки
+                                var rawName = imgM.getAttribute('alt');
+                                
+                                // Резерв для студій (на випадок відсутності alt)
                                 if (!rawName) {
-                                    var titleM = elM.querySelector('.performerCardName, .pornstarName, .title');
+                                    var titleM = elM.querySelector('.title, .performerCardName');
                                     rawName = titleM ? (titleM.textContent || '').trim() : (isStudios ? 'Studio' : 'Model');
                                 }
+                                
+                                // Витягуємо кількість відео для красивого відображення
                                 var countDiv = elM.querySelector('.videos.performerCount');
                                 var countText = countDiv ? (countDiv.textContent || '').trim() : '';
-                                if (rawName) results.push({ name: window.pluginx_formatTitle(rawName, countText, '☰'), url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: !isStudios, is_noimg: isStudios });
+
+                                if (rawName && urlM) {
+                                    if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
+                                    if (imgSrcM && imgSrcM.indexOf('//') === 0) imgSrcM = 'https:' + imgSrcM;
+                                    
+                                    results.push({ 
+                                        name: window.pluginx_formatTitle(rawName, countText, '☰'), 
+                                        url: urlM, 
+                                        picture: imgSrcM, 
+                                        img: imgSrcM, 
+                                        is_grid: true, 
+                                        is_models: !isStudios, 
+                                        is_noimg: isStudios 
+                                    });
+                                }
                             }
                         }
                     } 
+
                     // 3. Відео (Логіка CloudStream + Тривалість)
                     else {
                         var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem');
