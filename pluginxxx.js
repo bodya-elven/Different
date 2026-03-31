@@ -736,93 +736,99 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (через внутрішнє JSON API)
+            // АДАПТЕР: AllPornStream
             // =========================================================================
             allpornstream: {
                 title: 'AllPornStream',
                 domain: 'https://allpornstream.com',
                 
-                // Звертаємося напряму до бази даних, а не до HTML-сторінок
-                getHomeUrl: function() { return this.domain + '/api/posts'; },
-                getSearchUrl: function(query) { return this.domain + '/api/posts?search=' + encodeURIComponent(query); },
+                getHomeUrl: function() { return this.domain + '/'; },
+                getSearchUrl: function(query) { return this.domain + '/search?q=' + encodeURIComponent(query); },
                 
                 getUrl: function(object, page) {
-                    var target = object.url || (this.domain + '/api/posts');
-                    // Додаємо пагінацію для API
-                    var sep = target.indexOf('?') === -1 ? '?' : '&';
-                    return target + sep + 'page=' + page;
+                    var url = object.url || this.domain;
+                    // Пагінація на Next.js зазвичай робиться через ?page=2
+                    if (page > 1) {
+                        var uParts = url.split('?');
+                        var base = uParts[0];
+                        var query = uParts.length > 1 ? '&' + uParts[1].replace(/page=\d+&?/, '') : '';
+                        return base + '?page=' + page + query;
+                    }
+                    return url;
                 },
                 
                 getFilters: function(doc, currentUrl) {
-                    // API зазвичай не віддає фільтрів у зручному вигляді, 
-                    // тому поки залишаємо без сортування
+                    // Фільтри додамо пізніше, якщо вони є на сайті
                     return null;
                 },
                 
                 getNavItems: function() {
-                    // Беремо список студій прямо з коду Cloudstream
                     return [
-                        { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/api/posts' },
-                        { title: '🎬 Blacked', action: 'nav', url: this.domain + '/api/posts?studio=Blacked' },
-                        { title: '🎬 Tushy', action: 'nav', url: this.domain + '/api/posts?studio=Tushy' },
-                        { title: '🎬 Brazzers Exxtra', action: 'nav', url: this.domain + '/api/posts?studio=BrazzersExxtra' },
-                        { title: '🎬 SisLovesMe', action: 'nav', url: this.domain + '/api/posts?studio=SisLovesMe' },
-                        { title: '🎬 PropertySex', action: 'nav', url: this.domain + '/api/posts?studio=PropertySex' },
-                        { title: '🎬 Vixen / Slayed', action: 'nav', url: this.domain + '/api/posts?studio=Slayed' }
+                        { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/' }
+                        // Студії та категорії додамо, коли розберемо меню
                     ];
                 },
                 
-                // Зверни увагу: Лампа зазвичай передає HTML у 'doc'. Але якщо ми отримали JSON, 
-                // нам треба дістати чистий текст (через 4-й параметр html_text або textContent)
-                parse: function(doc, currentUrl, object, html_text) {
+                parse: function(doc, currentUrl, object) {
                     var results = [];
-                    var rawData = html_text || (doc.body ? doc.body.textContent : '') || doc.text();
-                    
-                    try {
-                        // Магія: замість парсингу HTML ми просто читаємо JSON
-                        var json = JSON.parse(rawData);
+                    // Шукаємо всі посилання, які ведуть на сторінки відео
+                    var elements = doc.querySelectorAll('a[href^="/videos/"]');
+                    var added = []; 
+
+                    for (var i = 0; i < elements.length; i++) {
+                        var el = elements[i];
+                        var href = el.getAttribute('href');
                         
-                        // Парсинг каталогу / пошуку (масив posts)
-                        if (json && json.posts && Array.isArray(json.posts)) {
-                            for (var i = 0; i < json.posts.length; i++) {
-                                var item = json.posts[i];
-                                
-                                // Шукаємо першу картинку, що починається на http (як у Cloudstream)
-                                var poster = '';
-                                if (item.image_details && item.image_details.length > 0) {
-                                    for (var p = 0; p < item.image_details.length; p++) {
-                                        if (item.image_details[p].indexOf('http') === 0) {
-                                            poster = item.image_details[p];
-                                            break;
-                                        }
-                                    }
-                                }
+                        // Захист від дублікатів (іноді картинка і текст мають окремі посилання)
+                        if (!href || added.indexOf(href) !== -1) continue;
 
-                                // Формуємо посилання на сторінку конкретного відео (API)
-                                // Cloudstream використовує id або slug.
-                                var videoId = item.id || item.slug;
-                                var videoUrl = this.domain + '/api/post?id=' + videoId;
+                        var title = el.getAttribute('title');
+                        var imgEl = el.querySelector('img');
 
-                                if (item.video_title && videoId) {
-                                    results.push({
-                                        name: item.video_title,
-                                        url: videoUrl,
-                                        picture: poster,
-                                        img: poster
-                                    });
-                                }
+                        // Якщо title немає в посиланні, беремо з alt картинки або тексту
+                        if (!title && imgEl) title = imgEl.getAttribute('alt');
+                        if (!title) title = (el.textContent || '').trim();
+
+                        var img = '';
+                        if (imgEl) {
+                            img = imgEl.getAttribute('src') || '';
+                            // Якщо це картинка через проксі Next.js, додаємо домен
+                            if (img.indexOf('/_next/image') === 0) {
+                                img = this.domain + img;
+                            } else if (img.indexOf('/') === 0) {
+                                img = this.domain + img;
                             }
                         }
-                    } catch (e) {
-                        console.log('AllPornStream Parse Error: Це не JSON або сторінка заблокована', e);
+
+                        // Шукаємо тривалість відео. Вона зазвичай у span, має формат 00:00
+                        var timeText = '';
+                        var spans = el.querySelectorAll('span');
+                        for(var s = 0; s < spans.length; s++) {
+                            var txt = (spans[s].textContent || '').trim();
+                            if (/^\d+:\d+(:\d+)?$/.test(txt)) {
+                                timeText = txt;
+                                break;
+                            }
+                        }
+
+                        if (title && href) {
+                            var vUrl = href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href;
+                            results.push({
+                                name: window.pluginx_formatTitle(title, timeText, '▶'),
+                                url: vUrl,
+                                picture: img,
+                                img: img,
+                                is_grid: true
+                            });
+                            added.push(href);
+                        }
                     }
-                    
                     return results;
                 },
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    // Поки ставимо заглушку. Наступним кроком ми розберемо JSON відео, 
-                    // дістанемо звідти посилання на streamtape/bigwarp і напишемо плеєр.
+                    // Заглушка. Зробимо, коли отримаємо код сторінки відео.
+                    Lampa.Noty.show('Плеєр ще не налаштовано');
                     onError();
                 },
                 
