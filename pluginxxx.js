@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.1.3',
+        version: '2.1.4',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -573,13 +573,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         }
                     } 
-                    // 2. Моделі та Студії
-                    else if (targetPath.indexOf('/pornstars') !== -1 || targetPath.indexOf('/model') !== -1 || targetPath.indexOf('/channels') !== -1 || object.is_models || object.is_studios) {
-                        var isStudios = targetPath.indexOf('/channels') !== -1 || object.is_studios;
-                        
-                        // Жорсткі селектори (тільки цільові списки, без сміття)
-                        var sel = isStudios ? 'ul.channelsList li, ul.channelsUL li' : 'ul#pornstarListSection li, ul.pornstarList li';
-                        var mEls = doc.querySelectorAll(sel);
+                    // 2. Моделі (тільки головна сторінка моделей, виключаємо профілі)
+                    else if (targetPath === '/pornstars' || object.is_models) {
+                        // Шукаємо за гнучким класом самої картки або елементом списку
+                        var mEls = doc.querySelectorAll('.performerCard, ul.pornstarList li');
                         
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
@@ -588,23 +585,19 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             
                             if (linkM && imgM) {
                                 var urlM = linkM.getAttribute('href');
-                                var imgSrcM = imgM.getAttribute('src') || imgM.getAttribute('data-thumb_url') || ''; 
-                                
-                                // Беремо ідеально чисте ім'я виключно з alt картинки
                                 var rawName = imgM.getAttribute('alt');
                                 
-                                // Резерв для студій (на випадок відсутності alt)
                                 if (!rawName) {
                                     var titleM = elM.querySelector('.title, .performerCardName');
-                                    rawName = titleM ? (titleM.textContent || '').trim() : (isStudios ? 'Studio' : 'Model');
+                                    rawName = titleM ? (titleM.textContent || '').trim() : 'Model';
                                 }
                                 
-                                // Витягуємо кількість відео для красивого відображення
                                 var countDiv = elM.querySelector('.videos.performerCount');
                                 var countText = countDiv ? (countDiv.textContent || '').trim() : '';
 
                                 if (rawName && urlM) {
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
+                                    var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
                                     if (imgSrcM && imgSrcM.indexOf('//') === 0) imgSrcM = 'https:' + imgSrcM;
                                     
                                     results.push({ 
@@ -613,15 +606,50 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                         picture: imgSrcM, 
                                         img: imgSrcM, 
                                         is_grid: true, 
-                                        is_models: !isStudios, 
-                                        is_noimg: isStudios 
+                                        is_models: true
                                     });
                                 }
                             }
                         }
                     } 
+                    // 3. Студії (окремий парсер)
+                    else if (targetPath === '/channels' || object.is_studios) {
+                        var cEls = doc.querySelectorAll('.channelsList li, .channelsUL li, .channelCard');
+                        
+                        for (var s = 0; s < cEls.length; s++) {
+                            var elS = cEls[s];
+                            var linkS = elS.querySelector('a');
+                            var imgS = elS.querySelector('img');
+                            
+                            if (linkS && imgS) {
+                                var urlS = linkS.getAttribute('href');
+                                var rawNameS = imgS.getAttribute('alt');
+                                
+                                if (!rawNameS) {
+                                    var titleS = elS.querySelector('.title');
+                                    rawNameS = titleS ? (titleS.textContent || '').trim() : 'Studio';
+                                }
+                                
+                                if (rawNameS && urlS) {
+                                    if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
+                                    var imgSrcS = imgS.getAttribute('data-thumb_url') || imgS.getAttribute('src') || ''; 
+                                    if (imgSrcS && imgSrcS.indexOf('//') === 0) imgSrcS = 'https:' + imgSrcS;
+                                    
+                                    results.push({ 
+                                        name: window.pluginx_formatTitle(rawNameS, '', '☰'), 
+                                        url: urlS, 
+                                        picture: imgSrcS, 
+                                        img: imgSrcS, 
+                                        is_grid: true, 
+                                        is_noimg: true 
+                                    });
+                                }
+                            }
+                        }
+                    }
+                  
 
-                    // 3. Відео (Логіка CloudStream + Тривалість)
+                    // 4. Відео (Логіка CloudStream + Тривалість)
                     else {
                         var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem');
                         for (var v = 0; v < vEls.length; v++) {
