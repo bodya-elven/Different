@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.1.7',
+        version: '2.1.8',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -657,12 +657,20 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                     // 4. Відео (всі інші сторінки, включно з профілями моделей /videos)
                     else {
-                        // ІДЕАЛЬНО ЖОРСТКИЙ СЕЛЕКТОР: 
-                        // Беремо pcVideoListItem для головної + ТІЛЬКИ ті li зі списку videoList, які мають атрибут data-video-id
-                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, ul.videoList li[data-video-id]');
+                        // ПОВЕРТАЄМО РОБОЧИЙ СЕЛЕКТОР (без складних CSS-правил, щоб ТБ не "сліпнув")
+                        var vEls = doc.querySelectorAll('div.gridWrapper li.pcVideoListItem, #mostRecentVideosSection li, .videoBox, ul.videoList li');
                         
                         for (var v = 0; v < vEls.length; v++) {
                             var el = vEls[v];
+                            
+                            // ПРОГРАМНИЙ ФІЛЬТР СМІТТЯ:
+                            // Якщо в елемента немає класу відео і немає ідентифікатора data-video-id — це 100% сміття/реклама
+                            var isGridVideo = el.className.indexOf('pcVideoListItem') !== -1 || el.className.indexOf('videoBox') !== -1;
+                            var isModelVideo = el.getAttribute('data-video-id');
+                            
+                            if (!isGridVideo && !isModelVideo) {
+                                continue; // Пропускаємо ліві блоки
+                            }
                             
                             var img = el.querySelector('img');
                             var a = el.querySelector('a.thumbnailTitle, a.js-videoPreview, a');
@@ -674,7 +682,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
                                 
-                                // Перевірка, що це точно відео
+                                // Фінальна перевірка, що це клікабельне відео
                                 if (title && href && href.indexOf('javascript') === -1 && href.indexOf('viewkey=') !== -1) {
                                     if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
                                     if (posterUrl && posterUrl.indexOf('//') === 0) posterUrl = 'https:' + posterUrl;
