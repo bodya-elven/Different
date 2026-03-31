@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.4',
+        version: '2.2.5',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -528,36 +528,32 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 },
                 
                 getFilters: function(doc, currentUrl) {
-                    // Прибираємо сортування в категоріях
                     if (currentUrl.indexOf('/categories') !== -1) return null;
 
                     var items = [], activeTitle = '';
                     
-                    // Визначаємо селектори
                     var isChannelsList = (currentUrl.indexOf('/channels') !== -1 && currentUrl.indexOf('/channels/') === -1);
                     var selector = '';
                     
                     if (isChannelsList) {
                         selector = '#mainMenuChannels ul li';
                     } else if (currentUrl.indexOf('/pornstars') !== -1 || currentUrl.indexOf('/model/') !== -1) {
-                        selector = 'div[data-dropdown-id="2"] ul.filterListItem li'; // Снайперське сортування моделей
+                        selector = 'div[data-dropdown-id="2"] ul.filterListItem li';
                     } else {
-                        // Цей селектор автоматично підхопить .subFilterList для відео студій!
                         selector = '.subFilterList li, #subFilterListVideos li, .filterList li';
                     }
                     
                     var filterItems = doc.querySelectorAll(selector);
                     for (var i = 0; i < filterItems.length; i++) {
                         var li = filterItems[i];
-                        if (li.closest && li.closest('.innerHeaderSubMenu')) continue; // Чистка хедера
+                        if (li.closest && li.closest('.innerHeaderSubMenu')) continue; 
 
                         var a = li.querySelector('a');
                         var title = (li.textContent || '').trim();
                         var href = a ? a.getAttribute('href') : '';
                         
-                        // ВБИВАЄМО АЛФАВІТНЕ СОРТУВАННЯ ДЛЯ СТУДІЙ
                         if (isChannelsList && href && href.indexOf('o=al') !== -1) {
-                            continue; // Пропускаємо цей пункт
+                            continue; 
                         }
 
                         if (li.classList.contains('active') || li.classList.contains('selected') || li.id === 'browse') {
@@ -588,12 +584,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/page\/[0-9]+\/?$/, '').replace(/\/[0-9]+\/$/, '').replace(/\/+$/, '');
                     var results = [];
                     
-                    // Збиваємо прапорець моделей для відео-сторінок
                     if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
                         object.is_models = false;
                     }
-
-                    var isErrorPage = (doc.body.textContent || '').indexOf('Error Page Not Found') !== -1;
 
                     // --- КАТЕГОРІЇ ---
                     if (targetPath.indexOf('/categories') !== -1 || object.is_categories) {
@@ -601,6 +594,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         for (var c = 0; c < cEls.length; c++) {
                             var elC = cEls[c];
                             if (elC.closest && elC.closest('.innerHeaderSubMenu')) continue;
+                            
                             var linkC = elC.querySelector('a'), imgC = elC.querySelector('img');
                             if (linkC && imgC) {
                                 var nameC = (imgC.getAttribute('alt') || '').replace(' Porn Category', '').trim();
@@ -616,7 +610,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var mEls = doc.querySelectorAll('li.performerCard, .performerCard');
                         for (var m = 0; m < mEls.length; m++) {
                             var elM = mEls[m];
-                            // 1. Чистка хедера. 2. Чистка Trending блоку (щоб не дублювалися)
                             if (elM.closest && (elM.closest('.innerHeaderSubMenu') || elM.closest('.top_trending_pornstar'))) continue;
 
                             var linkM = elM.querySelector('a'), imgM = elM.querySelector('img');
@@ -624,7 +617,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var urlM = linkM.getAttribute('href');
                                 var nameEl = elM.querySelector('.performerCardName');
                                 var rawName = nameEl ? (nameEl.textContent || '').trim() : imgM.getAttribute('alt');
-                                var countText = (elM.querySelector('.performerCount')?.textContent || '').trim();
+                                var countEl = elM.querySelector('.performerCount');
+                                var countText = countEl ? (countEl.textContent || '').trim() : '';
 
                                 if (rawName && urlM) {
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
@@ -653,9 +647,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                                 if (nameS && urlS) {
                                     if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
-                                    if (urlS.indexOf('/videos') === -1) urlS = urlS.replace(/\/$/, '') + '/videos';
                                     var imgSrcS = imgS.getAttribute('src') || imgS.getAttribute('data-thumb_url') || '';
-                                    // СТИЛЬ LENKINO: Прибрано is_noimg. Тепер картинка займає всю картку.
                                     results.push({ name: window.pluginx_formatTitle(nameS, statsText, '🎬'), url: urlS, picture: imgSrcS, img: imgSrcS, is_grid: true });
                                 }
                             }
@@ -664,7 +656,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     // --- ВІДЕО ---
                     else {
                         var vEls;
-                        // Додано ul#moreData li для профілів студій
                         if (targetPath.indexOf('/model/') !== -1 || targetPath.indexOf('/pornstar/') !== -1 || targetPath.indexOf('/channels/') !== -1) {
                             vEls = doc.querySelectorAll('#mostRecentVideosSection li, #pornstarsVideoSection li, ul#moreData li.pcVideoListItem, ul.videoList li');
                         } else {
@@ -676,11 +667,11 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             if (el.closest && el.closest('.innerHeaderSubMenu')) continue;
 
                             var img = el.querySelector('img');
-                            var a = el.querySelector('a.thumbnailTitle, a.js-linkVideoThumb, a');
+                            var a = el.querySelector('a.thumbnailTitle, a.js-linkVideoThumb, a.js-videoPreview, a');
                             var timeEl = el.querySelector('var.duration, .duration');
                             
                             if (img && a) {
-                                var title = img.getAttribute('alt') || (a.textContent || '').trim();
+                                var title = img.getAttribute('alt') || img.getAttribute('title') || (a.textContent || '').trim();
                                 var href = a.getAttribute('href');
                                 var posterUrl = img.getAttribute('src') || img.getAttribute('data-mediumthumb') || img.getAttribute('data-thumb_url');
                                 var timeText = timeEl ? (timeEl.textContent || '').trim() : '';
@@ -691,19 +682,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 }
                             }
                         }
-
-                        // Fallback для помилки 404
-                        if ((results.length === 0 || isErrorPage) && currentUrl.indexOf('/videos') !== -1) {
-                            var baseUrl = currentUrl.split('/videos')[0]; 
-                            results.push({
-                                name: '⚠️ Сторінку не знайдено. Відкрити основний профіль?',
-                                url: baseUrl,
-                                picture: '', img: '', is_grid: false
-                            });
-                        }
                     }
                     return results;
                 },
+
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var str = [];
