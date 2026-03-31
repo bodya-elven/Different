@@ -736,7 +736,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (через Next.js Data)
+            // АДАПТЕР: AllPornStream (Бронебійний HTML-парсер)
             // =========================================================================
             allpornstream: {
                 title: 'AllPornStream',
@@ -757,65 +757,72 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 },
                 
                 getFilters: function(doc, currentUrl) {
-                    return null; // Фільтри для Next.js вимагають глибокої інтеграції, поки пропускаємо
+                    return null;
                 },
                 
                 getNavItems: function() {
                     return [
                         { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/' },
+                        // Пошук працює найстабільніше для студій
                         { title: '🎬 Blacked', action: 'nav', url: this.domain + '/search?q=Blacked' },
                         { title: '🎬 Tushy', action: 'nav', url: this.domain + '/search?q=Tushy' },
-                        { title: '🎬 Brazzers', action: 'nav', url: this.domain + '/search?q=Brazzers' }
+                        { title: '🎬 Brazzers', action: 'nav', url: this.domain + '/search?q=Brazzers' },
+                        { title: '🎬 Vixen', action: 'nav', url: this.domain + '/search?q=Vixen' }
                     ];
                 },
                 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Знаходимо золоту жилу - прихований JSON від Next.js
-                    var nextDataScript = doc.querySelector('#__NEXT_DATA__');
-                    
-                    if (nextDataScript) {
-                        try {
-                            var json = JSON.parse(nextDataScript.textContent);
-                            var posts = [];
-                            
-                            // Залежно від сторінки, масив відео лежить у різних місцях
-                            if (json.props && json.props.pageProps) {
-                                if (json.props.pageProps.posts) {
-                                    posts = json.props.pageProps.posts;
-                                } else if (json.props.pageProps.data && json.props.pageProps.data.posts) {
-                                    posts = json.props.pageProps.data.posts;
-                                }
+                    // Бронебійний пошук: шукаємо всі посилання, в яких є "/videos/"
+                    var elements = doc.querySelectorAll('a[href*="/videos/"]');
+                    var added = []; 
+
+                    for (var i = 0; i < elements.length; i++) {
+                        var el = elements[i];
+                        var href = el.getAttribute('href');
+                        
+                        if (!href || added.indexOf(href) !== -1) continue;
+
+                        // Якщо в посиланні немає картинки - це не картка відео (наприклад, текстове посилання)
+                        var imgEl = el.querySelector('img');
+                        if (!imgEl) continue; 
+
+                        var title = imgEl.getAttribute('alt') || el.getAttribute('title') || (el.textContent || '').trim();
+                        var img = imgEl.getAttribute('src') || '';
+
+                        // Обходимо захист картинок Next.js (дістаємо пряме посилання)
+                        if (img.indexOf('/_next/image') === 0 && img.indexOf('url=') !== -1) {
+                            try {
+                                img = decodeURIComponent(img.split('url=')[1].split('&')[0]);
+                            } catch(e) {
+                                img = this.domain + img;
                             }
-                            
-                            for (var i = 0; i < posts.length; i++) {
-                                var item = posts[i];
-                                var title = item.video_title || 'Unknown Video';
-                                var slug = item.slug || item.id;
-                                var vUrl = this.domain + '/videos/' + slug;
-                                
-                                var img = '';
-                                if (item.image_details && item.image_details.length > 0) {
-                                    for (var j = 0; j < item.image_details.length; j++) {
-                                        if (item.image_details[j].indexOf('http') === 0) {
-                                            img = item.image_details[j];
-                                            break;
-                                        }
-                                    }
-                                }
-                                
-                                if (slug) {
-                                    results.push({
-                                        name: title,
-                                        url: vUrl,
-                                        picture: img,
-                                        img: img,
-                                        is_grid: true
-                                    });
-                                }
+                        } else if (img.indexOf('/') === 0) {
+                            img = this.domain + img;
+                        }
+
+                        // Шукаємо час відео (зазвичай у span з форматом 00:00)
+                        var timeText = '';
+                        var spans = el.querySelectorAll('span');
+                        for(var s = 0; s < spans.length; s++) {
+                            var txt = (spans[s].textContent || '').trim();
+                            if (/^\d+:\d+(:\d+)?$/.test(txt)) {
+                                timeText = txt;
+                                break;
                             }
-                        } catch(e) {
-                            console.log('AllPornStream Parse JSON Error:', e);
+                        }
+
+                        var vUrl = href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href;
+
+                        if (title && vUrl) {
+                            results.push({
+                                name: window.pluginx_formatTitle(title, timeText, '▶'),
+                                url: vUrl,
+                                picture: img,
+                                img: img,
+                                is_grid: true
+                            });
+                            added.push(href);
                         }
                     }
                     return results;
@@ -823,76 +830,72 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var str = [];
-                    var nextDataScript = doc.querySelector('#__NEXT_DATA__');
-                    
-                    if (nextDataScript) {
-                        try {
-                            var json = JSON.parse(nextDataScript.textContent);
-                            var post = json.props && json.props.pageProps && json.props.pageProps.post;
-                            
-                            if (post && post.video_urls && post.video_urls.iframe) {
-                                var iframes = post.video_urls.iframe;
-                                var pending = iframes.length;
-                                var resolved = 0;
+                    // Шукаємо звичайні iframe на сторінці
+                    var iframes = doc.querySelectorAll('iframe');
+                    var pending = 0;
+                    var resolved = 0;
 
-                                if (pending === 0) {
-                                    onError();
-                                    return;
-                                }
-
-                                var checkDone = function() {
-                                    resolved++;
-                                    if (resolved >= pending) {
-                                        if (str.length > 0) startPlayback(str);
-                                        else onError();
-                                    }
-                                };
-
-                                iframes.forEach(function(iframeObj) {
-                                    var iUrl = iframeObj.url;
-                                    if (!iUrl) { checkDone(); return; }
-
-                                    if (iUrl.indexOf('bigwarp') !== -1) {
-                                        // Парсинг Bigwarp (за логікою Cloudstream)
-                                        window.pluginx_smartRequest(iUrl, function(bwHtml) {
-                                            var regex = /file:\s*['"](.*?)['"],label:\s*['"](.*?)['"]/g;
-                                            var m;
-                                            while ((m = regex.exec(bwHtml)) !== null) {
-                                                str.push({ title: 'Bigwarp ' + m[2], url: m[1] });
-                                            }
-                                            checkDone();
-                                        }, checkDone);
-                                        
-                                    } else if (iUrl.indexOf('streamtape') !== -1) {
-                                        // Дешифратор Streamtape
-                                        window.pluginx_smartRequest(iUrl, function(stHtml) {
-                                            var stMatch = stHtml.match(/innerHTML\s*=\s*['"]([^'"]+)['"]\s*\+\s*\('([^']+)'\)\.substring\((\d+)\)/);
-                                            if (stMatch) {
-                                                var finalUrl = 'https:' + stMatch[1] + stMatch[2].substring(parseInt(stMatch[3]));
-                                                str.push({ title: 'Streamtape', url: finalUrl });
-                                            } else {
-                                                // Запасний варіант парсингу
-                                                var m1 = stHtml.match(/getElementById\('robotlink'\)\.innerHTML\s*=\s*['"]([^'"]+)['"]/);
-                                                var m2 = stHtml.match(/\+ \('([^']+)'\)\.substring\(\d+\)/);
-                                                if (m1 && m2) {
-                                                    str.push({ title: 'Streamtape', url: 'https:' + m1[1] + m2[1].substring(1) });
-                                                }
-                                            }
-                                            checkDone();
-                                        }, checkDone);
-                                        
-                                    } else {
-                                        // Пропускаємо невідомі плеєри
-                                        checkDone();
-                                    }
+                    var checkDone = function() {
+                        resolved++;
+                        if (resolved >= pending) {
+                            if (str.length > 0) {
+                                // Сортуємо якість для Bigwarp (від більшої до меншої)
+                                str.sort(function(a, b) {
+                                    var qA = parseInt(a.title.replace(/\D/g, '')) || 0;
+                                    var qB = parseInt(b.title.replace(/\D/g, '')) || 0;
+                                    return qB - qA;
                                 });
-                                return; // Зупиняємо виконання, чекаємо асинхронних запитів
+                                startPlayback(str);
                             }
-                        } catch(e) {
-                            console.log('AllPornStream Stream Parse Error:', e);
+                            else onError();
+                        }
+                    };
+
+                    // Перевіряємо скільки у нас підтримуваних плеєрів
+                    for (var i = 0; i < iframes.length; i++) {
+                        var src = iframes[i].getAttribute('src') || '';
+                        if (src.indexOf('bigwarp') !== -1 || src.indexOf('streamtape') !== -1 || src.indexOf('strcloud') !== -1) {
+                            pending++;
                         }
                     }
-                    onError();
+
+                    if (pending === 0) {
+                        Lampa.Noty.show('Не знайдено підтримуваного плеєра');
+                        onError();
+                        return;
+                    }
+
+                    // Обробляємо знайдений плеєр
+                    for (var j = 0; j < iframes.length; j++) {
+                        var iUrl = iframes[j].getAttribute('src') || '';
+                        
+                        if (iUrl.indexOf('bigwarp') !== -1) {
+                            window.pluginx_smartRequest(iUrl, function(bwHtml) {
+                                var regex = /file:\s*['"](.*?)['"],label:\s*['"](.*?)['"]/g;
+                                var m;
+                                while ((m = regex.exec(bwHtml)) !== null) {
+                                    str.push({ title: 'Bigwarp ' + m[2], url: m[1] });
+                                }
+                                checkDone();
+                            }, checkDone);
+                            
+                        } else if (iUrl.indexOf('streamtape') !== -1 || iUrl.indexOf('strcloud') !== -1) {
+                            window.pluginx_smartRequest(iUrl, function(stHtml) {
+                                var stMatch = stHtml.match(/innerHTML\s*=\s*['"]([^'"]+)['"]\s*\+\s*\('([^']+)'\)\.substring\((\d+)\)/);
+                                if (stMatch) {
+                                    var finalUrl = 'https:' + stMatch[1] + stMatch[2].substring(parseInt(stMatch[3]));
+                                    str.push({ title: 'Streamtape', url: finalUrl });
+                                } else {
+                                    var m1 = stHtml.match(/getElementById\('robotlink'\)\.innerHTML\s*=\s*['"]([^'"]+)['"]/);
+                                    var m2 = stHtml.match(/\+ \('([^']+)'\)\.substring\(\d+\)/);
+                                    if (m1 && m2) {
+                                        str.push({ title: 'Streamtape', url: 'https:' + m1[1] + m2[1].substring(1) });
+                                    }
+                                }
+                                checkDone();
+                            }, checkDone);
+                        }
+                    }
                 },
                 
                 getMenu: function(doc, htmlText, element) {
@@ -901,7 +904,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     ];
                 }
             },
-
 
 
             // =========================================================================
