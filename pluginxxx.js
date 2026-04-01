@@ -7,11 +7,11 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.8',
+        version: '2.2.6',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
-g
+
     // Глобальна функція для авто-повтору завантаження картинок
     window.pluginx_handleImageRetry = function(img) {
         var maxRetries = 3; // Максимальна кількість спроб
@@ -509,7 +509,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
             // =========================================================================
-            // АДАПТЕР: PORNHUB
+            // АДАПТЕР: PORNHUB (DEKTOP-READY VERSION + AUTO-FALLBACK)
             // =========================================================================
             pornhub: {
                 title: 'Pornhub',
@@ -735,7 +735,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
 
-            // Адаптер AllPornStream
+            // =========================================================================
+            // АДАПТЕР: AllPornStream
+            // =========================================================================
 
             allpornstream: {
                 title: 'AllPornStream',
