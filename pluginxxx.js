@@ -509,7 +509,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
             // =========================================================================
-            // АДАПТЕР: PORNHUB (DEKTOP-READY VERSION + AUTO-FALLBACK)
+            // АДАПТЕР: PORNHUB
             // =========================================================================
             pornhub: {
                 title: 'Pornhub',
@@ -735,9 +735,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
             },
 
 
-            // =========================================================================
-            // АДАПТЕР: AllPornStream
-            // =========================================================================
+            // Адаптер AllPornStream
+
             allpornstream: {
                 title: 'AllPornStream',
                 domain: 'https://allpornstream.com',
@@ -750,7 +749,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     if (page > 1) {
                         var uParts = url.split('?');
                         var base = uParts[0];
-                        var query = uParts.length > 1 ? '&' + uParts[1].replace(/page=\d+&?/, '') : '';
+                        var query = uParts.length > 1 ? '&' + uParts[1].replace(/page=\d+&?/g, '') : '';
                         return base + '?page=' + page + query;
                     }
                     return url;
@@ -772,76 +771,73 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Шукаємо контейнери карток за їхніми унікальними атрибутами
-                    var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
-
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
-                        var title = el.getAttribute('data-title');
-                        
-                        // Якщо атрибутів раптом немає, підстрахуємось пошуком всередині
-                        if (!href) {
-                            var aEl = el.querySelector('a[href*="/post/"]');
-                            if (aEl) href = aEl.getAttribute('href');
-                        }
-                        if (!title) {
-                            var h2 = el.querySelector('h2');
-                            if (h2) title = (h2.textContent || '').trim();
-                        }
-                        
-                        if (!href || !title) continue;
-                        
-                        // Золота жила: дістаємо пряме посилання на картинку з data-images
-                        var img = '';
-                        var dataImages = el.getAttribute('data-images');
-                        if (dataImages) {
-                            try {
-                                var imgs = JSON.parse(dataImages);
-                                if (imgs && imgs.length > 0) img = imgs[0]; // Беремо першу найкращу
-                            } catch(e) {}
-                        }
-                        
-                        // Запасний варіант картинки через атрибут src
-                        if (!img) {
-                            var imgEl = el.querySelector('img');
-                            if (imgEl) {
-                                var rawSrc = imgEl.getAttribute('src') || '';
-                                if (rawSrc.indexOf('/api/images?src=') !== -1) {
-                                    try { img = decodeURIComponent(rawSrc.split('src=')[1].split('&')[0]); } catch(e) {}
-                                } else {
-                                    img = rawSrc;
+                    try {
+                        var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
+                        for (var i = 0; i < elements.length; i++) {
+                            var el = elements[i];
+                            var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
+                            var title = el.getAttribute('data-title');
+                            
+                            if (!href) {
+                                var aEl = el.querySelector('a[href*="/post/"]');
+                                if (aEl) href = aEl.getAttribute('href');
+                            }
+                            if (!title) {
+                                var h2 = el.querySelector('h2');
+                                if (h2) title = (h2.textContent || '').trim();
+                            }
+                            
+                            if (!href || !title) continue;
+                            
+                            var img = '';
+                            var dataImages = el.getAttribute('data-images');
+                            if (dataImages) {
+                                try {
+                                    var imgs = JSON.parse(dataImages);
+                                    if (imgs && imgs.length > 0) img = imgs[0];
+                                } catch(e) {}
+                            }
+                            
+                            if (!img) {
+                                var imgEl = el.querySelector('img');
+                                if (imgEl) {
+                                    var rawSrc = imgEl.getAttribute('src') || '';
+                                    if (rawSrc.indexOf('/api/images?src=') !== -1) {
+                                        try { img = decodeURIComponent(rawSrc.split('src=')[1].split('&')[0]); } catch(e) {}
+                                    } else {
+                                        img = rawSrc;
+                                    }
                                 }
                             }
-                        }
-                        
-                        // Шукаємо час відео у span
-                        var timeText = '';
-                        var spans = el.querySelectorAll('span');
-                        for (var s = 0; s < spans.length; s++) {
-                            var txt = (spans[s].textContent || '').trim();
-                            if (/^\d+:\d+(:\d+)?$/.test(txt)) {
-                                timeText = txt;
-                                break;
+                            
+                            var timeText = '';
+                            var spans = el.querySelectorAll('span');
+                            for (var s = 0; s < spans.length; s++) {
+                                var txt = (spans[s].textContent || '').trim();
+                                if (/^\d+:\d+(:\d+)?$/.test(txt)) {
+                                    timeText = txt;
+                                    break;
+                                }
                             }
+
+                            var vUrl = href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href;
+
+                            results.push({
+                                name: window.pluginx_formatTitle(title, timeText, '▶'),
+                                url: vUrl,
+                                picture: img,
+                                img: img
+                            });
                         }
-
-                        var vUrl = href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href;
-
-                        results.push({
-                            name: window.pluginx_formatTitle(title, timeText, '▶'),
-                            url: vUrl,
-                            picture: img,
-                            img: img
-                            // Ми навмисно прибрали is_grid: true, щоб Лампа використала базову кіношну сітку (main-grid)
-                        });
+                    } catch(e) {
+                        console.log('APS Parse error:', e);
                     }
                     return results;
                 },
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     Lampa.Noty.show('Пошук відео...');
-                    onError(); // Поки стоїть заглушка, наступним кроком зробимо плеєр
+                    onError();
                 },
                 
                 getMenu: function(doc, htmlText, element) {
@@ -849,8 +845,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         { title: '🔥 Схожі відео', action: 'sim', url: element.url }
                     ];
                 }
-            },
-    
+            }
 
 
             // =========================================================================
