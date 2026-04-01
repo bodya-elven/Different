@@ -11,7 +11,7 @@
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
-
+g
     // Глобальна функція для авто-повтору завантаження картинок
     window.pluginx_handleImageRetry = function(img) {
         var maxRetries = 3; // Максимальна кількість спроб
@@ -736,7 +736,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (Базовий HTML-парсер)
+            // АДАПТЕР: AllPornStream
             // =========================================================================
             allpornstream: {
                 title: 'AllPornStream',
@@ -762,51 +762,63 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getNavItems: function() {
                     return [
-                        { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/' }
+                        { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/' },
+                        { title: '🎬 Blacked', action: 'nav', url: this.domain + '/search?q=Blacked' },
+                        { title: '🎬 Tushy', action: 'nav', url: this.domain + '/search?q=Tushy' },
+                        { title: '🎬 Brazzers', action: 'nav', url: this.domain + '/search?q=Brazzers' },
+                        { title: '🎬 Vixen', action: 'nav', url: this.domain + '/search?q=Vixen' }
                     ];
                 },
                 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Шукаємо взагалі ВСІ посилання на сторінці
-                    var elements = doc.querySelectorAll('a');
-                    var added = []; 
+                    // Шукаємо контейнери карток за їхніми унікальними атрибутами
+                    var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
 
                     for (var i = 0; i < elements.length; i++) {
                         var el = elements[i];
-                        var href = el.getAttribute('href');
+                        var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
+                        var title = el.getAttribute('data-title');
                         
-                        // Відкидаємо пусті, якірні та службові посилання
-                        if (!href || href === '/' || href.indexOf('javascript') !== -1 || href.indexOf('?') !== -1) continue;
-                        if (added.indexOf(href) !== -1) continue; // Захист від дублів
-
-                        // Картка відео ОБОВ'ЯЗКОВО повинна мати картинку
-                        var imgEl = el.querySelector('img');
-                        if (!imgEl) continue; 
-
-                        // Шукаємо назву (в alt картинки або в самому посиланні)
-                        var title = imgEl.getAttribute('alt') || el.getAttribute('title') || (el.textContent || '').trim();
-                        // Відкидаємо сміття (наприклад, логотипи з коротким alt)
-                        if (!title || title.length < 4) continue;
-
-                        var img = imgEl.getAttribute('src') || '';
-
-                        // Обходимо захист картинок Next.js
-                        if (img.indexOf('/_next/image') !== -1 && img.indexOf('url=') !== -1) {
+                        // Якщо атрибутів раптом немає, підстрахуємось пошуком всередині
+                        if (!href) {
+                            var aEl = el.querySelector('a[href*="/post/"]');
+                            if (aEl) href = aEl.getAttribute('href');
+                        }
+                        if (!title) {
+                            var h2 = el.querySelector('h2');
+                            if (h2) title = (h2.textContent || '').trim();
+                        }
+                        
+                        if (!href || !title) continue;
+                        
+                        // Золота жила: дістаємо пряме посилання на картинку з data-images
+                        var img = '';
+                        var dataImages = el.getAttribute('data-images');
+                        if (dataImages) {
                             try {
-                                img = decodeURIComponent(img.split('url=')[1].split('&')[0]);
+                                var imgs = JSON.parse(dataImages);
+                                if (imgs && imgs.length > 0) img = imgs[0]; // Беремо першу найкращу
                             } catch(e) {}
                         }
                         
-                        // Робимо посилання абсолютними
-                        if (img && img.indexOf('/') === 0 && img.indexOf('//') !== 0) {
-                            img = this.domain + img;
+                        // Запасний варіант картинки через атрибут src
+                        if (!img) {
+                            var imgEl = el.querySelector('img');
+                            if (imgEl) {
+                                var rawSrc = imgEl.getAttribute('src') || '';
+                                if (rawSrc.indexOf('/api/images?src=') !== -1) {
+                                    try { img = decodeURIComponent(rawSrc.split('src=')[1].split('&')[0]); } catch(e) {}
+                                } else {
+                                    img = rawSrc;
+                                }
+                            }
                         }
-
-                        // Шукаємо час відео (зазвичай це span з текстом 00:00)
+                        
+                        // Шукаємо час відео у span
                         var timeText = '';
                         var spans = el.querySelectorAll('span');
-                        for(var s = 0; s < spans.length; s++) {
+                        for (var s = 0; s < spans.length; s++) {
                             var txt = (spans[s].textContent || '').trim();
                             if (/^\d+:\d+(:\d+)?$/.test(txt)) {
                                 timeText = txt;
@@ -820,17 +832,16 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             name: window.pluginx_formatTitle(title, timeText, '▶'),
                             url: vUrl,
                             picture: img,
-                            img: img,
-                            is_grid: true
+                            img: img
+                            // Ми навмисно прибрали is_grid: true, щоб Лампа використала базову кіношну сітку (main-grid)
                         });
-                        added.push(href);
                     }
                     return results;
                 },
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    Lampa.Noty.show('Знайдено відео. Перевірка плеєра...');
-                    onError();
+                    Lampa.Noty.show('Пошук відео...');
+                    onError(); // Поки стоїть заглушка, наступним кроком зробимо плеєр
                 },
                 
                 getMenu: function(doc, htmlText, element) {
@@ -839,6 +850,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     ];
                 }
             },
+
 
 
             // =========================================================================
