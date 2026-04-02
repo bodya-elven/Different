@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.3.0',
+        version: '2.3.1',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - FINAL COMPLETE VERSION
+            // АДАПТЕР: AllPornStream (APS) - WATERFALL INCLUDES MYDADDY
             // =========================================================================
 
             allpornstream: {
@@ -137,7 +137,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var results = [];
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
 
-                    // --- ПАРСИНГ МОДЕЛЕЙ ---
                     if (object.is_models || targetPath === '/actors') {
                         var mEls = doc.querySelectorAll('.grid > div.relative.flex.cursor-pointer, div.relative.flex.cursor-pointer.flex-col');
                         var processed = [];
@@ -150,7 +149,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             var urlM = linkM.getAttribute('href');
                             if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + urlM;
                             
-                            // Захист від дублювання
                             if (processed.indexOf(urlM) !== -1) continue;
                             processed.push(urlM);
                             
@@ -158,7 +156,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             var titleEl = elM.querySelector('.truncate');
                             var nameM = titleEl ? (titleEl.textContent || '').trim() : (imgM ? imgM.getAttribute('alt') : 'Model');
                             
-                            // Витягування оригінального фото в хорошій якості
                             var picture = '';
                             if (imgM) {
                                 var src = imgM.getAttribute('src') || imgM.getAttribute('srcset') || '';
@@ -171,7 +168,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 if (!picture && src) picture = src.split(' ')[0];
                             }
                             
-                            // Витягування кількості відео
                             var count = '';
                             var statBlocks = elM.querySelectorAll('.flex-col.items-center');
                             for (var s = 0; s < statBlocks.length; s++) {
@@ -193,9 +189,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 });
                             }
                         }
-                    } 
-                    // --- ПАРСИНГ ВІДЕО ---
-                    else {
+                    } else {
                         var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
                         for (var i = 0; i < elements.length; i++) {
                             var el = elements[i];
@@ -238,15 +232,30 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
+
+                    // --- 0. ОРИГІНАЛЬНИЙ PAGE URL ДЛЯ REFERER (Критично для MyDaddy) ---
+                    var pageUrl = element.url;
+                    var puMatch = htmlText.match(/"page_url"\\?:\s*\\?"(https?:.+?)\\?"/i);
+                    if (puMatch) pageUrl = puMatch[1].replace(/\\/g, '');
                     
-                    // 1. Зовнішні джерела
+                    // --- 1. Зовнішні джерела (link) ---
                     var regExternal = /\[\\?"([A-Z0-9]+)\\?",\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"\]/g;
                     var matchExt;
                     while ((matchExt = regExternal.exec(htmlText)) !== null) {
                         providers.push({ name: matchExt[1], url: matchExt[2].replace(/\\/g, '') });
                     }
 
-                    // 2. Прямі джерела (DIRECT)
+                    // --- 1.5 Iframe джерела (embed_url) - саме тут ховається MyDaddy ---
+                    var regIframe = /"embed_url"\\?:\s*\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"/g;
+                    var matchIframe;
+                    while ((matchIframe = regIframe.exec(htmlText)) !== null) {
+                        var eUrl = matchIframe[1].replace(/\\/g, '');
+                        if (eUrl.indexOf('mydaddy.cc') !== -1) {
+                            providers.push({ name: 'MYDADDY', url: eUrl });
+                        }
+                    }
+
+                    // --- 2. Прямі джерела (DIRECT) ---
                     var directStreams = [];
                     var regDirect = /\[(\d+),\\?"(https?:\\?\/\\?\/[^\\?"]+\.mp4)\\?"\]/g;
                     var matchDir;
@@ -262,12 +271,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         providers.push({ name: 'DIRECT', streams: directStreams });
                     }
 
-                    if (providers.length === 0) {
-                        return onError();
-                    }
+                    if (providers.length === 0) return onError();
 
-                    // 3. Водоспад
-                    var waterfall = ['VIDOZA', 'STREAMTAPE', 'DIRECT', 'VOE'];
+                    // --- 3. ВОДОСПАД ---
+                    var waterfall = ['VIDOZA', 'STREAMTAPE', 'DIRECT', 'MYDADDY', 'VOE'];
                     var currentIndex = 0;
 
                     function tryNextProvider() {
@@ -282,17 +289,24 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
                         
                         if (targetName === 'DIRECT') {
-                            var bestQuality = found.streams[0]; // Беремо найкращу після сортування
+                            var bestQuality = found.streams[0]; 
                             startPlayback([{
                                 title: bestQuality.title + ' (Direct)',
                                 url: bestQuality.url,
-                                headers: { 'Referer': element.url, 'User-Agent': 'Mozilla/5.0' }
+                                headers: { 'Referer': pageUrl, 'User-Agent': 'Mozilla/5.0' }
                             }]);
                             return;
                         }
 
+                        // MyDaddy потребує передачі Referer ще на етапі парсингу сторінки
+                        var customHeaders = {};
+                        if (targetName === 'MYDADDY') {
+                            customHeaders['Referer'] = pageUrl;
+                        }
+
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
+                            var mdStreams = []; // Масив для якостей MyDaddy
                             
                             if (targetName === 'VIDOZA') {
                                 var vMatch = embedHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
@@ -308,19 +322,46 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     if (robot) videoUrl = (robot[1].trim().indexOf('//') === 0 ? 'https:' : '') + robot[1].trim() + '&stream=1';
                                 }
                             }
+                            else if (targetName === 'MYDADDY') {
+                                // Парсинг за логікою Cloudstream (всі посилання на .mp4)
+                                var mp4Reg = /href=['"]([^'"]+\.mp4)['"]/ig;
+                                var mp4Match;
+                                while ((mp4Match = mp4Reg.exec(embedHtml)) !== null) {
+                                    var vUrl = mp4Match[1];
+                                    if (vUrl.indexOf('//') === 0) vUrl = 'https:' + vUrl;
+                                    
+                                    // Витягуємо якість (наприклад, 1080 з /1080.mp4)
+                                    var qMatch = vUrl.match(/\/(\d+)\.mp4$/);
+                                    var q = qMatch ? qMatch[1] : '0';
+                                    mdStreams.push({ title: q + 'p', url: vUrl });
+                                }
+                                
+                                if (mdStreams.length > 0) {
+                                    // Сортуємо від кращої до гіршої якості
+                                    mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
+                                    videoUrl = mdStreams[0].url;
+                                }
+                            }
                             else if (targetName === 'VOE') {
                                 var voeMatch = embedHtml.match(/["']hls["']\s*:\s*["']([^"']+)["']/i);
                                 if (voeMatch) videoUrl = voeMatch[1];
                             }
 
                             if (videoUrl) {
-                                startPlayback([{ title: targetName, url: videoUrl, headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } }]);
+                                startPlayback([{ 
+                                    title: targetName + (mdStreams.length > 0 ? ' (' + mdStreams[0].title + ')' : ''), 
+                                    url: videoUrl, 
+                                    headers: { 
+                                        'Referer': targetName === 'MYDADDY' ? pageUrl : found.url, 
+                                        'User-Agent': 'Mozilla/5.0' 
+                                    } 
+                                }]);
                             } else {
                                 currentIndex++; tryNextProvider();
                             }
                         }, function() {
                             currentIndex++; tryNextProvider();
-                        });
+                        }, customHeaders);
                     }
 
                     tryNextProvider();
@@ -330,7 +371,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var menu = [];
                     var _this = this;
 
-                    // --- 1. ІНФОРМАЦІЯ ПРО МОДЕЛЬ (Age, Born) ---
                     if (element.is_models) {
                         var infoBlocks = doc.querySelectorAll('.flex.flex-row.items-center.justify-between.gap-3');
                         for (var b = 0; b < infoBlocks.length; b++) {
@@ -342,19 +382,13 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var val = (valEl.textContent || '').trim();
                                 
                                 if ((label === 'Age' || label === 'Born') && val.toLowerCase().indexOf('unknown') === -1) {
-                                    menu.push({
-                                        title: label + ': ' + val,
-                                        action: 'none' // Робить пункт просто інформативним
-                                    });
+                                    menu.push({ title: label + ': ' + val, action: 'none' });
                                 }
                             }
                         }
-                        return menu; // Зупиняємо виконання (моделям не треба меню студій і схожих відео)
+                        return menu;
                     }
-
-                    // --- 2. ІНФОРМАЦІЯ ДЛЯ СТОРІНКИ ВІДЕО ---
                     
-                    // Моделі
                     var actors = doc.querySelectorAll('a[href*="/actors/"]');
                     for (var i = 0; i < actors.length; i++) {
                         var elA = actors[i];
@@ -366,7 +400,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
                     }
 
-                    // Студії
                     var studios = doc.querySelectorAll('a[href*="/producers/"]');
                     for (var j = 0; j < studios.length; j++) {
                         var sel = studios[j];
@@ -378,7 +411,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
                     }
 
-                    // Категорії
                     var categoriesExist = doc.querySelector('a[href*="/categories/"]');
                     if (categoriesExist) {
                         menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: 'a[href*="/categories/"] button' });
@@ -388,7 +420,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return menu;
                 }
             },
-
 
 
       // ======================================
