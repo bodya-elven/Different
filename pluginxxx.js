@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.3.2',
+        version: '2.3.3',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - FINAL VERSION (MYDADDY + REGEXP MENU)
+            // АДАПТЕР: AllPornStream (APS) - FIXED NETWORK METHOD
             // =========================================================================
 
             allpornstream: {
@@ -298,7 +298,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         if (targetName === 'MYDADDY') {
                             var network = new Lampa.Reguest();
                             network.timeout(15000);
-                            network.request(found.url, function(embedHtml) {
+                            
+                            // ВИПРАВЛЕНО ТУТ: використовуємо .silent() замість .request()
+                            network.silent(found.url, function(embedHtml) {
                                 var mdStreams = [];
                                 var mp4Reg = /<a[^>]*href=['"]([^'"]+)['"]/ig;
                                 var mp4Match;
@@ -373,7 +375,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var menu = [];
                     var _this = this;
 
-                    // Парсинг Age та Born через регулярні вирази
                     if (element.is_models) {
                         var ageMatch = htmlText.match(/>\s*Age\s*<\/div><\/div><div[^>]*>([^<]+)/i);
                         if (ageMatch && ageMatch[1].toLowerCase().indexOf('unknown') === -1) {
