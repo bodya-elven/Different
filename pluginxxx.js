@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.8',
+        version: '2.2.9',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - WITH CONTEXT MENU (Models, Studios, Cats)
+            // АДАПТЕР: AllPornStream
             // =========================================================================
 
             allpornstream: {
@@ -139,6 +139,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var el = elements[i];
                         var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
                         var title = el.getAttribute('data-title') || (el.querySelector('h2') ? el.querySelector('h2').textContent : '');
+                        
                         if (!href || !title) continue;
                         
                         var img = '';
@@ -149,6 +150,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 if (imgs.length) img = imgs[0]; 
                             } catch(e) {}
                         }
+                        
                         if (!img) {
                             var imgEl = el.querySelector('img');
                             if (imgEl) img = imgEl.getAttribute('src') || '';
@@ -173,10 +175,34 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
-                    var reg = /\[\\?"([A-Z0-9]+)\\?",\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"\]/g;
-                    var match;
-                    while ((match = reg.exec(htmlText)) !== null) {
-                        providers.push({ name: match[1], url: match[2].replace(/\\/g, '') });
+                    
+                    // 1. Парсинг зовнішніх джерел (link)
+                    var regExternal = /\[\\?"([A-Z0-9]+)\\?",\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"\]/g;
+                    var matchExt;
+                    while ((matchExt = regExternal.exec(htmlText)) !== null) {
+                        providers.push({
+                            name: matchExt[1],
+                            url: matchExt[2].replace(/\\/g, '')
+                        });
+                    }
+
+                    // 2. Парсинг прямих джерел (direct)
+                    var directStreams = [];
+                    var regDirect = /\[(\d+),\\?"(https?:\\?\/\\?\/[^\\?"]+\.mp4)\\?"\]/g;
+                    var matchDir;
+                    while ((matchDir = regDirect.exec(htmlText)) !== null) {
+                        directStreams.push({
+                            title: matchDir[1] + 'p',
+                            url: matchDir[2].replace(/\\/g, '')
+                        });
+                    }
+
+                    if (directStreams.length > 0) {
+                        // Сортуємо якості від найвищої до найнижчої
+                        directStreams.sort(function(a, b) { 
+                            return parseInt(b.title) - parseInt(a.title); 
+                        });
+                        providers.push({ name: 'DIRECT', streams: directStreams });
                     }
 
                     if (providers.length === 0) {
@@ -184,24 +210,39 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         return onError();
                     }
 
-                    var waterfall = ['VIDOZA', 'STREAMTAPE', 'VOE'];
+                    // 3. Безшумний Водоспад (Vidoza -> Streamtape -> DIRECT -> VOE)
+                    var waterfall = ['VIDOZA', 'STREAMTAPE', 'DIRECT', 'VOE'];
                     var currentIndex = 0;
 
                     function tryNextProvider() {
                         if (currentIndex >= waterfall.length) {
-                            Lampa.Noty.show('Жодне джерело не працює');
+                            Lampa.Noty.show('Не вдалося витягти жодне відео');
                             return onError();
                         }
 
                         var targetName = waterfall[currentIndex];
                         var found = providers.find(function(p) { return p.name === targetName; });
 
-                        if (!found) { currentIndex++; return tryNextProvider(); }
-
-                        Lampa.Noty.show('Спроба: ' + targetName);
+                        if (!found) {
+                            currentIndex++;
+                            return tryNextProvider();
+                        }
                         
+                        // Якщо це DIRECT - беремо тільки НАЙКРАЩУ якість і відразу віддаємо в плеєр
+                        if (targetName === 'DIRECT') {
+                            var bestQuality = found.streams[0];
+                            startPlayback([{
+                                title: bestQuality.title + ' (Direct)',
+                                url: bestQuality.url,
+                                headers: { 'Referer': element.url, 'User-Agent': 'Mozilla/5.0' }
+                            }]);
+                            return;
+                        }
+
+                        // Якщо це зовнішнє джерело - робимо запит
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
+                            
                             if (targetName === 'VIDOZA') {
                                 var vMatch = embedHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
                                 if (vMatch) videoUrl = vMatch[1];
@@ -211,6 +252,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 if (tapeMatch) {
                                     var cleanPath = tapeMatch[2].substring(parseInt(tapeMatch[3])).substring(tapeMatch[4] ? parseInt(tapeMatch[4]) : 0);
                                     videoUrl = (tapeMatch[1].indexOf('//') === 0 ? 'https:' : '') + tapeMatch[1] + cleanPath + '&stream=1';
+                                } else {
+                                    var robot = embedHtml.match(/id=['"][^'"]*link['"][^>]*>([^<]+)/i);
+                                    if (robot) videoUrl = (robot[1].trim().indexOf('//') === 0 ? 'https:' : '') + robot[1].trim() + '&stream=1';
                                 }
                             }
                             else if (targetName === 'VOE') {
@@ -219,12 +263,21 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
 
                             if (videoUrl) {
-                                startPlayback([{ title: targetName, url: videoUrl, headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } }]);
+                                startPlayback([{ 
+                                    title: targetName, 
+                                    url: videoUrl, 
+                                    headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } 
+                                }]);
                             } else {
-                                currentIndex++; tryNextProvider();
+                                currentIndex++;
+                                tryNextProvider();
                             }
-                        }, function() { currentIndex++; tryNextProvider(); });
+                        }, function() {
+                            currentIndex++;
+                            tryNextProvider();
+                        });
                     }
+
                     tryNextProvider();
                 },
                 
@@ -232,25 +285,19 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var menu = [];
                     var _this = this;
 
-                    // 1. ПАРСИНГ МОДЕЛЕЙ (Actors)
-                    // Шукаємо посилання, що містять /actors/, і всередині беремо текст саме з повним ім'ям
+                    // Моделі
                     var actors = doc.querySelectorAll('a[href*="/actors/"]');
                     for (var i = 0; i < actors.length; i++) {
                         var el = actors[i];
-                        var nameEl = el.querySelector('span.text-foreground'); // Саме цей клас містить повне ім'я
+                        var nameEl = el.querySelector('span.text-foreground');
                         var title = nameEl ? (nameEl.textContent || '').trim() : '';
                         var url = el.getAttribute('href');
                         if (title && url) {
-                            menu.push({ 
-                                title: '👸 ' + title, 
-                                action: 'direct', 
-                                url: url.startsWith('http') ? url : _this.domain + url 
-                            });
+                            menu.push({ title: '👸 ' + title, action: 'direct', url: url.startsWith('http') ? url : _this.domain + url });
                         }
                     }
 
-                    // 2. ПАРСИНГ СТУДІЙ (Producers)
-                    // Аналогічна логіка для студій
+                    // Студії
                     var studios = doc.querySelectorAll('a[href*="/producers/"]');
                     for (var j = 0; j < studios.length; j++) {
                         var sel = studios[j];
@@ -258,30 +305,21 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var sTitle = studioNameEl ? (studioNameEl.textContent || '').trim() : '';
                         var sUrl = sel.getAttribute('href');
                         if (sTitle && sUrl) {
-                            menu.push({ 
-                                title: '🎬 ' + sTitle, 
-                                action: 'direct', 
-                                url: sUrl.startsWith('http') ? sUrl : _this.domain + sUrl 
-                            });
+                            menu.push({ title: '🎬 ' + sTitle, action: 'direct', url: sUrl.startsWith('http') ? sUrl : _this.domain + sUrl });
                         }
                     }
 
-                    // 3. КАТЕГОРІЇ (Теги)
-                    // Беремо текст безпосередньо з кнопок всередині посилань на категорії
+                    // Категорії
                     var categoriesExist = doc.querySelector('a[href*="/categories/"]');
                     if (categoriesExist) {
-                        menu.push({ 
-                            title: '🗄️ Категорії', 
-                            action: 'cats_custom', 
-                            sel: 'a[href*="/categories/"] button' 
-                        });
+                        menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: 'a[href*="/categories/"] button' });
                     }
 
                     menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
-
             },
+
 
 
       // ======================================
