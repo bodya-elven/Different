@@ -736,7 +736,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
 
             // ==========================================
-            // АДАПТЕР: AllPornStream (APS)
+            // АДАПТЕР: AllPornStream (APS) - FIXED VERSION
             // ==========================================
 
             allpornstream: {
@@ -771,7 +771,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Парсинг карток через атрибути Next.js
                     var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
                     for (var i = 0; i < elements.length; i++) {
                         var el = elements[i];
@@ -783,7 +782,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var img = '';
                         var dataImages = el.getAttribute('data-images');
                         if (dataImages) {
-                            try { var imgs = JSON.parse(dataImages); if (imgs.length) img = imgs[0]; } catch(e) {}
+                            try { 
+                                var imgs = JSON.parse(dataImages.replace(/\\"/g, '"')); 
+                                if (imgs.length) img = imgs[0]; 
+                            } catch(e) {}
                         }
                         
                         if (!img) {
@@ -809,69 +811,76 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 },
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    var _this = this;
-                    // Витягуємо масив посилань на плеєри з JSON
-                    var videoUrlsMatch = htmlText.match(/video_urls["']\s*:\s*\{["']link["']\s*:\s*(\[\[.*?\]\])/);
+                    // 1. Шукаємо масив посилань. В Next.js вони екрановані: \"link\":[[...]]
+                    var videoUrlsMatch = htmlText.match(/video_urls\\?":\{"link\\?":\s*(\\?\[\\?\[.*?\\?\]\\?\])/);
                     
                     if (videoUrlsMatch) {
                         try {
-                            var links = JSON.parse(videoUrlsMatch[1]); // [["STREAMTAPE","url"], ["VIDOZA","url"]...]
-                            var items = links.map(function(l) { return { title: l[0], url: l[1] }; });
+                            // Очищаємо JSON від подвійного екранування лапок
+                            var rawJson = videoUrlsMatch[1].replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+                            var links = JSON.parse(rawJson); 
+
+                            if (!Array.isArray(links) || links.length === 0) {
+                                Lampa.Noty.show('Джерела не знайдені');
+                                return onError();
+                            }
+
+                            var selectItems = [];
+                            for (var i = 0; i < links.length; i++) {
+                                selectItems.push({ title: links[i][0], url: links[i][1] });
+                            }
 
                             Lampa.Select.show({
-                                title: 'Джерело відео',
-                                items: items,
+                                title: 'Виберіть джерело',
+                                items: selectItems,
                                 onSelect: function(item) {
-                                    Lampa.Noty.show('З'єднання з ' + item.title);
+                                    Lampa.Noty.show('Запит до ' + item.title);
                                     
                                     window.pluginx_smartRequest(item.url, function(embedHtml) {
                                         var videoUrl = '';
                                         
                                         if (item.title === 'VIDOZA') {
-                                            // Парсинг прямого mp4 з window.pData
-                                            var vMatch = embedHtml.match(/sourcesCode:\s*\[\{\s*src:\s*["']([^"']+)["']/);
+                                            // Шукаємо src всередині sourcesCode: [{ src: "..." }]
+                                            var vMatch = embedHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
                                             if (vMatch) videoUrl = vMatch[1];
                                         } 
                                         else if (item.title === 'STREAMTAPE') {
-                                            // Деобфускація посилання (відтворення логіки скрипта)
-                                            var botLink = embedHtml.match(/id=['"]robotlink['"][^>]*>([^<]+)/);
-                                            if (botLink) {
-                                                // Витягуємо частину токена через substring як у скрипті
-                                                var rawPath = embedHtml.match(/\('xcd[oa]\?id=[^']+'\)\.substring\((\d+)\)\.substring\((\d+)\)/);
-                                                if (rawPath) {
-                                                    var part = botLink[1].split('?')[0].replace('get_vide', 'get_video');
-                                                    var params = botLink[1].split('?')[1];
-                                                    videoUrl = 'https:' + part + '?' + params + '&stream=1';
-                                                } else {
-                                                    videoUrl = 'https:' + botLink[1] + '&stream=1';
-                                                }
+                                            // Шукаємо текст всередині <div id="robotlink">...</div>
+                                            var robot = embedHtml.match(/id="robotlink"[^>]*>([^<]+)/);
+                                            if (robot) {
+                                                videoUrl = (robot[1].indexOf('http') === 0 ? '' : 'https:') + robot[1] + '&stream=1';
                                             }
                                         }
                                         else if (item.title === 'VOE') {
-                                            var voeMatch = embedHtml.match(/["']hls["']\s*:\s*["']([^"']+)["']/);
+                                            var voeMatch = embedHtml.match(/["']hls["']\s*:\s*["']([^"']+)["']/i);
                                             if (voeMatch) videoUrl = voeMatch[1];
                                         }
                                         else if (item.title === 'DOODSTREAM') {
+                                            // Для Doodstream зазвичай потрібен резолвер, але спробуємо знайти хоч щось
                                             var doodMatch = embedHtml.match(/pass_md5\/([^'"]+)/);
-                                            if (doodMatch) {
-                                                // Doodstream складний, зазвичай потребує другого запиту до /pass_md5/
-                                                videoUrl = item.url; 
-                                            }
+                                            if (doodMatch) videoUrl = item.url; 
                                         }
 
                                         if (videoUrl) {
-                                            startPlayback([{ title: item.title, url: videoUrl, headers: { 'Referer': item.url } }]);
+                                            startPlayback([{ 
+                                                title: item.title, 
+                                                url: videoUrl, 
+                                                headers: { 'Referer': item.url, 'User-Agent': 'Mozilla/5.0' } 
+                                            }]);
                                         } else {
-                                            Lampa.Noty.show('Не вдалося витягти посилання');
+                                            Lampa.Noty.show('Не вдалося витягти пряме посилання');
                                             onError();
                                         }
                                     }, onError);
                                 },
                                 onBack: function() { Lampa.Controller.toggle('content'); }
                             });
-                        } catch (e) { onError(); }
+                        } catch (e) { 
+                            console.log('CatalogX APS Error:', e);
+                            onError(); 
+                        }
                     } else {
-                        Lampa.Noty.show('Відео посилання не знайдені');
+                        Lampa.Noty.show('Блок посилань не знайдено');
                         onError();
                     }
                 },
@@ -880,6 +889,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return [{ title: '🔥 Схожі відео', action: 'sim', url: element.url }];
                 }
             },
+
 
 
             // =========================================================================
