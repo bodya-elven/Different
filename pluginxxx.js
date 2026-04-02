@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.2.9',
+        version: '2.3.0',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream
+            // АДАПТЕР: AllPornStream (APS) - FINAL COMPLETE VERSION
             // =========================================================================
 
             allpornstream: {
@@ -126,6 +126,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 getNavItems: function() {
                     return [
                         { title: '🎥 Всі відео', action: 'nav', url: this.domain + '/' },
+                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/actors', is_models: true },
                         { title: '🎬 Blacked', action: 'nav', url: this.domain + '/search?q=Blacked' },
                         { title: '🎬 Vixen', action: 'nav', url: this.domain + '/search?q=Vixen' },
                         { title: '🎬 Brazzers', action: 'nav', url: this.domain + '/search?q=Brazzers' }
@@ -134,41 +135,103 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
-                        var title = el.getAttribute('data-title') || (el.querySelector('h2') ? el.querySelector('h2').textContent : '');
-                        
-                        if (!href || !title) continue;
-                        
-                        var img = '';
-                        var dataImages = el.getAttribute('data-images');
-                        if (dataImages) {
-                            try { 
-                                var imgs = JSON.parse(dataImages.replace(/\\"/g, '"')); 
-                                if (imgs.length) img = imgs[0]; 
-                            } catch(e) {}
-                        }
-                        
-                        if (!img) {
-                            var imgEl = el.querySelector('img');
-                            if (imgEl) img = imgEl.getAttribute('src') || '';
-                        }
-                        
-                        var time = '';
-                        var spans = el.querySelectorAll('span');
-                        for (var s = 0; s < spans.length; s++) {
-                            var txt = (spans[s].textContent || '').trim();
-                            if (/^\d+:\d+/.test(txt)) { time = txt; break; }
-                        }
+                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
 
-                        results.push({
-                            name: window.pluginx_formatTitle(title, time, '▶'),
-                            url: href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href,
-                            picture: img,
-                            img: img
-                        });
+                    // --- ПАРСИНГ МОДЕЛЕЙ ---
+                    if (object.is_models || targetPath === '/actors') {
+                        var mEls = doc.querySelectorAll('.grid > div.relative.flex.cursor-pointer, div.relative.flex.cursor-pointer.flex-col');
+                        var processed = [];
+                        
+                        for (var m = 0; m < mEls.length; m++) {
+                            var elM = mEls[m];
+                            var linkM = elM.querySelector('a[href^="/actors/"]');
+                            if (!linkM) continue;
+                            
+                            var urlM = linkM.getAttribute('href');
+                            if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + urlM;
+                            
+                            // Захист від дублювання
+                            if (processed.indexOf(urlM) !== -1) continue;
+                            processed.push(urlM);
+                            
+                            var imgM = elM.querySelector('img');
+                            var titleEl = elM.querySelector('.truncate');
+                            var nameM = titleEl ? (titleEl.textContent || '').trim() : (imgM ? imgM.getAttribute('alt') : 'Model');
+                            
+                            // Витягування оригінального фото в хорошій якості
+                            var picture = '';
+                            if (imgM) {
+                                var src = imgM.getAttribute('src') || imgM.getAttribute('srcset') || '';
+                                if (src.indexOf('/api/images?src=') !== -1) {
+                                    try {
+                                        var match = src.match(/src=([^&]+)/);
+                                        if (match) picture = decodeURIComponent(match[1]);
+                                    } catch(e) {}
+                                }
+                                if (!picture && src) picture = src.split(' ')[0];
+                            }
+                            
+                            // Витягування кількості відео
+                            var count = '';
+                            var statBlocks = elM.querySelectorAll('.flex-col.items-center');
+                            for (var s = 0; s < statBlocks.length; s++) {
+                                if ((statBlocks[s].textContent || '').indexOf('Videos') !== -1) {
+                                    var countSpan = statBlocks[s].querySelector('span');
+                                    if (countSpan) count = (countSpan.textContent || '').trim();
+                                    break;
+                                }
+                            }
+                            
+                            if (nameM && urlM) {
+                                results.push({
+                                    name: window.pluginx_formatTitle(nameM, count, '☰'),
+                                    url: urlM,
+                                    picture: picture,
+                                    img: picture,
+                                    is_grid: true,
+                                    is_models: true
+                                });
+                            }
+                        }
+                    } 
+                    // --- ПАРСИНГ ВІДЕО ---
+                    else {
+                        var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
+                        for (var i = 0; i < elements.length; i++) {
+                            var el = elements[i];
+                            var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
+                            var title = el.getAttribute('data-title') || (el.querySelector('h2') ? el.querySelector('h2').textContent : '');
+                            
+                            if (!href || !title) continue;
+                            
+                            var img = '';
+                            var dataImages = el.getAttribute('data-images');
+                            if (dataImages) {
+                                try { 
+                                    var imgs = JSON.parse(dataImages.replace(/\\"/g, '"')); 
+                                    if (imgs.length) img = imgs[0]; 
+                                } catch(e) {}
+                            }
+                            
+                            if (!img) {
+                                var imgEl = el.querySelector('img');
+                                if (imgEl) img = imgEl.getAttribute('src') || '';
+                            }
+                            
+                            var time = '';
+                            var spans = el.querySelectorAll('span');
+                            for (var sp = 0; sp < spans.length; sp++) {
+                                var txt = (spans[sp].textContent || '').trim();
+                                if (/^\d+:\d+/.test(txt)) { time = txt; break; }
+                            }
+
+                            results.push({
+                                name: window.pluginx_formatTitle(title, time, '▶'),
+                                url: href.indexOf('http') === 0 ? href : this.domain + (href.indexOf('/') === 0 ? '' : '/') + href,
+                                picture: img,
+                                img: img
+                            });
+                        }
                     }
                     return results;
                 },
@@ -176,17 +239,14 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
                     
-                    // 1. Парсинг зовнішніх джерел (link)
+                    // 1. Зовнішні джерела
                     var regExternal = /\[\\?"([A-Z0-9]+)\\?",\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"\]/g;
                     var matchExt;
                     while ((matchExt = regExternal.exec(htmlText)) !== null) {
-                        providers.push({
-                            name: matchExt[1],
-                            url: matchExt[2].replace(/\\/g, '')
-                        });
+                        providers.push({ name: matchExt[1], url: matchExt[2].replace(/\\/g, '') });
                     }
 
-                    // 2. Парсинг прямих джерел (direct)
+                    // 2. Прямі джерела (DIRECT)
                     var directStreams = [];
                     var regDirect = /\[(\d+),\\?"(https?:\\?\/\\?\/[^\\?"]+\.mp4)\\?"\]/g;
                     var matchDir;
@@ -198,27 +258,20 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     }
 
                     if (directStreams.length > 0) {
-                        // Сортуємо якості від найвищої до найнижчої
-                        directStreams.sort(function(a, b) { 
-                            return parseInt(b.title) - parseInt(a.title); 
-                        });
+                        directStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
                         providers.push({ name: 'DIRECT', streams: directStreams });
                     }
 
                     if (providers.length === 0) {
-                        Lampa.Noty.show('Джерела не знайдені');
                         return onError();
                     }
 
-                    // 3. Безшумний Водоспад (Vidoza -> Streamtape -> DIRECT -> VOE)
+                    // 3. Водоспад
                     var waterfall = ['VIDOZA', 'STREAMTAPE', 'DIRECT', 'VOE'];
                     var currentIndex = 0;
 
                     function tryNextProvider() {
-                        if (currentIndex >= waterfall.length) {
-                            Lampa.Noty.show('Не вдалося витягти жодне відео');
-                            return onError();
-                        }
+                        if (currentIndex >= waterfall.length) return onError();
 
                         var targetName = waterfall[currentIndex];
                         var found = providers.find(function(p) { return p.name === targetName; });
@@ -228,9 +281,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             return tryNextProvider();
                         }
                         
-                        // Якщо це DIRECT - беремо тільки НАЙКРАЩУ якість і відразу віддаємо в плеєр
                         if (targetName === 'DIRECT') {
-                            var bestQuality = found.streams[0];
+                            var bestQuality = found.streams[0]; // Беремо найкращу після сортування
                             startPlayback([{
                                 title: bestQuality.title + ' (Direct)',
                                 url: bestQuality.url,
@@ -239,7 +291,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             return;
                         }
 
-                        // Якщо це зовнішнє джерело - робимо запит
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
                             
@@ -263,18 +314,12 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
 
                             if (videoUrl) {
-                                startPlayback([{ 
-                                    title: targetName, 
-                                    url: videoUrl, 
-                                    headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } 
-                                }]);
+                                startPlayback([{ title: targetName, url: videoUrl, headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } }]);
                             } else {
-                                currentIndex++;
-                                tryNextProvider();
+                                currentIndex++; tryNextProvider();
                             }
                         }, function() {
-                            currentIndex++;
-                            tryNextProvider();
+                            currentIndex++; tryNextProvider();
                         });
                     }
 
@@ -285,15 +330,39 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var menu = [];
                     var _this = this;
 
+                    // --- 1. ІНФОРМАЦІЯ ПРО МОДЕЛЬ (Age, Born) ---
+                    if (element.is_models) {
+                        var infoBlocks = doc.querySelectorAll('.flex.flex-row.items-center.justify-between.gap-3');
+                        for (var b = 0; b < infoBlocks.length; b++) {
+                            var labelEl = infoBlocks[b].querySelector('.text-secondary-foreground');
+                            var valEl = infoBlocks[b].querySelector('.overflow-hidden.text-ellipsis.whitespace-nowrap');
+                            
+                            if (labelEl && valEl) {
+                                var label = (labelEl.textContent || '').trim();
+                                var val = (valEl.textContent || '').trim();
+                                
+                                if ((label === 'Age' || label === 'Born') && val.toLowerCase().indexOf('unknown') === -1) {
+                                    menu.push({
+                                        title: label + ': ' + val,
+                                        action: 'none' // Робить пункт просто інформативним
+                                    });
+                                }
+                            }
+                        }
+                        return menu; // Зупиняємо виконання (моделям не треба меню студій і схожих відео)
+                    }
+
+                    // --- 2. ІНФОРМАЦІЯ ДЛЯ СТОРІНКИ ВІДЕО ---
+                    
                     // Моделі
                     var actors = doc.querySelectorAll('a[href*="/actors/"]');
                     for (var i = 0; i < actors.length; i++) {
-                        var el = actors[i];
-                        var nameEl = el.querySelector('span.text-foreground');
-                        var title = nameEl ? (nameEl.textContent || '').trim() : '';
-                        var url = el.getAttribute('href');
-                        if (title && url) {
-                            menu.push({ title: '👸 ' + title, action: 'direct', url: url.startsWith('http') ? url : _this.domain + url });
+                        var elA = actors[i];
+                        var nameEl = elA.querySelector('span.text-foreground');
+                        var titleA = nameEl ? (nameEl.textContent || '').trim() : '';
+                        var urlA = elA.getAttribute('href');
+                        if (titleA && urlA) {
+                            menu.push({ title: '👸 ' + titleA, action: 'direct', url: urlA.startsWith('http') ? urlA : _this.domain + urlA });
                         }
                     }
 
