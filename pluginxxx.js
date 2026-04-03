@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - MOBILE UA & FALLBACK LOGIC
+            // АДАПТЕР: AllPornStream (APS) - MOBILE UA & FALLBACK LOGIC (FIXED SYNTAX)
             // =========================================================================
 
             allpornstream: {
@@ -337,8 +337,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     var mdStreams = [];
                                     var cleanEmbed = embedHtml.replace(/\\"/g, '"').replace(/\\\//g, '/');
                                     
-                                    // Метод 1: Прямі посилання
-                                    var mp4Reg = /\/\/[a-zA-Z0-9.\-_/]+\.mp4/ig;
+                                    // Метод 1: Прямі посилання (ТУТ БУЛА ПОМИЛКА: заекрановано \/ у квадратних дужках)
+                                    var mp4Reg = /\/\/[a-zA-Z0-9.\-_\/]+\.mp4/ig;
                                     var matches = cleanEmbed.match(mp4Reg);
                                     if (matches) {
                                         for (var k = 0; k < matches.length; k++) {
@@ -446,7 +446,28 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         if (titleA && urlA) {
                             menu.push({ title: '👸 ' + titleA, action: 'direct', url: urlA.startsWith('http') ? urlA : this.domain + urlA });
                         }
+                    }
 
+                    var studios = doc.querySelectorAll('a[href*="/producers/"]');
+                    for (var j = 0; j < studios.length; j++) {
+                        var sel = studios[j];
+                        var studioNameEl = sel.querySelector('span.text-foreground');
+                        var sTitle = studioNameEl ? (studioNameEl.textContent || '').trim() : '';
+                        var sUrl = sel.getAttribute('href');
+                        if (sTitle && sUrl) {
+                            menu.push({ title: '🎬 ' + sTitle, action: 'direct', url: sUrl.startsWith('http') ? sUrl : this.domain + sUrl });
+                        }
+                    }
+
+                    var categoriesExist = doc.querySelector('a[href*="/categories/"]');
+                    if (categoriesExist) {
+                        menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: 'a[href*="/categories/"] button' });
+                    }
+
+                    menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
+                    return menu;
+                }
+            },
 
 
       // ======================================
