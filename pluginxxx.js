@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.3.9',
+        version: '2.4.0',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -311,58 +311,107 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             return;
                         }
 
-                        if (targetName === 'MYDADDY') {
-                            var network = new Lampa.Reguest();
-                            network.timeout(15000);
-                            
-                            network.silent(found.url, function(embedHtml) {
-                                var mdStreams = [];
-                                
-                                // НАЙПРОСТІШИЙ ПАРСЕР "ГРУБОЇ СИЛИ"
-                                // Шукає //, потім будь-які букви, цифри, крапки, тире, підкреслення чи слеші, і закінчується на .mp4
-                                var mp4Reg = /\/\/[a-zA-Z0-9.\-_/]+\.mp4/ig;
-                                var matches = embedHtml.match(mp4Reg);
-                                
-                                if (matches) {
-                                    for (var k = 0; k < matches.length; k++) {
-                                        var vUrl = matches[k];
-                                        
-                                        // Приклеюємо https:
-                                        if (vUrl.indexOf('//') === 0) {
-                                            vUrl = 'https:' + vUrl;
-                                        }
-                                        
-                                        // Витягуємо цифри якості з назви файлу
-                                        var qMatch = vUrl.match(/\/(\d+)\.mp4$/i);
-                                        var q = qMatch ? qMatch[1] : 'Unknown';
-                                        
-                                        // Уникаємо дублікатів
-                                        var exists = mdStreams.find(function(item) { return item.url === vUrl; });
-                                        if (!exists) {
-                                            mdStreams.push({ title: q + 'p', url: vUrl });
-                                        }
-                                    }
-                                }
-                                
-                                if (mdStreams.length > 0) {
-                                    // Сортуємо 1080 -> 720 -> 360
-                                    mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                                    
-                                    // Відправляємо ГОЛЕ посилання, без headers, без Referer
-                                    startPlayback([{ 
-                                        title: 'MYDADDY (' + mdStreams[0].title + ')', 
-                                        url: mdStreams[0].url
-                                    }]);
-                                } else {
-                                    currentIndex++; tryNextProvider();
-                                }
-                            }, function() {
-                                currentIndex++; tryNextProvider();
-                            }, false, { headers: { 'Referer': pageUrl } });
-                            
-                            return; 
-                        }
+if (targetName === 'MYDADDY') {
+    var network = new Lampa.Reguest();
+    network.timeout(15000);
 
+    network.silent(found.url, function(embedHtml) {
+        var mdStreams = [];
+
+        try {
+            // 1. ОЧИЩАЄМО HTML ВІД ESCAPE-СМІТТЯ
+            var cleanHtml = embedHtml
+                .replace(/\\"/g, '"')
+                .replace(/\\\//g, '/')
+                .replace(/\\\\/g, '\\');
+
+            // 2. ОСНОВНИЙ ПАРСИНГ: <source src="...mp4">
+            var sourceReg = /<source[^>]+src="([^"]+\.mp4[^"]*)"/ig;
+            var match;
+
+            while ((match = sourceReg.exec(cleanHtml)) !== null) {
+                var url = match[1];
+
+                if (url.indexOf('//') === 0) url = 'https:' + url;
+
+                var qMatch = url.match(/\/(\d+)\.mp4/i);
+                var q = qMatch ? qMatch[1] : 'Unknown';
+
+                if (!mdStreams.find(function(s) { return s.url === url; })) {
+                    mdStreams.push({ title: q + 'p', url: url });
+                }
+            }
+
+            // 3. FALLBACK: <a href="...mp4">
+            if (mdStreams.length === 0) {
+                var linkReg = /href=['"]([^'"]+\.mp4[^'"]*)['"]/ig;
+                while ((match = linkReg.exec(cleanHtml)) !== null) {
+                    var url = match[1];
+
+                    if (url.indexOf('//') === 0) url = 'https:' + url;
+
+                    var qMatch = url.match(/\/(\d+)\.mp4/i);
+                    var q = qMatch ? qMatch[1] : 'Unknown';
+
+                    if (!mdStreams.find(function(s) { return s.url === url; })) {
+                        mdStreams.push({ title: q + 'p', url: url });
+                    }
+                }
+            }
+
+            // 4. FALLBACK №2: ГРУБИЙ (як у тебе, але після очистки)
+            if (mdStreams.length === 0) {
+                var rawReg = /https?:\/\/[^"' ]+\.mp4[^"' ]*/ig;
+                var rawMatches = cleanHtml.match(rawReg);
+
+                if (rawMatches) {
+                    for (var i = 0; i < rawMatches.length; i++) {
+                        var url = rawMatches[i];
+
+                        var qMatch = url.match(/\/(\d+)\.mp4/i);
+                        var q = qMatch ? qMatch[1] : 'Unknown';
+
+                        if (!mdStreams.find(function(s) { return s.url === url; })) {
+                            mdStreams.push({ title: q + 'p', url: url });
+                        }
+                    }
+                }
+            }
+
+            // 5. ЯКЩО ЗНАЙШЛИ — СОРТУЄМО І ВІДДАЄМО
+            if (mdStreams.length > 0) {
+                mdStreams.sort(function(a, b) {
+                    return parseInt(b.title) - parseInt(a.title);
+                });
+
+                startPlayback([{
+                    title: 'MYDADDY (' + mdStreams[0].title + ')',
+                    url: mdStreams[0].url
+                }]);
+            } else {
+                console.log('MYDADDY: streams not found');
+                currentIndex++; 
+                tryNextProvider();
+            }
+
+        } catch (e) {
+            console.log('MYDADDY PARSE ERROR:', e);
+            currentIndex++; 
+            tryNextProvider();
+        }
+
+    }, function() {
+        currentIndex++; 
+        tryNextProvider();
+    }, false, {
+        headers: {
+            'Referer': 'https://mydaddy.cc/',
+            'Origin': 'https://mydaddy.cc'
+        }
+    });
+
+    return;
+}
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
                             if (targetName === 'VIDOZA') {
