@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.3.8',
+        version: '2.3.9',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream 
+            // АДАПТЕР: AllPornStream (APS) - FINAL COMPILED
             // =========================================================================
 
             allpornstream: {
@@ -250,7 +250,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var pageUrl = element.url;
                     var puMatch = htmlText.match(/\\?"page_url\\?"\s*:\s*\\?"([^"]+)\\?"/i);
                     if (puMatch) {
-                        pageUrl = puMatch[1].replace(/\\/g, '');
+                        var extUrl = puMatch[1].replace(/\\/g, '');
+                        if (extUrl.indexOf('http') === 0) pageUrl = extUrl;
                     }
                     
                     var regExternal = /\[\\?"([A-Z0-9]+)\\?",\\?"(https?:\\?\/\\?\/[^\\?"]+)\\?"\]/g;
@@ -320,35 +321,29 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             network.silent(found.url, function(embedHtml) {
                                 var mdStreams = [];
                                 
-                                // СУПЕР-УНІВЕРСАЛЬНИЙ ПАРСЕР: 
-                                // Шукає будь-яку комбінацію символів, що починається з // і закінчується на .mp4
-                                var mp4Reg = /(?:https?:)?\/\/[a-zA-Z0-9-._/]+\.mp4/ig;
+                                // ВИПРАВЛЕНО: Синтаксично безпечний регулярний вираз для JS
+                                var mp4Reg = /(?:https?:)?\/\/[^\s"'<>\\]+\.mp4/ig;
                                 var mp4Match;
                                 
                                 while ((mp4Match = mp4Reg.exec(embedHtml)) !== null) {
                                     var vUrl = mp4Match[0];
                                     
-                                    // Якщо посилання починається просто з //, додаємо https:
                                     if (vUrl.indexOf('//') === 0) {
                                         vUrl = 'https:' + vUrl;
                                     }
                                     
-                                    // Визначаємо якість із назви файлу
                                     var qMatch = vUrl.match(/\/(\d+)\.mp4/i);
                                     var q = qMatch ? qMatch[1] : 'Unknown';
                                     
-                                    // Додаємо в масив тільки унікальні посилання
                                     if (!mdStreams.find(function(item) { return item.url === vUrl; })) {
                                         mdStreams.push({ title: q + 'p', url: vUrl });
                                     }
                                 }
                                 
                                 if (mdStreams.length > 0) {
-                                    // Сортуємо якості від найкращої до найгіршої (1080 -> 720 -> 360)
                                     mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
                                     
-                                    // ВІДПРАВЛЯЄМО АБСОЛЮТНО ГОЛЕ ПОСИЛАННЯ В ПЛЕЄР
-                                    // Без headers, без реферерів, нічого зайвого, що могло б викликати краш
+                                    // Відправляємо абсолютно голе посилання
                                     startPlayback([{ 
                                         title: 'MYDADDY (' + mdStreams[0].title + ')', 
                                         url: mdStreams[0].url
@@ -356,13 +351,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 } else {
                                     currentIndex++; tryNextProvider();
                                 }
-                            }, function() {
-                                currentIndex++; tryNextProvider();
-                            }, false, { headers: { 'Referer': pageUrl } });
-                            
-                            return; 
-                        }
-
                             }, function() {
                                 currentIndex++; tryNextProvider();
                             }, false, { headers: { 'Referer': pageUrl } });
@@ -405,7 +393,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var _this = this;
 
                     if (element.is_models) {
-                        // Регулярні вирази для віку та місця народження
                         var ageMatch = htmlText.match(/>\s*Age\s*<\/div><\/div><div[^>]*>([^<]+)/i);
                         if (ageMatch && ageMatch[1].toLowerCase().indexOf('unknown') === -1) {
                             menu.push({ title: 'Age: ' + ageMatch[1].trim(), action: 'none' });
