@@ -310,22 +310,26 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             return;
                         }
 
-                       if (targetName && targetName.toUpperCase().includes('MYDADDY')) {
+                     if (targetName && targetName.toUpperCase().includes('MYDADDY')) {
     var network = new Lampa.Reguest();
     network.timeout(15000);
 
     network.silent(found.url, function(html) {
         try {
             var streams = [];
-            var regex = /\/\/s\d+\.bigcdn\.cc\/pubs\/[^"]+\/(\d+)\.mp4/g;
+
+            // 🔥 парсимо source теги (це стабільніше)
+            var regex = /<source[^>]+src=\\"([^"]+\.mp4)\\"[^>]*title=\\"([^"]+)/g;
             var match;
 
             while ((match = regex.exec(html)) !== null) {
-                var quality = match[1];
-                var url = 'https:' + match[0];
+                var url = match[1];
+                var title = match[2];
+
+                if (url.startsWith('//')) url = 'https:' + url;
 
                 streams.push({
-                    title: quality + 'p',
+                    title: title,
                     url: url
                 });
             }
@@ -336,7 +340,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 return tryNextProvider();
             }
 
-            // сортуємо
+            // сортуємо по якості
             streams.sort(function(a, b) {
                 return parseInt(b.title) - parseInt(a.title);
             });
@@ -361,7 +365,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
     return;
 }
-
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
                             if (targetName === 'VIDOZA') {
