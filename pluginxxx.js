@@ -311,7 +311,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             return;
                         }
 
-if (targetName === 'MYDADDY') {
+                         if (targetName === 'MYDADDY') {
     var network = new Lampa.Reguest();
     network.timeout(15000);
 
@@ -319,13 +319,27 @@ if (targetName === 'MYDADDY') {
         var mdStreams = [];
 
         try {
-            // 1. ОЧИЩАЄМО HTML ВІД ESCAPE-СМІТТЯ
-            var cleanHtml = embedHtml
+            // 1. ВИТЯГУЄМО ВМІСТ html("...")
+            var htmlBlockMatch = embedHtml.match(/\$\("#jw"\)\.html\("([\s\S]*?)"\);/i);
+
+            if (!htmlBlockMatch) {
+                console.log('MYDADDY: html block not found');
+                currentIndex++;
+                return tryNextProvider();
+            }
+
+            var innerHtml = htmlBlockMatch[1];
+
+            // 2. РОЗКОДОВУЄМО JS-СТРОКУ
+            var cleanHtml = innerHtml
                 .replace(/\\"/g, '"')
                 .replace(/\\\//g, '/')
                 .replace(/\\\\/g, '\\');
 
-            // 2. ОСНОВНИЙ ПАРСИНГ: <source src="...mp4">
+            // DEBUG
+            // console.log('CLEAN HTML:', cleanHtml);
+
+            // 3. ПАРСИМО <source>
             var sourceReg = /<source[^>]+src="([^"]+\.mp4[^"]*)"/ig;
             var match;
 
@@ -338,70 +352,59 @@ if (targetName === 'MYDADDY') {
                 var q = qMatch ? qMatch[1] : 'Unknown';
 
                 if (!mdStreams.find(function(s) { return s.url === url; })) {
-                    mdStreams.push({ title: q + 'p', url: url });
+                    mdStreams.push({ title: q + 'p', url: url.trim() });
                 }
             }
 
-            // 3. FALLBACK: <a href="...mp4">
+            // 4. FALLBACK (якщо source не знайдено)
             if (mdStreams.length === 0) {
-                var linkReg = /href=['"]([^'"]+\.mp4[^'"]*)['"]/ig;
-                while ((match = linkReg.exec(cleanHtml)) !== null) {
-                    var url = match[1];
-
-                    if (url.indexOf('//') === 0) url = 'https:' + url;
-
-                    var qMatch = url.match(/\/(\d+)\.mp4/i);
-                    var q = qMatch ? qMatch[1] : 'Unknown';
-
-                    if (!mdStreams.find(function(s) { return s.url === url; })) {
-                        mdStreams.push({ title: q + 'p', url: url });
-                    }
-                }
-            }
-
-            // 4. FALLBACK №2: ГРУБИЙ (як у тебе, але після очистки)
-            if (mdStreams.length === 0) {
-                var rawReg = /https?:\/\/[^"' ]+\.mp4[^"' ]*/ig;
+                var rawReg = /\/\/[^"' ]+\.mp4/ig;
                 var rawMatches = cleanHtml.match(rawReg);
 
                 if (rawMatches) {
                     for (var i = 0; i < rawMatches.length; i++) {
                         var url = rawMatches[i];
 
+                        if (url.indexOf('//') === 0) url = 'https:' + url;
+
                         var qMatch = url.match(/\/(\d+)\.mp4/i);
                         var q = qMatch ? qMatch[1] : 'Unknown';
 
                         if (!mdStreams.find(function(s) { return s.url === url; })) {
-                            mdStreams.push({ title: q + 'p', url: url });
+                            mdStreams.push({ title: q + 'p', url: url.trim() });
                         }
                     }
                 }
             }
 
-            // 5. ЯКЩО ЗНАЙШЛИ — СОРТУЄМО І ВІДДАЄМО
-            if (mdStreams.length > 0) {
-                mdStreams.sort(function(a, b) {
-                    return parseInt(b.title) - parseInt(a.title);
-                });
-
-                startPlayback([{
-                    title: 'MYDADDY (' + mdStreams[0].title + ')',
-                    url: mdStreams[0].url
-                }]);
-            } else {
-                console.log('MYDADDY: streams not found');
-                currentIndex++; 
-                tryNextProvider();
+            // 5. ЯКЩО НІЧОГО НЕ ЗНАЙШЛИ — ВИХІД
+            if (mdStreams.length === 0) {
+                console.log('MYDADDY: no streams after parse');
+                currentIndex++;
+                return tryNextProvider();
             }
+
+            // 6. СОРТУЄМО
+            mdStreams.sort(function(a, b) {
+                return parseInt(b.title) - parseInt(a.title);
+            });
+
+            console.log('MYDADDY STREAM FOUND:', mdStreams[0].url);
+
+            // 7. ВІДДАЄМО В ПЛЕЄР
+            startPlayback([{
+                title: 'MYDADDY (' + mdStreams[0].title + ')',
+                url: mdStreams[0].url
+            }]);
 
         } catch (e) {
             console.log('MYDADDY PARSE ERROR:', e);
-            currentIndex++; 
+            currentIndex++;
             tryNextProvider();
         }
 
     }, function() {
-        currentIndex++; 
+        currentIndex++;
         tryNextProvider();
     }, false, {
         headers: {
