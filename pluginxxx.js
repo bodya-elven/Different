@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.3.5',
+        version: '2.3.6',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - ULTIMATE VERSION (MYDADDY + FIXES)
+            // АДАПТЕР: AllPornStream 
             // =========================================================================
 
             allpornstream: {
@@ -334,16 +334,16 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 
                                 if (mdStreams.length > 0) {
                                     mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                                    var finalMyDaddyUrl = mdStreams[0].url;
-                                    if (finalMyDaddyUrl.indexOf('|Referer=') === -1) finalMyDaddyUrl += '|Referer=' + pageUrl;
 
+                                    // Відправляємо абсолютно чисте посилання
                                     startPlayback([{ 
                                         title: 'MYDADDY (' + mdStreams[0].title + ')', 
-                                        url: finalMyDaddyUrl, 
+                                        url: mdStreams[0].url, 
                                         headers: { 'Referer': pageUrl, 'User-Agent': 'Mozilla/5.0' } 
                                     }]);
                                 } else {
                                     currentIndex++; tryNextProvider();
+
                                 }
                             }, function() {
                                 currentIndex++; tryNextProvider();
