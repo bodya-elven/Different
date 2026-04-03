@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.4.3',
+        version: '2.4.4',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - ULTIMATE FIX
+            // АДАПТЕР: AllPornStream (APS) - JSON & CORS BYPASS FIX
             // =========================================================================
 
             allpornstream: {
@@ -246,10 +246,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
-                    // Натуральний Referer зі сторінки APS
                     var pageUrl = element.url; 
 
-                    // 1. ТОТАЛЬНЕ ОЧИЩЕННЯ JSON-ВІДПОВІДІ
                     var cleanHtmlText = htmlText.replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\//g, '/');
 
                     var regExternal = /\["([A-Z0-9]+)","(https?:\/\/[^"]+)"\]/g;
@@ -258,7 +256,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         providers.push({ name: matchExt[1], url: matchExt[2] });
                     }
 
-                    // 2. ЗБІР УСІХ MYDADDY (включно з &alt)
                     var mdUrls = [];
                     var myDaddyMatch = cleanHtmlText.match(/https?:\/\/mydaddy\.cc[^"'\s<>\\]+/ig);
                     if (myDaddyMatch) {
@@ -315,27 +312,18 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             var mdIndex = 0;
                             
                             function tryMyDaddyLink() {
-                                // Якщо всі лінки (main і &alt) не дали результату — переходимо до іншого провайдера
                                 if (mdIndex >= found.urls.length) {
                                     currentIndex++; 
                                     return tryNextProvider();
                                 }
                                 
                                 var currentMdUrl = found.urls[mdIndex];
-                                var network = new Lampa.Reguest();
-                                network.timeout(15000);
                                 
-                                // Мобільна маска для обходу десктопних блокувань
-                                var requestHeaders = {
-                                    'Referer': pageUrl,
-                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
-                                };
-                                
-                                network.silent(currentMdUrl, function(embedHtml) {
+                                // ГОЛОВНА ФУНКЦІЯ: Збирає посилання і відправляє в плеєр
+                                function processMyDaddyHtml(embedHtml) {
                                     var mdStreams = [];
-                                    var cleanEmbed = embedHtml.replace(/\\"/g, '"').replace(/\\\//g, '/');
+                                    var cleanEmbed = typeof embedHtml === 'string' ? embedHtml.replace(/\\"/g, '"').replace(/\\\//g, '/') : '';
                                     
-                                    // МЕТОД 1: Пошук прямих посилань bigcdn.cc (лазерний парсер)
                                     var links = cleanEmbed.match(/(?:https?:)?\/\/[^"'\s<>]*bigcdn\.cc[^"'\s<>]*\.mp4/ig);
                                     if (links) {
                                         for (var l = 0; l < links.length; l++) {
@@ -349,14 +337,11 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                         }
                                     }
                                     
-                                    // МЕТОД 2: План Б (Конструктор через картинку, якщо лінки розбиті на скрипти)
                                     if (mdStreams.length === 0) {
                                         var posterMatch = cleanEmbed.match(/(?:https?:)?\/\/[^"'\s<>]*bigcdn\.cc[^"'\s<>]*\/(?:main\.jpg|tile\.vtt)/i);
                                         if (posterMatch) {
                                             var baseUrl = posterMatch[0].replace(/main\.jpg|tile\.vtt/i, '');
                                             if (baseUrl.indexOf('//') === 0) baseUrl = 'https:' + baseUrl;
-                                            
-                                            // Базовий набір якостей для MyDaddy
                                             var qualities = ['1080', '720', '360'];
                                             for (var i = 0; i < qualities.length; i++) {
                                                 var finalUrl = baseUrl + qualities[i] + '.mp4';
@@ -367,27 +352,44 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     
                                     if (mdStreams.length > 0) {
                                         mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                                        
-                                        // ВІДПРАВКА ГОЛОГО ПОСИЛАННЯ В ПЛЕЄР (без headers і Referer)
                                         startPlayback([{ 
                                             title: 'MYDADDY (' + mdStreams[0].title + ')', 
                                             url: mdStreams[0].url 
                                         }]);
                                     } else {
-                                        // Відео не знайдено - пробуємо &alt посилання
                                         mdIndex++; tryMyDaddyLink();
                                     }
+                                }
+
+                                var network = new Lampa.Reguest();
+                                network.timeout(15000);
+                                
+                                // ФІКС 1: ЗАБОРОНЯЄМО ЛАМПІ ПАРСИТИ ЦЕ ЯК JSON
+                                var requestOptions = {
+                                    headers: {
+                                        'Referer': pageUrl,
+                                        'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
+                                    },
+                                    dataType: 'text' // <--- Рятівник від помилки синтаксичного аналізу
+                                };
+                                
+                                network.silent(currentMdUrl, function(embedHtml) {
+                                    processMyDaddyHtml(embedHtml);
                                 }, function() {
-                                    // Помилка підключення до сервера - пробуємо &alt посилання
-                                    mdIndex++; tryMyDaddyLink();
-                                }, false, { headers: requestHeaders });
+                                    // ФІКС 2: ОБХІД CORS НА ТЕЛЕВІЗОРІ
+                                    // Якщо прямий запит впав (бо ТВ заблокував), йдемо через проксі Лампи
+                                    window.pluginx_smartRequest(currentMdUrl, function(proxyHtml) {
+                                        processMyDaddyHtml(proxyHtml);
+                                    }, function() {
+                                        mdIndex++; tryMyDaddyLink();
+                                    });
+                                }, false, requestOptions);
                             }
                             
                             tryMyDaddyLink();
                             return; 
                         }
 
-                        // Для інших джерел
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
                             if (targetName === 'VIDOZA') {
@@ -464,7 +466,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return menu;
                 }
             },
-                      
 
 
       // ======================================
