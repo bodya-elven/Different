@@ -101,7 +101,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
         var Adapters = {
 
             // =========================================================================
-            // АДАПТЕР: AllPornStream (APS) - FINAL COMPILED
+            // АДАПТЕР: AllPornStream (APS) - BULLETPROOF MYDADDY
             // =========================================================================
 
             allpornstream: {
@@ -303,13 +303,10 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         
                         if (targetName === 'DIRECT') {
                             var bestQuality = found.streams[0];
-                            var finalDirectUrl = bestQuality.url;
-                            if (finalDirectUrl.indexOf('|Referer=') === -1) finalDirectUrl += '|Referer=' + pageUrl;
-
+                            // Відправляємо АБСОЛЮТНО чисте посилання, без headers
                             startPlayback([{
                                 title: bestQuality.title + ' (Direct)',
-                                url: finalDirectUrl,
-                                headers: { 'Referer': pageUrl, 'User-Agent': 'Mozilla/5.0' }
+                                url: bestQuality.url
                             }]);
                             return;
                         }
@@ -321,29 +318,37 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             network.silent(found.url, function(embedHtml) {
                                 var mdStreams = [];
                                 
-                                // ВИПРАВЛЕНО: Синтаксично безпечний регулярний вираз для JS
-                                var mp4Reg = /(?:https?:)?\/\/[^\s"'<>\\]+\.mp4/ig;
-                                var mp4Match;
+                                // НАЙПРОСТІШИЙ ПАРСЕР "ГРУБОЇ СИЛИ"
+                                // Шукає //, потім будь-які букви, цифри, крапки, тире, підкреслення чи слеші, і закінчується на .mp4
+                                var mp4Reg = /\/\/[a-zA-Z0-9.\-_/]+\.mp4/ig;
+                                var matches = embedHtml.match(mp4Reg);
                                 
-                                while ((mp4Match = mp4Reg.exec(embedHtml)) !== null) {
-                                    var vUrl = mp4Match[0];
-                                    
-                                    if (vUrl.indexOf('//') === 0) {
-                                        vUrl = 'https:' + vUrl;
-                                    }
-                                    
-                                    var qMatch = vUrl.match(/\/(\d+)\.mp4/i);
-                                    var q = qMatch ? qMatch[1] : 'Unknown';
-                                    
-                                    if (!mdStreams.find(function(item) { return item.url === vUrl; })) {
-                                        mdStreams.push({ title: q + 'p', url: vUrl });
+                                if (matches) {
+                                    for (var k = 0; k < matches.length; k++) {
+                                        var vUrl = matches[k];
+                                        
+                                        // Приклеюємо https:
+                                        if (vUrl.indexOf('//') === 0) {
+                                            vUrl = 'https:' + vUrl;
+                                        }
+                                        
+                                        // Витягуємо цифри якості з назви файлу
+                                        var qMatch = vUrl.match(/\/(\d+)\.mp4$/i);
+                                        var q = qMatch ? qMatch[1] : 'Unknown';
+                                        
+                                        // Уникаємо дублікатів
+                                        var exists = mdStreams.find(function(item) { return item.url === vUrl; });
+                                        if (!exists) {
+                                            mdStreams.push({ title: q + 'p', url: vUrl });
+                                        }
                                     }
                                 }
                                 
                                 if (mdStreams.length > 0) {
+                                    // Сортуємо 1080 -> 720 -> 360
                                     mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
                                     
-                                    // Відправляємо абсолютно голе посилання
+                                    // Відправляємо ГОЛЕ посилання, без headers, без Referer
                                     startPlayback([{ 
                                         title: 'MYDADDY (' + mdStreams[0].title + ')', 
                                         url: mdStreams[0].url
@@ -377,7 +382,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
 
                             if (videoUrl) {
-                                startPlayback([{ title: targetName, url: videoUrl, headers: { 'Referer': found.url, 'User-Agent': 'Mozilla/5.0' } }]);
+                                // Відправляємо голе посилання
+                                startPlayback([{ title: targetName, url: videoUrl }]);
                             } else {
                                 currentIndex++; tryNextProvider();
                             }
