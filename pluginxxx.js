@@ -311,69 +311,110 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
 
                         if (targetName === 'MYDADDY') {
-                            var network = new Lampa.Reguest();
-                            network.timeout(15000);
-                            
-                            // Запит до MyDaddy (Реферер потрібен тільки для сервера, не для плеєра)
-                            network.silent(found.url, function(embedHtml) {
-                                var mdStreams = [];
-                                
-                                // КРОК 1: Тотальна очистка коду від екранувань
-                                var cleanHtml = embedHtml.replace(/\\"/g, '"').replace(/\\\//g, '/');
-                                
-                                // КРОК 2: Метод прямого пошуку (якщо посилання цілі)
-                                var mp4Reg = /src="([^"]+\.mp4)"/ig;
-                                var match;
-                                while ((match = mp4Reg.exec(cleanHtml)) !== null) {
-                                    var vUrl = match[1];
-                                    if (vUrl.indexOf('//') === 0) vUrl = 'https:' + vUrl;
-                                    var qMatch = vUrl.match(/\/(\d+)\.mp4/i);
-                                    var q = qMatch ? qMatch[1] : 'Unknown';
-                                    
-                                    if (!mdStreams.find(function(i) { return i.url === vUrl; })) {
-                                        mdStreams.push({ title: q + 'p', url: vUrl });
-                                    }
-                                }
-                                
-                                // КРОК 3: Метод збірки (Логіка Cloudstream), якщо прямих посилань не знайдено
-                                if (mdStreams.length === 0) {
-                                    // Шукаємо базову папку сервера через постер відео
-                                    var baseMatch = cleanHtml.match(/poster="(\/\/[^"]+\/)(?:main\.jpg|tile\.vtt)"/i);
-                                    if (baseMatch) {
-                                        var baseUrl = baseMatch[1];
-                                        if (baseUrl.indexOf('//') === 0) baseUrl = 'https:' + baseUrl;
-                                        
-                                        // Знаходимо всі якості (title="1080p")
-                                        var titleReg = /title="(\d+)p|4K"/ig;
-                                        var tMatch;
-                                        while ((tMatch = titleReg.exec(cleanHtml)) !== null) {
-                                            var quality = tMatch[1] || '2160'; // Якщо 4K, ставимо 2160
-                                            var finalUrl = baseUrl + quality + '.mp4';
-                                            
-                                            if (!mdStreams.find(function(i) { return i.url === finalUrl; })) {
-                                                mdStreams.push({ title: quality + 'p', url: finalUrl });
-                                            }
-                                        }
-                                    }
-                                }
-                                
-                                if (mdStreams.length > 0) {
-                                    mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                                    
-                                    // ВІДПРАВЛЯЄМО В ПЛЕЄР АБСОЛЮТНО ЧИСТЕ ПОСИЛАННЯ (referer = "")
-                                    startPlayback([{ 
-                                        title: 'MYDADDY (' + mdStreams[0].title + ')', 
-                                        url: mdStreams[0].url 
-                                    }]);
-                                } else {
-                                    currentIndex++; tryNextProvider();
-                                }
-                            }, function() {
-                                currentIndex++; tryNextProvider();
-                            }, false, { headers: { 'Referer': pageUrl } });
-                            
-                            return; 
-                        }
+    var network = new Lampa.Reguest();
+    network.timeout(15000);
+
+    network.silent(found.url, function(embedHtml) {
+        try {
+            var mdStreams = [];
+
+            // 1. ЗНАХОДИМО СКРИПТ З do_pl()
+            var scriptMatch = embedHtml.match(/<script[^>]*>[\s\S]*?do_pl\(\)[\s\S]*?<\/script>/i);
+            if (!scriptMatch) {
+                console.log('MYDADDY: script not found');
+                currentIndex++; return tryNextProvider();
+            }
+
+            var script = scriptMatch[0];
+
+            // 2. ВИТЯГУЄМО CDN (//s25.bigcdn.cc)
+            var cdnMatch = script.match(/\/\/s\d+\.bigcdn\.cc/);
+            if (!cdnMatch) {
+                console.log('MYDADDY: cdn not found');
+                currentIndex++; return tryNextProvider();
+            }
+
+            var cdn = cdnMatch[0].replace('//', '');
+
+            // 3. ВИТЯГУЄМО PATH (/pubs/XXXX)
+            var pathMatch = script.match(/pubs\/([a-zA-Z0-9.]+)/);
+            if (!pathMatch) {
+                console.log('MYDADDY: path not found');
+                currentIndex++; return tryNextProvider();
+            }
+
+            var path = pathMatch[1];
+
+            var baseUrl = 'https://' + cdn + '/pubs/' + path;
+
+            // 4. ВИТЯГУЄМО ЯКОСТІ
+            var qualities = [];
+            var qRegex = /title=\\"(\d+p|4K)\\"/ig;
+            var match;
+
+            while ((match = qRegex.exec(embedHtml)) !== null) {
+                var q = match[1];
+
+                if (q === '4K') q = '2160';
+                else q = q.replace('p', '');
+
+                if (qualities.indexOf(q) === -1) {
+                    qualities.push(q);
+                }
+            }
+
+            // fallback якщо не знайшли
+            if (qualities.length === 0) {
+                qualities = ['360', '720', '1080'];
+            }
+
+            // 5. БУДУЄМО ПОСИЛАННЯ
+            for (var i = 0; i < qualities.length; i++) {
+                var q = qualities[i];
+                var url = baseUrl + '/' + q + '.mp4';
+
+                mdStreams.push({
+                    title: q + 'p',
+                    url: url
+                });
+            }
+
+            if (mdStreams.length === 0) {
+                console.log('MYDADDY: no streams built');
+                currentIndex++; return tryNextProvider();
+            }
+
+            // 6. СОРТУЄМО
+            mdStreams.sort(function(a, b) {
+                return parseInt(b.title) - parseInt(a.title);
+            });
+
+            console.log('MYDADDY FINAL:', mdStreams);
+
+            // 7. ВІДДАЄМО
+            startPlayback([{
+                title: 'MYDADDY (' + mdStreams[0].title + ')',
+                url: mdStreams[0].url
+            }]);
+
+        } catch (e) {
+            console.log('MYDADDY ERROR:', e);
+            currentIndex++; 
+            tryNextProvider();
+        }
+
+    }, function() {
+        currentIndex++; 
+        tryNextProvider();
+    }, false, {
+        headers: {
+            'Referer': 'https://mydaddy.cc/',
+            'Origin': 'https://mydaddy.cc'
+        }
+    });
+
+    return;
+}
 
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
