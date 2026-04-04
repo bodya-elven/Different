@@ -246,25 +246,30 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return results;
                 },
                 
-
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
                     var pageUrl = element.url; 
 
                     var cleanHtmlText = htmlText.replace(/\\u0026/g, '&').replace(/\\"/g, '"').replace(/\\\//g, '/');
 
-                    // 1. Спочатку збираємо iframe (ТУТ ПРАВИЛЬНІ embed-посилання!)
                     var iframeReg = /"embed_url"\s*:\s*"([^"]+)".*?"hosting_provider"\s*:\s*"([^"]+)"/ig;
                     var iMatch;
                     while ((iMatch = iframeReg.exec(cleanHtmlText)) !== null) {
-                        providers.push({ name: iMatch[2].toUpperCase(), url: iMatch[1] });
+                        var provName = iMatch[2].toUpperCase();
+                        // Залізно маркуємо DoodStream незалежно від того, як його назвав сервер
+                        if (iMatch[1].indexOf('playmogo') !== -1 || iMatch[1].indexOf('dood') !== -1) {
+                            provName = 'DOODSTREAM';
+                        }
+                        providers.push({ name: provName, url: iMatch[1] });
                     }
 
-                    // 2. Потім збираємо старі зовнішні лінки (АЛЕ не перезаписуємо iframe)
                     var regExternal = /\["([A-Z0-9]+)","(https?:\/\/[^"]+)"\]/g;
                     var matchExt;
                     while ((matchExt = regExternal.exec(cleanHtmlText)) !== null) {
                         var pName = matchExt[1].toUpperCase();
+                        if (matchExt[2].indexOf('playmogo') !== -1 || matchExt[2].indexOf('dood') !== -1) {
+                            pName = 'DOODSTREAM';
+                        }
                         if (!providers.find(function(p) { return p.name === pName; })) {
                             providers.push({ name: pName, url: matchExt[2] });
                         }
@@ -302,26 +307,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                     if (providers.length === 0) return onError();
 
-                    // Видалили BIGWARP, додали MIXDROP
-                    var waterfall = ['DIRECT', 'MYDADDY', 'MIXDROP', 'VIDOZA', 'STREAMTAPE', 'VOE'];
+                    var waterfall = ['DIRECT', 'MYDADDY', 'DOODSTREAM', 'VIDOZA', 'STREAMTAPE', 'VOE'];
                     var currentIndex = 0;
-
-                    // Розпакувальник для MixDrop
-                    function unpackDeanEdwards(str) {
-                        try {
-                            var pMatch = str.match(/\}?\('(.*?)',\s*(\d+),\s*(\d+),\s*'([^']+)'\.split\('\|'\)/);
-                            if (pMatch) {
-                                var p = pMatch[1];
-                                var a = parseInt(pMatch[2]);
-                                var c = parseInt(pMatch[3]);
-                                var k = pMatch[4].split('|');
-                                var e = function(c) { return (c < a ? '' : e(parseInt(c / a))) + ((c = c % a) > 35 ? String.fromCharCode(c + 29) : c.toString(36)); };
-                                while (c--) { if (k[c]) { p = p.replace(new RegExp('\\b' + e(c) + '\\b', 'g'), k[c]); } }
-                                return p;
-                            }
-                        } catch(e) {}
-                        return '';
-                    }
 
                     function tryNextProvider() {
                         if (currentIndex >= waterfall.length) return onError();
@@ -370,10 +357,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     
                                     if (mdStreams.length > 0) {
                                         mdStreams.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                                        startPlayback([{ 
-                                            title: 'MYDADDY (' + mdStreams[0].title + ')', 
-                                            url: mdStreams[0].url 
-                                        }]);
+                                        startPlayback([{ title: 'MYDADDY (' + mdStreams[0].title + ')', url: mdStreams[0].url }]);
                                     } else {
                                         mdIndex++; tryMyDaddyLink();
                                     }
@@ -382,85 +366,80 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var network = new Lampa.Reguest();
                                 network.timeout(15000);
                                 
-                                var requestOptions = {
+                                network.silent(currentMdUrl, function(embedHtml) {
+                                    processMyDaddyHtml(embedHtml);
+                                }, function() {
+                                    mdIndex++; tryMyDaddyLink();
+                                }, false, {
                                     headers: {
                                         'Referer': pageUrl,
                                         'User-Agent': 'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile Safari/537.36'
                                     },
                                     dataType: 'text'
-                                };
-                                
-                                network.silent(currentMdUrl, function(embedHtml) {
-                                    processMyDaddyHtml(embedHtml);
-                                }, function() {
-                                    mdIndex++; tryMyDaddyLink();
-                                }, false, requestOptions);
+                                });
                             }
                             
                             tryMyDaddyLink();
                             return; 
                         }
 
-                        if (targetName === 'MIXDROP') {
-                            var embedUrl = found.url.replace('/f/', '/e/').replace(/mxdrop\.to|mixdrop\.top|m1xdrop\.click/i, 'mixdrop.co');
-                            if (embedUrl.indexOf('http') === -1) embedUrl = 'https:' + embedUrl;
+                        if (targetName === 'DOODSTREAM') {
+                            var doodUrl = found.url.replace('/d/', '/e/');
+                            if (doodUrl.indexOf('http') === -1) doodUrl = 'https:' + doodUrl;
+                            
+                            // Витягуємо оригін (простий і надійний метод без new URL для старих ТВ)
+                            var originMatch = doodUrl.match(/^(https?:\/\/[^\/]+)/);
+                            var doodOrigin = originMatch ? originMatch[1] : 'https://doodstream.com';
 
-                            console.log('--- MIXDROP DEBUG START ---');
-                            console.log('1. Trying to fetch:', embedUrl);
+                            var doodNetwork = new Lampa.Reguest();
+                            doodNetwork.timeout(15000);
+                            
+                            var doodOptions = {
+                                headers: {
+                                    'User-Agent': 'Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/112.0.0.0 Mobile',
+                                    'Referer': doodUrl
+                                },
+                                dataType: 'text'
+                            };
 
-                            window.pluginx_smartRequest(embedUrl, function(html) {
-                                try {
-                                    console.log('2. Response type:', typeof html);
-                                    var htmlStr = typeof html === 'string' ? html : JSON.stringify(html);
-                                    console.log('3. Snippet:', htmlStr ? htmlStr.substring(0, 300) : 'EMPTY');
-
-                                    if (!html || typeof html !== 'string') {
-                                        console.log('❌ Response is empty or not text.');
-                                        currentIndex++; return tryNextProvider();
-                                    }
-
-                                    if (html.indexOf('Cloudflare') !== -1 || html.indexOf('Just a moment') !== -1) {
-                                        console.log('❌ Cloudflare protection detected!');
-                                        currentIndex++; return tryNextProvider();
-                                    }
-
-                                    var packedScript = html.match(/eval\(function\(p,a,c,k,e,d\).*?\.split\('\|'\).*?\)/);
-                                    if (packedScript) {
-                                        var unpacked = unpackDeanEdwards(packedScript[0]);
-                                        console.log('4. Unpacked:', unpacked.substring(0, 150));
-                                        
-                                        var wurlMatch = unpacked.match(/wurl\s*=\s*["']([^"']+)["']/i);
-                                        if (wurlMatch) {
-                                            var videoUrl = (wurlMatch[1].indexOf('http') === -1 ? 'https:' : '') + wurlMatch[1];
-                                            console.log('🎉 Final URL:', videoUrl);
-                                            startPlayback([{ title: 'MIXDROP', url: videoUrl + '|Referer=https://mixdrop.co/' }]);
-                                            return; // Успіх! Зупиняємось.
-                                        } else {
-                                            console.log('❌ wurl not found in unpacked code.');
-                                        }
-                                    } else {
-                                        console.log('❌ Packed script NOT found.');
-                                    }
-                                } catch (e) {
-                                    console.log('❌ Exception in debug:', e.message);
+                            // Етап 1: Отримуємо HTML сторінки плеєра
+                            doodNetwork.silent(doodUrl, function(html) {
+                                var md5Match = html.match(/\/pass_md5\/[^"']+/i);
+                                if (!md5Match) {
+                                    currentIndex++; return tryNextProvider();
                                 }
                                 
-                                // Якщо відео не знайшли — не зависаємо, йдемо далі!
-                                currentIndex++; 
-                                tryNextProvider();
+                                var passPath = md5Match[0];
+                                var passUrl = doodOrigin + passPath;
+                                
+                                var tokenMatch = html.match(/token=([a-z0-9]+)/i);
+                                var token = tokenMatch ? tokenMatch[1] : passPath.split('/').pop();
 
-                            }, function(err) {
-                                console.log('❌ Proxy Error:', err);
-                                // Обов'язково йдемо далі при помилці мережі
-                                currentIndex++; 
-                                tryNextProvider();
-                            });
+                                // Етап 2: Отримуємо базу посилання
+                                var passNetwork = new Lampa.Reguest();
+                                passNetwork.silent(passUrl, function(baseVideoUrl) {
+                                    
+                                    var randomStr = '';
+                                    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+                                    for (var i = 0; i < 10; i++) {
+                                        randomStr += chars.charAt(Math.floor(Math.random() * chars.length));
+                                    }
+                                    
+                                    var finalUrl = baseVideoUrl + randomStr + '?token=' + token + '&expiry=' + Date.now();
+                                    
+                                    startPlayback([{ title: 'DOODSTREAM', url: finalUrl + '|Referer=' + doodUrl }]);
+
+                                }, function() {
+                                    currentIndex++; tryNextProvider();
+                                }, false, doodOptions); 
+
+                            }, function() {
+                                currentIndex++; tryNextProvider();
+                            }, false, doodOptions);
 
                             return;
                         }
 
-
-                        // Усі інші йдуть через проксі
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
                             
@@ -491,8 +470,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     }
                     tryNextProvider();
                 },
-
-
                 
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
@@ -540,7 +517,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     return menu;
                 }
             },
-    
+        
+
 
       // ======================================
       //=========== Блок Porno365 ==========
