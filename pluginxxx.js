@@ -109,17 +109,15 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 domain: 'https://allpornstream.com',
                 
                 getHomeUrl: function() { return this.domain + '/'; },
-                getSearchUrl: function(query) {
-                    // Перетворюємо пробіли на плюси, як того вимагає APS
-                    return this.domain + '/?search=' + encodeURIComponent(query).replace(/%20/g, '+');
+                
+                getSearchUrl: function(query) { 
+                    return this.domain + '/?search=' + encodeURIComponent(query).replace(/%20/g, '+'); 
                 },
                 
                 getUrl: function(object, page) {
                     var url = object.url || this.domain;
                     if (page > 1) {
-                        // Перевіряємо, чи в посиланні вже є параметри (наприклад, ?search=...)
                         var separator = url.indexOf('?') !== -1 ? '&' : '?';
-                        // Видаляємо стару сторінку, якщо вона була, і додаємо актуальну
                         return url.replace(/[&?]page=\d+/g, '') + separator + 'page=' + page;
                     }
                     return url;
@@ -260,6 +258,16 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         providers.push({ name: matchExt[1], url: matchExt[2] });
                     }
 
+                    var iframeReg = /"embed_url"\s*:\s*"([^"]+)".*?"hosting_provider"\s*:\s*"([^"]+)"/ig;
+                    var iMatch;
+                    while ((iMatch = iframeReg.exec(cleanHtmlText)) !== null) {
+                        var pUrl = iMatch[1];
+                        var pName = iMatch[2].toUpperCase();
+                        if (!providers.find(function(p) { return p.name === pName; })) {
+                            providers.push({ name: pName, url: pUrl });
+                        }
+                    }
+
                     var mdUrls = [];
                     var myDaddyMatch = cleanHtmlText.match(/https?:\/\/mydaddy\.cc[^"'\s<>\\]+/ig);
                     if (myDaddyMatch) {
@@ -292,7 +300,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                     if (providers.length === 0) return onError();
 
-                    var waterfall = ['VIDOZA', 'STREAMTAPE', 'DIRECT', 'MYDADDY', 'VOE'];
+                    var waterfall = ['DIRECT', 'MYDADDY', 'BIGWARP', 'VIDOZA', 'STREAMTAPE', 'VOE'];
                     var currentIndex = 0;
 
                     function tryNextProvider() {
@@ -375,7 +383,30 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
                             var videoUrl = '';
-                            if (targetName === 'VIDOZA') {
+                            
+                            if (targetName === 'BIGWARP') {
+                                var bwReg = /file:\s*["']([^"']+)["'][,\s]+label:\s*["']([^"']+)["']/ig;
+                                var bwMatch;
+                                var bwStreams = [];
+                                
+                                while ((bwMatch = bwReg.exec(embedHtml)) !== null) {
+                                    if (bwMatch[1].indexOf('http') === 0) {
+                                        bwStreams.push({ 
+                                            title: 'BIGWARP (' + bwMatch[2] + ')', 
+                                            url: bwMatch[1] + '|Referer=https://bigwarp.io/' 
+                                        });
+                                    }
+                                }
+                                
+                                if (bwStreams.length > 0) {
+                                    startPlayback(bwStreams);
+                                    return; 
+                                } else {
+                                    var bwAlt = embedHtml.match(/(?:file|source|src)\s*[:=]\s*["'](https?:\/\/[^"']+(?:\.mp4|\.m3u8)[^"']*)["']/i);
+                                    if (bwAlt) videoUrl = bwAlt[1] + '|Referer=https://bigwarp.io/';
+                                }
+                            }
+                            else if (targetName === 'VIDOZA') {
                                 var vMatch = embedHtml.match(/src:\s*["'](https?:\/\/[^"']+\.mp4[^"']*)["']/i);
                                 if (vMatch) videoUrl = vMatch[1];
                             } 
@@ -431,25 +462,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
                     var studios = doc.querySelectorAll('a[href*="/producers/"]');
                     for (var j = 0; j < studios.length; j++) {
-                        var sel = studios[j];
-                        var studioNameEl = sel.querySelector('span.text-foreground');
-                        var sTitle = studioNameEl ? (studioNameEl.textContent || '').trim() : '';
-                        var sUrl = sel.getAttribute('href');
-                        if (sTitle && sUrl) {
-                            menu.push({ title: '🎬 ' + sTitle, action: 'direct', url: sUrl.startsWith('http') ? sUrl : this.domain + sUrl });
-                        }
-                    }
-
-                    var categoriesExist = doc.querySelector('a[href*="/categories/"]');
-                    if (categoriesExist) {
-                        menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: 'a[href*="/categories/"] button' });
-                    }
-
-                    menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
-                    return menu;
-                }
-            },
-
+    
 
       // ======================================
       //=========== Блок Porno365 ==========
