@@ -402,52 +402,63 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
 
                         if (targetName === 'MIXDROP') {
-                            // Формуємо лінк на плеєр і примусово міняємо домен на базовий, щоб уникнути редиректів
                             var embedUrl = found.url.replace('/f/', '/e/').replace(/mxdrop\.to|mixdrop\.top|m1xdrop\.click/i, 'mixdrop.co');
                             if (embedUrl.indexOf('http') === -1) embedUrl = 'https:' + embedUrl;
 
                             console.log('--- MIXDROP DEBUG START ---');
                             console.log('1. Trying to fetch:', embedUrl);
 
-                            // Використовуємо проксі Лампи, щоб обійти CORS і подивитися, ЩО САМЕ приходить
                             window.pluginx_smartRequest(embedUrl, function(html) {
-                                console.log('2. Response length:', html ? html.length : 'EMPTY');
-                                console.log('3. Response snippet (first 500 chars):', html ? html.substring(0, 500) : 'NONE');
+                                try {
+                                    console.log('2. Response type:', typeof html);
+                                    var htmlStr = typeof html === 'string' ? html : JSON.stringify(html);
+                                    console.log('3. Snippet:', htmlStr ? htmlStr.substring(0, 300) : 'EMPTY');
 
-                                if (!html) {
-                                    console.log('❌ MixDrop returned empty response!');
-                                    return;
-                                }
-
-                                if (html.indexOf('Cloudflare') !== -1 || html.indexOf('Just a moment...') !== -1) {
-                                    console.log('❌ We hit Cloudflare protection!');
-                                }
-
-                                var packedScript = html.match(/eval\(function\(p,a,c,k,e,d\).*?\.split\('\|'\).*?\)/);
-                                if (packedScript) {
-                                    console.log('✅ Found packed script! Length:', packedScript[0].length);
-                                    
-                                    var unpacked = unpackDeanEdwards(packedScript[0]);
-                                    console.log('4. Unpacked snippet:', unpacked.substring(0, 200));
-                                    
-                                    var wurlMatch = unpacked.match(/wurl\s*=\s*["']([^"']+)["']/i);
-                                    if (wurlMatch) {
-                                        var videoUrl = (wurlMatch[1].indexOf('http') === -1 ? 'https:' : '') + wurlMatch[1];
-                                        console.log('🎉 BINGO! Final Video URL:', videoUrl);
-                                        // Пробуємо запустити
-                                        startPlayback([{ title: 'MIXDROP', url: videoUrl + '|Referer=https://mixdrop.co/' }]);
-                                    } else {
-                                        console.log('❌ wurl not found in unpacked code.');
+                                    if (!html || typeof html !== 'string') {
+                                        console.log('❌ Response is empty or not text.');
+                                        currentIndex++; return tryNextProvider();
                                     }
-                                } else {
-                                    console.log('❌ Packed script NOT found in the HTML.');
+
+                                    if (html.indexOf('Cloudflare') !== -1 || html.indexOf('Just a moment') !== -1) {
+                                        console.log('❌ Cloudflare protection detected!');
+                                        currentIndex++; return tryNextProvider();
+                                    }
+
+                                    var packedScript = html.match(/eval\(function\(p,a,c,k,e,d\).*?\.split\('\|'\).*?\)/);
+                                    if (packedScript) {
+                                        var unpacked = unpackDeanEdwards(packedScript[0]);
+                                        console.log('4. Unpacked:', unpacked.substring(0, 150));
+                                        
+                                        var wurlMatch = unpacked.match(/wurl\s*=\s*["']([^"']+)["']/i);
+                                        if (wurlMatch) {
+                                            var videoUrl = (wurlMatch[1].indexOf('http') === -1 ? 'https:' : '') + wurlMatch[1];
+                                            console.log('🎉 Final URL:', videoUrl);
+                                            startPlayback([{ title: 'MIXDROP', url: videoUrl + '|Referer=https://mixdrop.co/' }]);
+                                            return; // Успіх! Зупиняємось.
+                                        } else {
+                                            console.log('❌ wurl not found in unpacked code.');
+                                        }
+                                    } else {
+                                        console.log('❌ Packed script NOT found.');
+                                    }
+                                } catch (e) {
+                                    console.log('❌ Exception in debug:', e.message);
                                 }
+                                
+                                // Якщо відео не знайшли — не зависаємо, йдемо далі!
+                                currentIndex++; 
+                                tryNextProvider();
+
                             }, function(err) {
                                 console.log('❌ Proxy Error:', err);
+                                // Обов'язково йдемо далі при помилці мережі
+                                currentIndex++; 
+                                tryNextProvider();
                             });
 
                             return;
                         }
+
 
                         // Усі інші йдуть через проксі
                         window.pluginx_smartRequest(found.url, function(embedHtml) {
