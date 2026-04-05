@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.5.3',
+        version: '2.5.4',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -42,7 +42,7 @@
         if (window.pluginx_ready) return;
         window.pluginx_ready = true;
 
-var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-width: 580px) { .main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; } .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 50% !important; } } @media screen and (min-width: 581px) { .main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; } .main-grid.noimg-main-grid .card { width: 50% !important; } .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 16.666% !important; } } .main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; } .main-grid.categories-grid .card__view { padding-bottom: 62.5% !important; background: #ffffff !important; } .main-grid.models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; } .main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; } .main-grid .card__title { display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; white-space: normal !important; text-align: left !important; line-height: 1.2 !important; max-height: 3.6em !important; padding-top: 2px !important; margin-top: 0 !important; text-overflow: ellipsis !important; } .main-grid.categories-grid .card__title, .main-grid.models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; } .main-grid.noimg-grid .card, .main-grid.noimg-main-grid .card { height: auto !important; position: relative !important; display: flex !important; align-items: stretch !important; } .main-grid.noimg-grid .card__view, .main-grid.noimg-main-grid .card__view { display: none !important; } .main-grid.noimg-grid .card__title, .main-grid.noimg-main-grid .card__title { position: relative !important; width: 100% !important; height: 100% !important; min-height: 80px !important; color: #ffffff !important; font-weight: normal !important; font-size: 1.3em !important; text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important; white-space: normal !important; word-break: break-word !important; -webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; padding: 15px !important; margin: 0 !important; background: rgba(35,35,35,0.9) !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.1) !important; transition: transform 0.2s, background 0.2s !important; z-index: 10 !important; } .main-grid.noimg-grid .card.focus .card__title, .main-grid.noimg-main-grid .card.focus .card__title { transform: scale(1.03) !important; background: rgba(70,70,70,0.95) !important; border-color: #fff !important; box-shadow: 0 0 10px rgba(255,255,255,0.3) !important; } @media screen and (min-width: 581px) { .main-grid.noimg-main-grid .card__title { font-size: 1.4em !important; min-height: 100px !important; } .main-grid.noimg-grid .card__title { font-size: 1.1em !important; min-height: 60px !important; padding: 10px !important; } } .main-grid .card__age { display: none !important; } .pluginx-filter-btn { order: -1 !important; margin-right: auto !important; } .pluginx-card-badge { position: absolute; right: 8px; bottom: 8px; background: rgba(0,0,0,0.8); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 0.85em; font-weight: bold; z-index: 3; pointer-events: none; border: 1px solid rgba(255,255,255,0.2); box-shadow: 0 2px 4px rgba(0,0,0,0.5); } </style>';
+var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-width: 580px) { .main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; } .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 50% !important; } } @media screen and (min-width: 581px) { .main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; } .main-grid.noimg-main-grid .card { width: 50% !important; } .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 16.666% !important; } } .main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; } .main-grid.categories-grid .card__view { padding-bottom: 62.5% !important; background: #ffffff !important; } .main-grid.models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; } .main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; } .main-grid .card__title { display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; white-space: normal !important; text-align: left !important; line-height: 1.2 !important; max-height: 3.6em !important; padding-top: 2px !important; margin-top: 0 !important; text-overflow: ellipsis !important; } .main-grid.categories-grid .card__title, .main-grid.models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; } .main-grid.noimg-grid .card, .main-grid.noimg-main-grid .card { height: auto !important; position: relative !important; display: flex !important; align-items: stretch !important; } .main-grid.noimg-grid .card__view, .main-grid.noimg-main-grid .card__view { display: none !important; } .main-grid.noimg-grid .card__title, .main-grid.noimg-main-grid .card__title { position: relative !important; width: 100% !important; height: 100% !important; min-height: 80px !important; color: #ffffff !important; font-weight: normal !important; font-size: 1.3em !important; text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important; white-space: normal !important; word-break: break-word !important; -webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; padding: 15px !important; margin: 0 !important; background: rgba(35,35,35,0.9) !important; border-radius: 8px !important; border: 1px solid rgba(255,255,255,0.1) !important; transition: transform 0.2s, background 0.2s !important; z-index: 10 !important; } .main-grid.noimg-grid .card.focus .card__title, .main-grid.noimg-main-grid .card.focus .card__title { transform: scale(1.03) !important; background: rgba(70,70,70,0.95) !important; border-color: #fff !important; box-shadow: 0 0 10px rgba(255,255,255,0.3) !important; } @media screen and (min-width: 581px) { .main-grid.noimg-main-grid .card__title { font-size: 1.4em !important; min-height: 100px !important; } .main-grid.noimg-grid .card__title { font-size: 1.1em !important; min-height: 60px !important; padding: 10px !important; } } .main-grid .card__age { display: none !important; } .pluginx-filter-btn { order: -1 !important; margin-right: auto !important; } </style>';
 
         $('body').append(css);
 
@@ -305,7 +305,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                     img: picture,
                                     is_grid: true,
                                     is_models: isModels,
-                                    time: count ? count : '' // Передаємо дані для плашки
+                                    quality: count
                                 });
                             }
                         }
@@ -351,7 +351,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 url: href.indexOf('http') === 0 ? href : _this.domain + (href.indexOf('/') === 0 ? '' : '/') + href,
                                 picture: img,
                                 img: img,
-                                time: time // Передаємо час для плашки
+                                quality: time
                             });
                         }
                     }
@@ -1638,32 +1638,20 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 }, onBack: function () { Lampa.Controller.toggle('content'); } });
             };
 
-comp.cardRender = function (card, element, events) {
-    // Отримуємо jQuery-об'єкт картки
-    var $card = (typeof card.render === 'function') ? card.render() : $(card);
-    
-    if ($card && typeof $card.find === 'function') {
-        var imgEl = $card.find('.card__img')[0];
-        if (imgEl && element.picture) {
-            imgEl.setAttribute('data-src-original', element.picture);
-            imgEl.onerror = function() {
-                if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
-            };
-        }
-        
-        // --- БРОНЕБІЙНА ПЛАШКА ---
-        // Якщо в елементі є час або кількість відео
-        if (element.time) {
-            // Шукаємо контейнер картинки
-            var $view = $card.find('.card__view');
-            // Перевіряємо, чи ми вже не додали плашку (щоб уникнути дублів)
-            if ($view.length > 0 && $view.find('.pluginx-time-badge').length === 0) {
-                // Додаємо div з жорсткими інлайновими стилями
-                var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,0.85); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: bold; z-index: 10; border: 1px solid rgba(255,255,255,0.2); pointer-events: none;">' + element.time + '</div>';
-                $view.append(badgeHtml);
-            }
-        }
-    }
+            comp.cardRender = function (card, element, events) {
+                // Отримуємо реальний HTML з об'єкта картки
+                var $card = (typeof card.render === 'function') ? card.render() : $(card);
+                
+                if ($card && typeof $card.find === 'function') {
+                    var imgEl = $card.find('.card__img')[0];
+                    if (imgEl && element.picture) {
+                        // Захист від битих картинок (твоя оригінальна логіка)
+                        imgEl.setAttribute('data-src-original', element.picture);
+                        imgEl.onerror = function() {
+                            if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
+                        };
+                    }
+                }
                 
                 events.onEnter = function () {
                     window.pluginx_hidePreview();
