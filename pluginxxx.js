@@ -100,6 +100,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
 
         var Adapters = {
 
+      //      ======================================
+      // БЛОК ALLPORNSTREAM
+      //    ======================================
             allpornstream: {
                 title: 'AllPornStream',
                 domain: 'https://allpornstream.com',
@@ -121,71 +124,90 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 
                 getFilters: function(doc, currentUrl) {
                     if (currentUrl.indexOf('/actors') !== -1) return null;
-                    
-                    var sort = 'recent';
-                    if (currentUrl.indexOf('sort=rating') !== -1) sort = 'rating';
-                    else if (currentUrl.indexOf('sort=views') !== -1) sort = 'views';
-                    
-                    var dateParam = '';
-                    var dateMatch = currentUrl.match(/date=([^&]+)/);
-                    if (dateMatch) dateParam = dateMatch[1];
-                    
-                    var sortLabel = 'Most Recent';
-                    if (sort === 'rating') sortLabel = 'Most Rated';
-                    else if (sort === 'views') sortLabel = 'Most Viewed';
-                    
-                    var items = [];
-                    
-                    // 1. Пункт вибору основного сортування
-                    var sortOptions = [
-                        { title: 'Most Recent', url: this.domain + '/?sort=recent' },
-                        { title: 'Most Rated', url: this.domain + '/?sort=rating' },
-                        { title: 'Most Viewed', url: this.domain + '/?sort=views' }
-                    ];
-                    items.push({ title: '↕️ ' + sortLabel, action: 'static_select', items: sortOptions });
-                    
-                    // 2. Пункт вибору часових проміжків (тільки якщо не Recent)
-                    if (sort !== 'recent') {
-                        var activeDateTitle = 'All Time';
-                        var dateOptions = [];
-                        
-                        // Мапінг для формування URL та пошуку title
-                        var ranges = [
-                            { label: 'All Time', value: '', siteTitle: 'All Time' },
-                            { label: 'Today', value: 'day', siteTitle: 'Today' },
-                            { label: 'Last 7 days', value: 'week', siteTitle: 'Last 7 days' },
-                            { label: 'Last 30 days', value: 'month', siteTitle: 'Last 30 days' },
-                            { label: 'Last Year', value: 'year', siteTitle: 'Last Year' }
-                        ];
-                        
-                        // Намагаємось знайти реальні назви з атрибутів title на сайті
-                        var siteButtons = doc.querySelectorAll('button[aria-label^="Filter by"]');
-                        
-                        ranges.forEach(function(r) {
-                            var rUrl = 'https://allpornstream.com/?sort=' + sort + (r.value ? '&date=' + r.value : '');
-                            var displayTitle = r.label;
-                            
-                            // Шукаємо кнопку на сайті, щоб взяти її точний title
-                            for (var b = 0; b < siteButtons.length; b++) {
-                                var bTitle = siteButtons[b].getAttribute('title');
-                                var bAria = siteButtons[b].getAttribute('aria-label');
-                                if (bTitle && bTitle.toLowerCase().indexOf(r.label.toLowerCase()) !== -1) {
-                                    displayTitle = bTitle;
-                                    break;
-                                } else if (bAria && bAria.indexOf(r.label) !== -1 && bTitle) {
-                                    displayTitle = bTitle;
-                                    break;
-                                }
-                            }
 
-                            if (dateParam === r.value) activeDateTitle = displayTitle;
-                            dateOptions.push({ title: displayTitle, url: rUrl });
-                        });
-                        
-                        items.push({ title: '🗓️ ' + activeDateTitle, action: 'static_select', items: dateOptions });
+                    var items = [];
+                    var activeSortValue = 'recent';
+                    var activeSortLabel = 'Most Recent';
+                    var sortOptions = [];
+
+                    // 1. Динамічне захоплення кнопок сортування
+                    var sortBtns = doc.querySelectorAll('button[aria-label^="Sort by"]');
+                    if (sortBtns.length > 0) {
+                        for (var s = 0; s < sortBtns.length; s++) {
+                            var btn = sortBtns[s];
+                            var aria = btn.getAttribute('aria-label') || '';
+                            var isPressed = btn.getAttribute('aria-pressed') === 'true';
+                            
+                            var sVal = 'recent';
+                            if (aria.toLowerCase().indexOf('rated') !== -1) sVal = 'rating';
+                            else if (aria.toLowerCase().indexOf('viewed') !== -1) sVal = 'views';
+                            
+                            var label = aria.replace(/^Sort by /i, '').trim();
+                            if (!label) label = (btn.textContent || '').trim();
+                            
+                            if (isPressed) {
+                                activeSortValue = sVal;
+                                activeSortLabel = label;
+                            }
+                            
+                            sortOptions.push({ title: label, url: this.domain + '/?sort=' + sVal });
+                        }
+                    } else {
+                        // Фолбек, якщо DOM не завантажився до кінця
+                        sortOptions = [
+                            { title: 'Most Recent', url: this.domain + '/?sort=recent' },
+                            { title: 'Most Rated', url: this.domain + '/?sort=rating' },
+                            { title: 'Most Viewed', url: this.domain + '/?sort=views' }
+                        ];
+                        if (currentUrl.indexOf('sort=rating') !== -1) { activeSortValue = 'rating'; activeSortLabel = 'Most Rated'; }
+                        else if (currentUrl.indexOf('sort=views') !== -1) { activeSortValue = 'views'; activeSortLabel = 'Most Viewed'; }
                     }
-                    
-                    return { subtitle: sortLabel, items: items };
+
+                    if (sortOptions.length > 0) {
+                        items.push({ title: '↕️ ' + activeSortLabel, action: 'static_select', items: sortOptions });
+                    }
+
+                    // 2. Динамічне захоплення періодів (тільки якщо не Recent)
+                    if (activeSortValue !== 'recent') {
+                        var dateBtns = doc.querySelectorAll('button[aria-label^="Filter by"]');
+                        if (dateBtns.length > 0) {
+                            var dateOptions = [];
+                            var activeDateLabel = 'All Time';
+                            
+                            for (var d = 0; d < dateBtns.length; d++) {
+                                var dBtn = dateBtns[d];
+                                var dAria = dBtn.getAttribute('aria-label') || '';
+                                var dTitle = dBtn.getAttribute('title') || '';
+                                var isDPressed = dBtn.getAttribute('aria-pressed') === 'true';
+                                
+                                var dLabel = dTitle || dAria.replace(/^Filter by /i, '').trim();
+                                if (!dLabel) dLabel = (dBtn.textContent || '').trim();
+                                
+                                var dVal = '';
+                                var lAria = dAria.toLowerCase();
+                                if (lAria.indexOf('today') !== -1) dVal = 'day';
+                                else if (lAria.indexOf('7 days') !== -1) dVal = 'week';
+                                else if (lAria.indexOf('30 days') !== -1 || lAria.indexOf('month') !== -1) dVal = 'month';
+                                else if (lAria.indexOf('year') !== -1) dVal = 'year';
+                                
+                                if (isDPressed) {
+                                    activeDateLabel = dLabel;
+                                }
+                                
+                                var dUrl = this.domain + '/?sort=' + activeSortValue + (dVal ? '&date=' + dVal : '');
+                                dateOptions.push({ title: dLabel, url: dUrl });
+                            }
+                            
+                            if (dateOptions.length > 0) {
+                                items.push({ title: '🗓️ ' + activeDateLabel, action: 'static_select', items: dateOptions });
+                            }
+                        }
+                    }
+
+                    if (items.length > 0) {
+                        return { subtitle: activeSortLabel, items: items };
+                    }
+                    return null;
                 },
                 
                 getNavItems: function() {
@@ -308,7 +330,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     }
                     return results;
                 },
-                
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
                     var pageUrl = element.url; 
@@ -351,7 +372,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     }
 
                     var directStreams = [];
-                    var regDirect = /\[(\d+),"(https?:\/\/[^\"]+\.mp4)\"\]/g;
+                    var regDirect = /\[(\d+),"(https?:\/\/[^"]+\.mp4)"\]/g;
                     var matchDir;
                     while ((matchDir = regDirect.exec(cleanHtmlText)) !== null) {
                         directStreams.push({
@@ -481,6 +502,11 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         if (ageMatch && ageMatch[1].toLowerCase().indexOf('unknown') === -1) {
                             menu.push({ title: 'Age: ' + ageMatch[1].trim(), action: 'none' });
                         }
+                        
+                        var bornMatch = htmlText.match(/>\s*Born\s*<\/div><\/div><div[^>]*>([^<]+)/i);
+                        if (bornMatch && bornMatch[1].toLowerCase().indexOf('unknown') === -1) {
+                            menu.push({ title: 'Born: ' + bornMatch[1].trim(), action: 'none' });
+                        }
                         return menu;
                     }
                     
@@ -495,11 +521,28 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
                     }
 
+                    var studios = doc.querySelectorAll('a[href*="/producers/"]');
+                    for (var j = 0; j < studios.length; j++) {
+                        var sel = studios[j];
+                        var studioNameEl = sel.querySelector('span.text-foreground');
+                        var sTitle = studioNameEl ? (studioNameEl.textContent || '').trim() : '';
+                        var sUrl = sel.getAttribute('href');
+                        if (sTitle && sUrl) {
+                            menu.push({ title: '🎬 ' + sTitle, action: 'direct', url: sUrl.startsWith('http') ? sUrl : this.domain + sUrl });
+                        }
+                    }
+
+                    var categoriesExist = doc.querySelector('a[href*="/categories/"]');
+                    if (categoriesExist) {
+                        menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: 'a[href*="/categories/"] button' });
+                    }
+
                     menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
             },
-                        
+
+
 
       // ======================================
       //=========== Блок Porno365 ==========
