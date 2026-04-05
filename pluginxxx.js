@@ -121,23 +121,31 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     }
                     return url;
                 },
-                
+
                 getFilters: function(doc, currentUrl) {
                     if (currentUrl.indexOf('/actors') !== -1) return null;
 
-                    var activeSortValue = 'recent';
-                    var activeSortLabel = 'Most Recent';
                     var filtersArray = [];
 
-                    // 1. Динамічне захоплення кнопок основного сортування
-                    var sortBtns = doc.querySelectorAll('button[aria-label^="Sort by"]');
+                    // 1. НАДІЙНЕ ВИЗНАЧЕННЯ АКТИВНОГО СТАНУ З URL
+                    var activeSortValue = 'recent';
+                    if (currentUrl.indexOf('sort=rating') !== -1) activeSortValue = 'rating';
+                    else if (currentUrl.indexOf('sort=views') !== -1) activeSortValue = 'views';
+
+                    var currentPeriod = '';
+                    var matchP = currentUrl.match(/date=([^&]+)/);
+                    if (matchP) currentPeriod = matchP[1];
+
+                    // 2. ДИНАМІЧНИЙ ПАРСИНГ ОСНОВНОГО СОРТУВАННЯ
+                    // Додано пробіл "Sort by " щоб відсіяти порожній контейнер
+                    var sortBtns = doc.querySelectorAll('button[aria-label^="Sort by "]');
                     var sortOptions = [];
+                    var activeSortLabel = 'Most Recent';
                     
                     if (sortBtns.length > 0) {
                         for (var s = 0; s < sortBtns.length; s++) {
                             var btn = sortBtns[s];
                             var aria = btn.getAttribute('aria-label') || '';
-                            var isPressed = btn.getAttribute('aria-pressed') === 'true';
                             
                             var sVal = 'recent';
                             if (aria.toLowerCase().indexOf('rated') !== -1) sVal = 'rating';
@@ -146,30 +154,29 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             var label = aria.replace(/^Sort by /i, '').trim();
                             if (!label) label = (btn.textContent || '').trim();
                             
-                            if (isPressed) {
-                                activeSortValue = sVal;
+                            // Призначаємо активний лейбл на основі URL, а не DOM
+                            if (sVal === activeSortValue) {
                                 activeSortLabel = label;
                             }
                             
                             sortOptions.push({ title: label, url: this.domain + '/?sort=' + sVal });
                         }
                     } else {
-                        // Фолбек
+                        // Фолбек, якщо DOM раптом порожній
                         sortOptions = [
                             { title: 'Most Recent', url: this.domain + '/?sort=recent' },
                             { title: 'Most Rated', url: this.domain + '/?sort=rating' },
                             { title: 'Most Viewed', url: this.domain + '/?sort=views' }
                         ];
-                        if (currentUrl.indexOf('sort=rating') !== -1) { activeSortValue = 'rating'; activeSortLabel = 'Most Rated'; }
-                        else if (currentUrl.indexOf('sort=views') !== -1) { activeSortValue = 'views'; activeSortLabel = 'Most Viewed'; }
+                        if (activeSortValue === 'rating') activeSortLabel = 'Most Rated';
+                        else if (activeSortValue === 'views') activeSortLabel = 'Most Viewed';
                     }
 
-                    // Додаємо ПЕРШИЙ пункт в загальне меню (Основне сортування)
                     filtersArray.push({ subtitle: '↕️ ' + activeSortLabel, items: sortOptions });
 
-                    // 2. Якщо обрано не Recent, додаємо ДРУГИЙ пункт (Періоди)
+                    // 3. ДИНАМІЧНИЙ ПАРСИНГ ПЕРІОДІВ (ТІЛЬКИ ЯКЩО НЕ RECENT)
                     if (activeSortValue !== 'recent') {
-                        var dateBtns = doc.querySelectorAll('button[aria-label^="Filter by"]');
+                        var dateBtns = doc.querySelectorAll('button[aria-label^="Filter by "]');
                         var dateOptions = [];
                         var activeDateLabel = 'All Time';
                         
@@ -178,7 +185,6 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var dBtn = dateBtns[d];
                                 var dAria = dBtn.getAttribute('aria-label') || '';
                                 var dTitle = dBtn.getAttribute('title') || '';
-                                var isDPressed = dBtn.getAttribute('aria-pressed') === 'true';
                                 
                                 var dLabel = dTitle || dAria.replace(/^Filter by /i, '').trim();
                                 if (!dLabel) dLabel = (dBtn.textContent || '').trim();
@@ -190,7 +196,8 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 else if (lAria.indexOf('30 days') !== -1 || lAria.indexOf('month') !== -1) dVal = 'month';
                                 else if (lAria.indexOf('year') !== -1) dVal = 'year';
                                 
-                                if (isDPressed) {
+                                // Призначаємо активний період на основі URL
+                                if (dVal === currentPeriod) {
                                     activeDateLabel = dLabel;
                                 }
                                 
@@ -198,7 +205,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 dateOptions.push({ title: dLabel, url: dUrl });
                             }
                         } else {
-                            // Фолбек дат
+                            // Фолбек для дат
                             var fallbackDates = [
                                 { label: 'All Time', val: '' },
                                 { label: 'Today', val: 'day' },
@@ -207,17 +214,12 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 { label: 'Last Year', val: 'year' }
                             ];
                             
-                            var currentPeriod = '';
-                            var matchP = currentUrl.match(/date=([^&]+)/);
-                            if (matchP) currentPeriod = matchP[1];
-                            
                             for (var fd = 0; fd < fallbackDates.length; fd++) {
                                 if (fallbackDates[fd].val === currentPeriod) activeDateLabel = fallbackDates[fd].label;
                                 dateOptions.push({ title: fallbackDates[fd].label, url: this.domain + '/?sort=' + activeSortValue + (fallbackDates[fd].val ? '&date=' + fallbackDates[fd].val : '') });
                             }
                         }
                         
-                        // Додаємо ДРУГИЙ пункт в загальне меню (Періоди)
                         filtersArray.push({ subtitle: '🗓️ ' + activeDateLabel, items: dateOptions });
                     }
 
