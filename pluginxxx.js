@@ -125,13 +125,14 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 getFilters: function(doc, currentUrl) {
                     if (currentUrl.indexOf('/actors') !== -1) return null;
 
-                    var items = [];
                     var activeSortValue = 'recent';
                     var activeSortLabel = 'Most Recent';
-                    var sortOptions = [];
+                    var filtersArray = [];
 
-                    // 1. Динамічне захоплення кнопок сортування
+                    // 1. Динамічне захоплення кнопок основного сортування
                     var sortBtns = doc.querySelectorAll('button[aria-label^="Sort by"]');
+                    var sortOptions = [];
+                    
                     if (sortBtns.length > 0) {
                         for (var s = 0; s < sortBtns.length; s++) {
                             var btn = sortBtns[s];
@@ -153,7 +154,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             sortOptions.push({ title: label, url: this.domain + '/?sort=' + sVal });
                         }
                     } else {
-                        // Фолбек, якщо DOM не завантажився до кінця
+                        // Фолбек
                         sortOptions = [
                             { title: 'Most Recent', url: this.domain + '/?sort=recent' },
                             { title: 'Most Rated', url: this.domain + '/?sort=rating' },
@@ -163,17 +164,16 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         else if (currentUrl.indexOf('sort=views') !== -1) { activeSortValue = 'views'; activeSortLabel = 'Most Viewed'; }
                     }
 
-                    if (sortOptions.length > 0) {
-                        items.push({ title: '↕️ ' + activeSortLabel, action: 'static_select', items: sortOptions });
-                    }
+                    // Додаємо ПЕРШИЙ пункт в загальне меню (Основне сортування)
+                    filtersArray.push({ subtitle: '↕️ ' + activeSortLabel, items: sortOptions });
 
-                    // 2. Динамічне захоплення періодів (тільки якщо не Recent)
+                    // 2. Якщо обрано не Recent, додаємо ДРУГИЙ пункт (Періоди)
                     if (activeSortValue !== 'recent') {
                         var dateBtns = doc.querySelectorAll('button[aria-label^="Filter by"]');
+                        var dateOptions = [];
+                        var activeDateLabel = 'All Time';
+                        
                         if (dateBtns.length > 0) {
-                            var dateOptions = [];
-                            var activeDateLabel = 'All Time';
-                            
                             for (var d = 0; d < dateBtns.length; d++) {
                                 var dBtn = dateBtns[d];
                                 var dAria = dBtn.getAttribute('aria-label') || '';
@@ -197,18 +197,33 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                                 var dUrl = this.domain + '/?sort=' + activeSortValue + (dVal ? '&date=' + dVal : '');
                                 dateOptions.push({ title: dLabel, url: dUrl });
                             }
+                        } else {
+                            // Фолбек дат
+                            var fallbackDates = [
+                                { label: 'All Time', val: '' },
+                                { label: 'Today', val: 'day' },
+                                { label: 'Last 7 days', val: 'week' },
+                                { label: 'Last 30 days', val: 'month' },
+                                { label: 'Last Year', val: 'year' }
+                            ];
                             
-                            if (dateOptions.length > 0) {
-                                items.push({ title: '🗓️ ' + activeDateLabel, action: 'static_select', items: dateOptions });
+                            var currentPeriod = '';
+                            var matchP = currentUrl.match(/date=([^&]+)/);
+                            if (matchP) currentPeriod = matchP[1];
+                            
+                            for (var fd = 0; fd < fallbackDates.length; fd++) {
+                                if (fallbackDates[fd].val === currentPeriod) activeDateLabel = fallbackDates[fd].label;
+                                dateOptions.push({ title: fallbackDates[fd].label, url: this.domain + '/?sort=' + activeSortValue + (fallbackDates[fd].val ? '&date=' + fallbackDates[fd].val : '') });
                             }
                         }
+                        
+                        // Додаємо ДРУГИЙ пункт в загальне меню (Періоди)
+                        filtersArray.push({ subtitle: '🗓️ ' + activeDateLabel, items: dateOptions });
                     }
 
-                    if (items.length > 0) {
-                        return { subtitle: activeSortLabel, items: items };
-                    }
-                    return null;
+                    return filtersArray;
                 },
+
                 
                 getNavItems: function() {
                     return [
@@ -1545,8 +1560,15 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                     var navItems = adapter.getNavItems();
                     items = items.concat(navItems);
                     if (this._dynamicFilters) {
-                        items.push({ title: '↕️ ' + this._dynamicFilters.subtitle, action: 'sort', sort_items: this._dynamicFilters.items });
+                        if (Array.isArray(this._dynamicFilters)) {
+                            for (var f = 0; f < this._dynamicFilters.length; f++) {
+                                items.push({ title: this._dynamicFilters[f].subtitle, action: 'sort', sort_items: this._dynamicFilters[f].items });
+                            }
+                        } else {
+                            items.push({ title: '↕️ ' + this._dynamicFilters.subtitle, action: 'sort', sort_items: this._dynamicFilters.items });
+                        }
                     }
+
                 }
                 
                 Lampa.Select.show({ title: 'Навігація', items: items, onSelect: function (a) {
