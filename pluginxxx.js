@@ -1638,21 +1638,32 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                 }, onBack: function () { Lampa.Controller.toggle('content'); } });
             };
 
-            comp.cardRender = function (card, element, events) {
-                // Бронебійний варіант: отримуємо реальний HTML з об'єкта Lampa.Card
-                var $card = (typeof card.render === 'function') ? card.render() : $(card);
-                if ($card && typeof $card.find === 'function') {
-                    var imgEl = $card.find('.card__img')[0];
-                    if (imgEl && element.picture) {
-                        imgEl.setAttribute('data-src-original', element.picture);
-                        imgEl.onerror = function() {
-                            if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
-                        };
-                    }
-                    
-
-                }
-
+comp.cardRender = function (card, element, events) {
+    // Отримуємо jQuery-об'єкт картки
+    var $card = (typeof card.render === 'function') ? card.render() : $(card);
+    
+    if ($card && typeof $card.find === 'function') {
+        var imgEl = $card.find('.card__img')[0];
+        if (imgEl && element.picture) {
+            imgEl.setAttribute('data-src-original', element.picture);
+            imgEl.onerror = function() {
+                if (typeof window.pluginx_handleImageRetry === 'function') window.pluginx_handleImageRetry(this);
+            };
+        }
+        
+        // --- БРОНЕБІЙНА ПЛАШКА ---
+        // Якщо в елементі є час або кількість відео
+        if (element.time) {
+            // Шукаємо контейнер картинки
+            var $view = $card.find('.card__view');
+            // Перевіряємо, чи ми вже не додали плашку (щоб уникнути дублів)
+            if ($view.length > 0 && $view.find('.pluginx-time-badge').length === 0) {
+                // Додаємо div з жорсткими інлайновими стилями
+                var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; right: 6px; bottom: 6px; background: rgba(0,0,0,0.85); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 13px; font-weight: bold; z-index: 10; border: 1px solid rgba(255,255,255,0.2); pointer-events: none;">' + element.time + '</div>';
+                $view.append(badgeHtml);
+            }
+        }
+    }
                 
                 events.onEnter = function () {
                     window.pluginx_hidePreview();
