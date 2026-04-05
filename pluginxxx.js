@@ -1696,7 +1696,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         }
                         
                         menu.push({ title: isBookmarked ? '★ Видалити з обраного' : '☆ Додати до обраного', action: 'bookmark' });
-                        if (!element.is_grid) {
+                        if (!element.is_grid || element.is_models) {
                             var adapterActions = Adapters[targetSite].getMenu(doc, htmlText, element);
                             menu = menu.concat(adapterActions);
                         }
