@@ -298,16 +298,17 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                             
                             if (nameM && urlM) {
-                                results.push({
-                                    name: nameM, // Більше не "бруднимо" назву
-                                    url: urlM,
-                                    picture: picture,
-                                    img: picture,
-                                    is_grid: true,
-                                    is_models: isModels,
-                                    card_badge: count
-                                });
-                            }
+    results.push({
+        name: nameM,
+        url: urlM,
+        picture: picture,
+        img: picture,
+        is_grid: true,
+        is_models: isModels,
+        card_badge: count ? '🎬 ' + count : '' // Додаємо емоджі для всіх, якщо є цифри
+    });
+}
+}
                         }
                     } else {
                         var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
@@ -1661,7 +1662,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var $view = $card.find('.card__view');
                         // Перевіряємо, чи ми вже не додали плашку
                         if ($view.length > 0 && $view.find('.pluginx-time-badge').length === 0) {
-                            var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; left: -4px; bottom: -4px; background: rgba(0,0,0,0.5); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 11px; font-weight: normal; font-family: inherit; border: none; z-index: 10; pointer-events: none;">' + badgeText + '</div>';
+                            var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; right: 7px; bottom: 7px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: normal; font-family: -apple-system, BlinkMacSystemFont, \'Segoe UI\', Roboto, Helvetica, Arial, sans-serif; border: none; z-index: 10; pointer-events: none;">' + badgeText + '</div>';
+
+
 
                             $view.append(badgeHtml);
                         }
