@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.5.9',
+        version: '2.6.0',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -308,6 +308,22 @@ var css = '<style>\
                     var results = [];
                     var _this = this;
 
+                    var cleanName = function(str) {
+    if (!str) return "";
+    // 1. Пробіл між малою та великою (CamelCase)
+    str = str.replace(/([a-z])([A-Z])/g, '$1 $2');
+    // 2. Пробіл перед цифрою (буква + цифра)
+    str = str.replace(/([a-zA-Z])(\d)/g, '$1 $2');
+    // 3. Складна логіка для великих літер
+    str = str.replace(/([A-Z]{2,})/g, function(match) {
+        if (match === 'TV' || match === 'RK') return match; // Винятки (разом)
+        if (match.length === 2) return match[0] + ' ' + match[1]; // Дві великі
+        return match; // 3+ літери
+    });
+    return str.replace(/\s+/g, ' ').trim();
+};
+
+
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
                     if (!targetPath.startsWith('/')) targetPath = '/' + targetPath;
 
@@ -360,8 +376,14 @@ var css = '<style>\
                                     }
 
                                     items.forEach(function(item) {
-                                        var name = item.category || item.actor || item.producer || item.name || item.title || "";
-                                        var slug = item.slug || (name ? name.toString().toLowerCase().replace(/\s+/g, '-') : "");
+                                     
+                      var rawName = item.category || item.actor || item.producer || item.name || item.title || "";
+
+                      var name = isStudios ? 
+cleanName(rawName) : rawName;
+
+                      var slug = item.slug || (name ? name.toLowerCase().replace(/\s+/g, '-') : "");
+
                                         var typePath = isModels ? '/actors/' : (isStudios ? '/producers/' : '/categories/');
                                         
                                         var img = "";
