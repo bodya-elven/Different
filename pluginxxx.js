@@ -382,7 +382,7 @@ var css = '<style>\
                                                 picture: img,
                                                 img: img,
                                                 is_grid: true,
-                                                noimg_grid: isCategories,
+                                                is_noimg: isCategories,
                                                 card_badge: (item.count && item.count !== '0') ? '🎬 ' + item.count : ''
                                             });
                                         }
