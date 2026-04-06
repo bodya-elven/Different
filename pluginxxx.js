@@ -149,7 +149,7 @@ var css = '<style>\
         var Adapters = {
 
 
-             // =========================================================================
+            // =========================================================================
             // АДАПТЕР: 24VIDEOS
             // =========================================================================
             video24: {
@@ -165,88 +165,111 @@ var css = '<style>\
                 getUrl: function(object, page) {
                     var url = object.url || (this.domain + '/videos/');
                     if (page > 1) {
-                        // Спеціальна логіка для головної: перша /videos/, наступні /page-X/
-                        if (url.indexOf('/videos/') !== -1 || url.replace(this.domain, '').replace(/\/+$/, '') === '') {
+                        var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
+                        // Для головної (/videos/): сторінка 2+ йде без /videos
+                        if (base === this.domain || base.indexOf('/videos') !== -1) {
                             return this.domain + '/page-' + page + '/';
                         }
-                        // Для категорій, моделей та сортування: додаємо /page-X/ в кінець шляху
-                        var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
-                        var query = url.indexOf('?') !== -1 ? '?' + url.split('?')[1] : '';
-                        return base + '/page-' + page + '/' + query;
+                        // Для категорій та сортувань: додаємо /page-X/ в кінець
+                        return base + '/page-' + page + '/';
                     }
                     return url;
                 },
 
-                getFilters: function(doc, currentUrl) { return null; },
+                getFilters: function(doc, currentUrl) {
+                    var filters = [];
+                    var basePath = currentUrl.split('?')[0]
+                        .replace(/\/page-\d+\/?$/, '')
+                        .replace(/\/month\/?$/, '')
+                        .replace(/\/all-time\/?$/, '')
+                        .replace(/\/+$/, '');
+
+                    // 1. Головне сортування (визначаємо активне з посилання)
+                    var activeSort = 'Новое';
+                    if (currentUrl.indexOf('top-rated-porn') !== -1) activeSort = 'Лучшее';
+                    else if (currentUrl.indexOf('most-popular-porn') !== -1) activeSort = 'Популярное';
+
+                    filters.push({
+                        subtitle: '↕️ ' + activeSort,
+                        items: [
+                            { title: 'Новое', url: this.domain + '/videos/' },
+                            { title: 'Лучшее', url: this.domain + '/top-rated-porn/' },
+                            { title: 'Популярное', url: this.domain + '/most-popular-porn/' }
+                        ]
+                    });
+
+                    // 2. Періоди (з'являються тільки в Лучшее та Популярное)
+                    if (activeSort !== 'Новое') {
+                        var activePeriod = 'За неделю';
+                        if (currentUrl.indexOf('/month') !== -1) activePeriod = 'За месяц';
+                        else if (currentUrl.indexOf('/all-time') !== -1) activePeriod = 'За всё время';
+
+                        filters.push({
+                            subtitle: '🗓️ ' + activePeriod,
+                            items: [
+                                { title: 'За неделю', url: basePath + '/' },
+                                { title: 'За месяц', url: basePath + '/month/' },
+                                { title: 'За всё время', url: basePath + '/all-time/' }
+                            ]
+                        });
+                    }
+                    return filters;
+                },
 
                 getNavItems: function() {
                     return [
                         { title: '🆕 Новое', action: 'nav', url: this.domain + '/videos/' },
                         { title: '🏆 Лучшее', action: 'nav', url: this.domain + '/top-rated-porn/' },
                         { title: '🔥 Популярное', action: 'nav', url: this.domain + '/most-popular-porn/' },
-                        { title: '🗄️ Категории', action: 'nav', url: this.domain + '/porno/', is_categories: true },
-                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/', is_models: true }
+                        { title: '🗄️ Категории', action: 'nav', url: this.domain + '/porno/', is_categories: true }
                     ];
                 },
 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
-                    
-                    // Визначаємо, чи ми на сторінці списку категорій
-                    var isCatListPage = object.is_categories || targetPath === '/porno';
-                    var isModelsPage = object.is_models || targetPath.indexOf('/pornstars') !== -1;
+                    var isCatList = object.is_categories || targetPath === '/porno';
 
-                    if (isCatListPage) {
-                        // ПАРСИНГ КАТЕГОРІЙ
-                        var catBlocks = doc.querySelectorAll('.categories-block');
-                        for (var i = 0; i < catBlocks.length; i++) {
-                            var elC = catBlocks[i];
+                    if (isCatList) {
+                        var cats = doc.querySelectorAll('.categories-block');
+                        for (var i = 0; i < cats.length; i++) {
+                            var elC = cats[i];
                             var linkC = elC.querySelector('a.link');
                             var imgC = elC.querySelector('img');
                             var titleC = elC.querySelector('.title');
                             var countC = elC.querySelector('.videos .text');
-
                             if (linkC && titleC) {
                                 var imgSrcC = imgC ? imgC.getAttribute('src') : '';
                                 if (imgSrcC && imgSrcC.indexOf('//') === 0) imgSrcC = 'https:' + imgSrcC;
-
                                 results.push({
                                     name: (titleC.textContent || '').trim(),
                                     url: linkC.getAttribute('href'),
                                     picture: imgSrcC,
                                     img: imgSrcC,
-                                    card_badge: countC ? countC.textContent.trim() : '', // Кількість відео на плашку
+                                    card_badge: countC ? '🎬 ' + countC.textContent.trim() : '', // Плашка з емодзі
                                     is_grid: true
                                 });
                             }
                         }
                     } else {
-                        // ПАРСИНГ ВІДЕО ТА МОДЕЛЕЙ
-                        var elements = doc.querySelectorAll('.video-block, .item');
-                        for (var j = 0; j < elements.length; j++) {
-                            var elV = elements[j];
+                        var items = doc.querySelectorAll('.video-block, .item');
+                        for (var j = 0; j < items.length; j++) {
+                            var elV = items[j];
                             var aV = elV.querySelector('a.link') || elV.querySelector('a');
                             var titleV = elV.querySelector('.title, .name');
                             var imgV = elV.querySelector('img.thumb, img');
                             var timeV = elV.querySelector('.duration');
-
                             if (aV && (titleV || imgV)) {
                                 var urlV = aV.getAttribute('href');
                                 if (urlV && urlV.indexOf('http') !== 0) urlV = this.domain + (urlV.startsWith('/') ? '' : '/') + urlV;
-                                
-                                var nameV = titleV ? (titleV.textContent || '').trim() : (imgV ? imgV.getAttribute('alt') : '');
                                 var imgSrcV = imgV ? (imgV.getAttribute('data-original') || imgV.getAttribute('src')) : '';
                                 if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
-
                                 results.push({
-                                    name: nameV,
+                                    name: titleV ? (titleV.textContent || '').trim() : (imgV ? imgV.getAttribute('alt') : ''),
                                     url: urlV,
                                     picture: imgSrcV,
                                     img: imgSrcV,
-                                    time: timeV ? (timeV.textContent || '').trim() : '', // Час на плашку
-                                    is_grid: isModelsPage,
-                                    is_models: isModelsPage
+                                    time: timeV ? (timeV.textContent || '').trim() : '' // Плашка тривалості
                                 });
                             }
                         }
@@ -255,26 +278,31 @@ var css = '<style>\
                 },
 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    // Бронебійний пошук src з урахуванням пробілів (PlayerJS style)
-                    var match = htmlText.match(/src=["']\s*(https?:\/\/[^"']+\.mp4[^"']*)["']/i);
-                    if (match && match[1]) {
-                        var videoUrl = match[1].trim();
-                        startPlayback([{ 
-                            title: '1080p', 
-                            url: videoUrl,
-                            headers: { 'Referer': this.domain + '/' }
-                        }]);
-                    } else {
-                        var scriptMatch = htmlText.match(/video_url:\s*['"]([^'"]+)['"]/);
-                        if (scriptMatch && scriptMatch[1]) {
-                            startPlayback([{ title: 'HD', url: scriptMatch[1] }]);
-                        } else onError();
+                    // Парсимо PlayerJS конфіг
+                    var fileMatch = htmlText.match(/file\s*:\s*["']([^"']+)["']/);
+                    if (fileMatch && fileMatch[1]) {
+                        var fileData = fileMatch[1].replace(/\\/g, '');
+                        var parts = fileData.split(',');
+                        var qualities = [];
+                        
+                        for (var i = 0; i < parts.length; i++) {
+                            var m = parts[i].match(/\[(\d+p)\]\s*(https?:\/\/[^\s,]+)/);
+                            if (m) qualities.push({ title: m[1], url: m[2].trim() });
+                        }
+                        
+                        if (qualities.length > 0) {
+                            // Сортуємо: найкраща якість буде першою
+                            qualities.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
+                            startPlayback(qualities);
+                            return;
+                        }
                     }
+                    onError();
                 },
 
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
-                    // Моделі
+                    // Моделі з відео
                     var models = doc.querySelectorAll('.row.models a');
                     for (var i = 0; i < models.length; i++) {
                         var mName = (models[i].textContent || '').trim();
@@ -283,14 +311,11 @@ var css = '<style>\
                             menu.push({ title: '👸 ' + mName, action: 'direct', url: mUrl.startsWith('http') ? mUrl : this.domain + mUrl });
                         }
                     }
-                    // Категорії
                     menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: '.row:not(.models) a.link' });
-                    // Схожі відео
                     menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
             },
-
 
 
 
