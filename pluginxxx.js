@@ -46,48 +46,46 @@ var css = '<style>\
     .main-grid { padding: 0 !important; }\
     @media screen and (max-width: 580px) {\
         .main-grid .card { width: 100% !important; margin-bottom: 10px !important; padding: 0 5px !important; }\
-        /* Сітка 2 колонки для мобільних */\
-        .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card, .noimg-grid .card { width: 50% !important; }\
+        .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 50% !important; }\
     }\
     @media screen and (min-width: 581px) {\
         .main-grid .card { width: 25% !important; margin-bottom: 15px !important; padding: 0 8px !important; }\
-        /* Сітка 2 колонки для головної */\
         .main-grid.noimg-main-grid .card { width: 50% !important; }\
-        /* Сітка 6 колонок для категорій/моделей */\
-        .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card, .noimg-grid .card { width: 16.666% !important; }\
+        .main-grid.categories-grid .card, .main-grid.models-grid .card, .main-grid.noimg-grid .card { width: 16.666% !important; }\
     }\
     .main-grid .card__view { padding-bottom: 56.25% !important; border-radius: 12px !important; position: relative !important; }\
     .main-grid.categories-grid .card__view { padding-bottom: 62.5% !important; background: #ffffff !important; }\
     .main-grid.models-grid .card__view { padding-bottom: 150% !important; background: #ffffff !important; }\
     .main-grid .card__img { object-fit: cover !important; border-radius: 12px !important; position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 1 !important; }\
     .main-grid .card__title { display: -webkit-box !important; -webkit-line-clamp: 3 !important; -webkit-box-orient: vertical !important; overflow: hidden !important; white-space: normal !important; text-align: left !important; line-height: 1.2 !important; max-height: 3.6em !important; padding-top: 2px !important; margin-top: 0 !important; text-overflow: ellipsis !important; }\
+    .main-grid.categories-grid .card__title, .main-grid.models-grid .card__title { -webkit-line-clamp: 2 !important; text-align: center !important; font-weight: normal !important; margin-top: 5px !important; }\
     \
-    /* СТИЛЬ ПЛАШОК (ДЛЯ КАТЕГОРІЙ ТА ГОЛОВНОЇ) */\
+    /* ОБ’ЄДНАНИЙ СТИЛЬ ПЛАШОК (ГОЛОВНА + КАТЕГОРІЇ) */\
     .noimg-grid .card, .noimg-main-grid .card, .main-grid.noimg-grid .card, .main-grid.noimg-main-grid .card {\
-        height: auto !important; position: relative !important; display: flex !important; align-items: stretch !important; margin-bottom: 12px !important;\
+        height: auto !important; position: relative !important; display: flex !important; align-items: stretch !important; \
     }\
-    /* ПРИМУСОВО ХОВАЄМО КВАДРАТ З КАРТИНКОЮ */\
     .noimg-grid .card__view, .noimg-main-grid .card__view, .main-grid.noimg-grid .card__view, .main-grid.noimg-main-grid .card__view {\
-        display: none !important;\
+        display: none !important; \
     }\
-    /* ТЕКСТ У ВИГЛЯДІ ЦЕНТРОВАНОЇ КАРТКИ */\
     .noimg-grid .card__title, .noimg-main-grid .card__title, .main-grid.noimg-grid .card__title, .main-grid.noimg-main-grid .card__title {\
         position: relative !important; width: 100% !important; height: 100% !important; \
-        min-height: 80px !important; color: #ffffff !important; font-weight: normal !important; \
-        text-align: center !important; display: flex !important; align-items: center !important; justify-content: center !important; \
-        white-space: normal !important; word-break: break-word !important; -webkit-line-clamp: unset !important; \
-        padding: 15px !important; margin: 0 !important; background: rgba(35,35,35,0.9) !important; \
-        border-radius: 10px !important; border: 1px solid rgba(255,255,255,0.1) !important; transition: all 0.2s ease !important; z-index: 10 !important;\
+        min-height: 100px !important; /* Було 60px у категорій, тепер 100px як на головній */\
+        color: #ffffff !important; font-weight: normal !important; \
+        font-size: 1.4em !important; /* Було 1.1em, тепер 1.4em як на головній */\
+        text-align: center !important; \
+        display: flex !important; align-items: center !important; justify-content: center !important; \
+        white-space: normal !important; word-break: break-word !important; -webkit-line-clamp: unset !important; -webkit-box-orient: unset !important; \
+        padding: 15px !important; margin: 0 !important; \
+        background: rgba(35,35,35,0.9) !important; border-radius: 8px !important; \
+        border: 1px solid rgba(255,255,255,0.1) !important; transition: transform 0.2s, background 0.2s !important; z-index: 10 !important; \
     }\
-    /* ФОКУС */\
-    .noimg-grid .card.focus .card__title, .noimg-main-grid .card.focus .card__title {\
-        transform: scale(1.05) !important; background: rgba(60,60,60,0.98) !important; border-color: #fff !important; box-shadow: 0 0 15px rgba(255,255,255,0.2) !important;\
-    }\
-    @media screen and (min-width: 581px) {\
-        .noimg-grid .card__title, .noimg-main-grid .card__title { font-size: 1.3em !important; min-height: 100px !important; }\
+    .noimg-grid .card.focus .card__title, .noimg-main-grid .card.focus .card__title, .main-grid.noimg-grid .card.focus .card__title, .main-grid.noimg-main-grid .card.focus .card__title {\
+        transform: scale(1.03) !important; background: rgba(70,70,70,0.95) !important; border-color: #fff !important; box-shadow: 0 0 10px rgba(255,255,255,0.3) !important;\
     }\
     .main-grid .card__age { display: none !important; }\
+    .pluginx-filter-btn { order: -1 !important; margin-right: auto !important; }\
 </style>';
+
 
 
 
@@ -287,6 +285,7 @@ var css = '<style>\
     var isStudios = object.is_studios || targetPath === '/producers';
     var isCategories = object.is_categories || targetPath === '/categories';
 
+    // --- БЛОК RSC (СПИСКИ) ---
     if (isModels || isStudios || isCategories) {
         try {
             var source = htmlText || (doc.documentElement ? doc.documentElement.innerHTML : "");
@@ -316,7 +315,6 @@ var css = '<style>\
                         var slug = item.slug || (name ? name.toString().toLowerCase().replace(/\s+/g, '-') : "");
                         var typePath = isModels ? '/actors/' : (isStudios ? '/producers/' : '/categories/');
                         
-                        // ДЛЯ КАТЕГОРІЙ КАРТИНКИ НЕ ПОТРІБНІ ВЗАГАЛІ
                         var img = "";
                         if (!isCategories) {
                             if (item.images && item.images[0]) img = item.images[0];
@@ -329,8 +327,8 @@ var css = '<style>\
                                 url: _this.domain + typePath + slug,
                                 picture: img,
                                 img: img,
-                                is_grid: true,           // Колонки
-                                noimg_grid: isCategories, // Плашка для категорій
+                                is_grid: true,
+                                is_noimg: isCategories, // АКТИВУЄ КЛАС noimg-grid
                                 card_badge: (item.count && item.count !== '0') ? '🎬 ' + item.count : ''
                             });
                         }
@@ -340,7 +338,7 @@ var css = '<style>\
         } catch (e) { console.error("RSC Error:", e); }
     }
 
-    // --- БЛОК ВІДЕО (ORIGINAL) ---
+    // --- БЛОК ВІДЕО ---
     if (results.length === 0) {
         var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
         for (var j = 0; j < elements.length; j++) {
@@ -349,22 +347,22 @@ var css = '<style>\
             var title = el.getAttribute('data-title') || (el.querySelector('h2') ? el.querySelector('h2').textContent : '');
             if (!href || !title) continue;
             
-            var videoImg = '';
-            var dataImages = el.getAttribute('data-images');
-            if (dataImages) {
+            var vImg = '';
+            var dImg = el.getAttribute('data-images');
+            if (dImg) {
                 try { 
-                    var imgs = JSON.parse(dataImages.replace(/\\"/g, '"').replace(/&quot;/g, '"')); 
-                    if (imgs.length) videoImg = imgs[0]; 
+                    var imgs = JSON.parse(dImg.replace(/\\"/g, '"').replace(/&quot;/g, '"')); 
+                    if (imgs.length) vImg = imgs[0]; 
                 } catch(e) {}
             }
-            if (!videoImg && el.querySelector('img')) videoImg = el.querySelector('img').getAttribute('src') || '';
-            if (videoImg && videoImg.startsWith('/')) videoImg = _this.domain + videoImg;
+            if (!vImg && el.querySelector('img')) vImg = el.querySelector('img').getAttribute('src') || '';
+            if (vImg && vImg.startsWith('/')) vImg = _this.domain + vImg;
 
             results.push({
                 name: title,
                 url: href.indexOf('http') === 0 ? href : _this.domain + (href.indexOf('/') === 0 ? '' : '/') + href,
-                picture: videoImg,
-                img: videoImg
+                picture: vImg,
+                img: vImg
             });
         }
     }
