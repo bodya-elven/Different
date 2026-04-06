@@ -383,6 +383,10 @@ var css = '<style>\
                                                 img: img,
                                                 is_grid: true,
                                                 is_noimg: isCategories,
+
+is_models: isModels,
+
+is_studios: isStudios,
                                                 card_badge: (item.count && item.count !== '0') ? '🎬 ' + item.count : ''
                                             });
                                         }
