@@ -311,9 +311,9 @@ var css = '<style>\
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
                     if (!targetPath.startsWith('/')) targetPath = '/' + targetPath;
 
-                    var isModels = object.is_models || targetPath.indexOf('/actors') !== -1;
-                    var isStudios = object.is_studios || targetPath.indexOf('/producers') !== -1;
-                    var isCategories = object.is_categories || targetPath.indexOf('/categories') !== -1;
+                    var isModels = object.is_models || targetPath === '/actors';
+                    var isStudios = object.is_studios || targetPath === '/producers';
+                    var isCategories = object.is_categories || targetPath === '/categories';
 
 
                     // --- БЛОК 1: RSC PAYLOAD (СПИСКИ МОДЕЛЕЙ, КАТЕГОРІЙ, СТУДІЙ) ---
