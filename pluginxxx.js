@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.6.0',
+        version: '2.6.1',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -147,6 +147,138 @@ var css = '<style>\
         // ==========================================
 
         var Adapters = {
+
+
+            // =========================================================================
+            // АДАПТЕР: 24VIDEOS
+            // =========================================================================
+            video24: {
+                title: '24Videos',
+                domain: 'https://lov.24videos.space',
+                
+                getHomeUrl: function() { return this.domain + '/videos/'; },
+                
+                getSearchUrl: function(query) { 
+                    return this.domain + '/search/?q=' + encodeURIComponent(query); 
+                },
+                
+                getUrl: function(object, page) {
+                    var url = object.url || (this.domain + '/videos/');
+                    if (page > 1) {
+                        // Чистимо URL від старого page-X і додаємо актуальний
+                        var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
+                        var query = url.indexOf('?') !== -1 ? '?' + url.split('?')[1] : '';
+                        return base + '/page-' + page + '/' + query;
+                    }
+                    return url;
+                },
+
+                getFilters: function(doc, currentUrl) { return null; },
+
+                getNavItems: function() {
+                    return [
+                        { title: '🎬 Всі відео', action: 'nav', url: this.domain + '/videos/' },
+                        { title: '⭐ Топ відео', action: 'nav', url: this.domain + '/most-popular/' },
+                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/', is_models: true },
+                        { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories/', is_categories: true }
+                    ];
+                },
+
+                parse: function(doc, currentUrl, object) {
+                    var results = [];
+                    // Шукаємо відео-блоки (items)
+                    var elements = doc.querySelectorAll('.video-block, .item');
+                    
+                    var isGrid = object.is_models || object.is_categories || currentUrl.indexOf('/pornstars/') !== -1 || currentUrl.indexOf('/categories/') !== -1;
+
+                    for (var i = 0; i < elements.length; i++) {
+                        var el = elements[i];
+                        var a = el.querySelector('a.link') || el.querySelector('a');
+                        var titleEl = el.querySelector('.title, .name');
+                        var imgEl = el.querySelector('img.thumb, img');
+                        var timeEl = el.querySelector('.duration');
+
+                        if (a && (titleEl || imgEl)) {
+                            var url = a.getAttribute('href');
+                            if (url && url.indexOf('http') !== 0) url = this.domain + (url.startsWith('/') ? '' : '/') + url;
+                            
+                            var name = titleEl ? (titleEl.textContent || '').trim() : (imgEl ? imgEl.getAttribute('alt') : '');
+                            var img = imgEl ? (imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
+                            if (img && img.indexOf('//') === 0) img = 'https:' + img;
+                            else if (img && img.startsWith('/')) img = this.domain + img;
+
+                            results.push({
+                                name: name, // Чиста назва без іконок
+                                url: url,
+                                picture: img,
+                                img: img,
+                                time: timeEl ? (timeEl.textContent || '').trim() : '', // Тривалість на плашку
+                                is_grid: isGrid,
+                                is_models: object.is_models
+                            });
+                        }
+                    }
+                    return results;
+                },
+
+                getStreams: function(htmlText, doc, element, startPlayback, onError) {
+                    // Витягуємо пряме посилання з тегу <video src="...">
+                    var match = htmlText.match(/<video[^>]+src=["']\s*([^"']+\.mp4[^"']*)["']/i);
+                    if (match && match[1]) {
+                        var videoUrl = match[1].trim();
+                        if (videoUrl.indexOf('//') === 0) videoUrl = 'https:' + videoUrl;
+                        
+                        startPlayback([{ 
+                            title: '1080p', 
+                            url: videoUrl,
+                            headers: { 'Referer': this.domain + '/' }
+                        }]);
+                    } else {
+                        // Запасний пошук у скриптах
+                        var scriptMatch = htmlText.match(/video_url:\s*['"]([^'"]+)['"]/);
+                        if (scriptMatch && scriptMatch[1]) {
+                            startPlayback([{ title: 'HD', url: scriptMatch[1] }]);
+                        } else onError();
+                    }
+                },
+
+                getMenu: function(doc, htmlText, element) {
+                    var menu = [];
+                    
+                    // Моделі з відео
+                    var models = doc.querySelectorAll('.row.models a');
+                    for (var i = 0; i < models.length; i++) {
+                        var mName = (models[i].textContent || '').trim();
+                        var mUrl = models[i].getAttribute('href');
+                        if (mName && mUrl) {
+                            menu.push({ 
+                                title: '👸 ' + mName, 
+                                action: 'direct', 
+                                url: mUrl.startsWith('http') ? mUrl : this.domain + mUrl 
+                            });
+                        }
+                    }
+
+                    // Категорії
+                    menu.push({ 
+                        title: '🗄️ Категорії', 
+                        action: 'cats_custom', 
+                        sel: '.row:not(.models) a.link' 
+                    });
+
+                    // Схожі відео
+                    menu.push({ 
+                        title: '🔥 Схожі відео', 
+                        action: 'sim', 
+                        url: element.url 
+                    });
+
+                    return menu;
+                }
+            },
+
+
+
 
       //      ======================================
       // БЛОК ALLPORNSTREAM
