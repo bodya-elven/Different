@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.6.1',
+        version: '2.6.2',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -149,7 +149,7 @@ var css = '<style>\
         var Adapters = {
 
 
-            // =========================================================================
+             // =========================================================================
             // АДАПТЕР: 24VIDEOS
             // =========================================================================
             video24: {
@@ -165,7 +165,11 @@ var css = '<style>\
                 getUrl: function(object, page) {
                     var url = object.url || (this.domain + '/videos/');
                     if (page > 1) {
-                        // Чистимо URL від старого page-X і додаємо актуальний
+                        // Спеціальна логіка для головної: перша /videos/, наступні /page-X/
+                        if (url.indexOf('/videos/') !== -1 || url.replace(this.domain, '').replace(/\/+$/, '') === '') {
+                            return this.domain + '/page-' + page + '/';
+                        }
+                        // Для категорій, моделей та сортування: додаємо /page-X/ в кінець шляху
                         var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
                         var query = url.indexOf('?') !== -1 ? '?' + url.split('?')[1] : '';
                         return base + '/page-' + page + '/' + query;
@@ -177,64 +181,90 @@ var css = '<style>\
 
                 getNavItems: function() {
                     return [
-                        { title: '🎬 Всі відео', action: 'nav', url: this.domain + '/videos/' },
-                        { title: '⭐ Топ відео', action: 'nav', url: this.domain + '/most-popular/' },
-                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/', is_models: true },
-                        { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories/', is_categories: true }
+                        { title: '🆕 Новое', action: 'nav', url: this.domain + '/videos/' },
+                        { title: '🏆 Лучшее', action: 'nav', url: this.domain + '/top-rated-porn/' },
+                        { title: '🔥 Популярное', action: 'nav', url: this.domain + '/most-popular-porn/' },
+                        { title: '🗄️ Категории', action: 'nav', url: this.domain + '/porno/', is_categories: true },
+                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/', is_models: true }
                     ];
                 },
 
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Шукаємо відео-блоки (items)
-                    var elements = doc.querySelectorAll('.video-block, .item');
+                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
                     
-                    var isGrid = object.is_models || object.is_categories || currentUrl.indexOf('/pornstars/') !== -1 || currentUrl.indexOf('/categories/') !== -1;
+                    // Визначаємо, чи ми на сторінці списку категорій
+                    var isCatListPage = object.is_categories || targetPath === '/porno';
+                    var isModelsPage = object.is_models || targetPath.indexOf('/pornstars') !== -1;
 
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var a = el.querySelector('a.link') || el.querySelector('a');
-                        var titleEl = el.querySelector('.title, .name');
-                        var imgEl = el.querySelector('img.thumb, img');
-                        var timeEl = el.querySelector('.duration');
+                    if (isCatListPage) {
+                        // ПАРСИНГ КАТЕГОРІЙ
+                        var catBlocks = doc.querySelectorAll('.categories-block');
+                        for (var i = 0; i < catBlocks.length; i++) {
+                            var elC = catBlocks[i];
+                            var linkC = elC.querySelector('a.link');
+                            var imgC = elC.querySelector('img');
+                            var titleC = elC.querySelector('.title');
+                            var countC = elC.querySelector('.videos .text');
 
-                        if (a && (titleEl || imgEl)) {
-                            var url = a.getAttribute('href');
-                            if (url && url.indexOf('http') !== 0) url = this.domain + (url.startsWith('/') ? '' : '/') + url;
-                            
-                            var name = titleEl ? (titleEl.textContent || '').trim() : (imgEl ? imgEl.getAttribute('alt') : '');
-                            var img = imgEl ? (imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
-                            if (img && img.indexOf('//') === 0) img = 'https:' + img;
-                            else if (img && img.startsWith('/')) img = this.domain + img;
+                            if (linkC && titleC) {
+                                var imgSrcC = imgC ? imgC.getAttribute('src') : '';
+                                if (imgSrcC && imgSrcC.indexOf('//') === 0) imgSrcC = 'https:' + imgSrcC;
 
-                            results.push({
-                                name: name, // Чиста назва без іконок
-                                url: url,
-                                picture: img,
-                                img: img,
-                                time: timeEl ? (timeEl.textContent || '').trim() : '', // Тривалість на плашку
-                                is_grid: isGrid,
-                                is_models: object.is_models
-                            });
+                                results.push({
+                                    name: (titleC.textContent || '').trim(),
+                                    url: linkC.getAttribute('href'),
+                                    picture: imgSrcC,
+                                    img: imgSrcC,
+                                    card_badge: countC ? countC.textContent.trim() : '', // Кількість відео на плашку
+                                    is_grid: true
+                                });
+                            }
+                        }
+                    } else {
+                        // ПАРСИНГ ВІДЕО ТА МОДЕЛЕЙ
+                        var elements = doc.querySelectorAll('.video-block, .item');
+                        for (var j = 0; j < elements.length; j++) {
+                            var elV = elements[j];
+                            var aV = elV.querySelector('a.link') || elV.querySelector('a');
+                            var titleV = elV.querySelector('.title, .name');
+                            var imgV = elV.querySelector('img.thumb, img');
+                            var timeV = elV.querySelector('.duration');
+
+                            if (aV && (titleV || imgV)) {
+                                var urlV = aV.getAttribute('href');
+                                if (urlV && urlV.indexOf('http') !== 0) urlV = this.domain + (urlV.startsWith('/') ? '' : '/') + urlV;
+                                
+                                var nameV = titleV ? (titleV.textContent || '').trim() : (imgV ? imgV.getAttribute('alt') : '');
+                                var imgSrcV = imgV ? (imgV.getAttribute('data-original') || imgV.getAttribute('src')) : '';
+                                if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
+
+                                results.push({
+                                    name: nameV,
+                                    url: urlV,
+                                    picture: imgSrcV,
+                                    img: imgSrcV,
+                                    time: timeV ? (timeV.textContent || '').trim() : '', // Час на плашку
+                                    is_grid: isModelsPage,
+                                    is_models: isModelsPage
+                                });
+                            }
                         }
                     }
                     return results;
                 },
 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    // Витягуємо пряме посилання з тегу <video src="...">
-                    var match = htmlText.match(/<video[^>]+src=["']\s*([^"']+\.mp4[^"']*)["']/i);
+                    // Бронебійний пошук src з урахуванням пробілів (PlayerJS style)
+                    var match = htmlText.match(/src=["']\s*(https?:\/\/[^"']+\.mp4[^"']*)["']/i);
                     if (match && match[1]) {
                         var videoUrl = match[1].trim();
-                        if (videoUrl.indexOf('//') === 0) videoUrl = 'https:' + videoUrl;
-                        
                         startPlayback([{ 
                             title: '1080p', 
                             url: videoUrl,
                             headers: { 'Referer': this.domain + '/' }
                         }]);
                     } else {
-                        // Запасний пошук у скриптах
                         var scriptMatch = htmlText.match(/video_url:\s*['"]([^'"]+)['"]/);
                         if (scriptMatch && scriptMatch[1]) {
                             startPlayback([{ title: 'HD', url: scriptMatch[1] }]);
@@ -244,35 +274,19 @@ var css = '<style>\
 
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
-                    
-                    // Моделі з відео
+                    // Моделі
                     var models = doc.querySelectorAll('.row.models a');
                     for (var i = 0; i < models.length; i++) {
                         var mName = (models[i].textContent || '').trim();
                         var mUrl = models[i].getAttribute('href');
                         if (mName && mUrl) {
-                            menu.push({ 
-                                title: '👸 ' + mName, 
-                                action: 'direct', 
-                                url: mUrl.startsWith('http') ? mUrl : this.domain + mUrl 
-                            });
+                            menu.push({ title: '👸 ' + mName, action: 'direct', url: mUrl.startsWith('http') ? mUrl : this.domain + mUrl });
                         }
                     }
-
                     // Категорії
-                    menu.push({ 
-                        title: '🗄️ Категорії', 
-                        action: 'cats_custom', 
-                        sel: '.row:not(.models) a.link' 
-                    });
-
+                    menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: '.row:not(.models) a.link' });
                     // Схожі відео
-                    menu.push({ 
-                        title: '🔥 Схожі відео', 
-                        action: 'sim', 
-                        url: element.url 
-                    });
-
+                    menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     return menu;
                 }
             },
