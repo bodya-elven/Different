@@ -799,7 +799,16 @@ is_studios: isStudios,
                             if (linkM && nameM) {
                                 var vUrlM = linkM.getAttribute('href');
                                 if (vUrlM && vUrlM.indexOf('http') !== 0) vUrlM = this.domain + vUrlM;
-                                results.push({ name: window.pluginx_formatTitle((nameM.textContent || '').trim(), countM ? (countM.textContent || '').trim() : '', '☰'), url: vUrlM, picture: imgM ? imgM.getAttribute('src') : '', img: imgM ? imgM.getAttribute('src') : '', is_grid: true, is_models: true });
+                                results.push({ 
+    name: (nameM.textContent || '').trim(), 
+    url: vUrlM, 
+    picture: imgM ? imgM.getAttribute('src') : '', 
+    img: imgM ? imgM.getAttribute('src') : '', 
+    is_grid: true, 
+    is_models: true,
+    card_badge: countM ? (countM.textContent || '').trim() : '' // Кількість відео на плашку
+});
+
                             }
                         }
                     } else {
@@ -820,7 +829,15 @@ is_studios: isStudios,
                                     if (Array.isArray(previewData)) for (var s = 0; s < subs.length; s++) previewData.push('https://tr' + subs[s] + '.vide365.com/porno365/trailers/' + f1 + '/' + f2 + '/' + vidId + '.webm');
                                 }
                                 var nameV = (titleEl.textContent || '').trim(), time = timeEl ? (timeEl.textContent || '').trim() : '';
-                                results.push({ name: window.pluginx_formatTitle(nameV, time, '▶'), url: vUrlV, picture: imgV, img: imgV, preview: previewData });
+                                results.push({ 
+    name: nameV, 
+    url: vUrlV, 
+    picture: imgV, 
+    img: imgV, 
+    preview: previewData,
+    time: time // Тривалість на плашку
+});
+
                             }
                         }
                     }
@@ -931,7 +948,16 @@ is_studios: isStudios,
                                 var count = countM ? (countM.textContent || '').trim() : '', imgSrc = imgM.getAttribute('data-src') || imgM.getAttribute('src') || '';
                                 if (imgSrc && imgSrc.indexOf('/') === 0) imgSrc = this.domain + imgSrc;
                                 var urlM = linkM.getAttribute('href'); if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.startsWith('/') ? '' : '/') + urlM.replace(/^\//, '');
-                                results.push({ name: window.pluginx_formatTitle(nameM, count, '☰'), url: urlM, picture: imgSrc, img: imgSrc, is_grid: true, is_models: true });
+                                results.push({ 
+    name: nameM, 
+    url: urlM, 
+    picture: imgSrc, 
+    img: imgSrc, 
+    is_grid: true, 
+    is_models: true,
+    card_badge: count // Кількість відео на плашку
+});
+
                             }
                         }
                     } else {
@@ -965,7 +991,18 @@ is_studios: isStudios,
                                 var urlC = linkC.getAttribute('href'); if (urlC && urlC.indexOf('http') !== 0) urlC = this.domain + (urlC.startsWith('/') ? '' : '/') + urlC.replace(/^\//, '');
                                 var pUrl = (!isStudios && imgC) ? (imgC.getAttribute('data-preview') || '') : ''; if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl; else if (pUrl && pUrl.indexOf('/') === 0) pUrl = this.domain + pUrl;
                                 var infoText = (timeC ? (timeC.textContent || '').trim() : ''), symbol = isStudios ? '☰' : '▶';
-                                if (nameC) results.push({ name: window.pluginx_formatTitle(nameC, infoText, symbol), url: urlC, picture: imgFinal, img: imgFinal, is_grid: isStudios, preview: pUrl });
+                                if (nameC) {
+    results.push({ 
+        name: nameC, 
+        url: urlC, 
+        picture: imgFinal, 
+        img: imgFinal, 
+        is_grid: isStudios, 
+        preview: pUrl,
+        time: isStudios ? '' : infoText, // Час для відео
+        card_badge: isStudios ? '🎬 ' + infoText : '' // Кількість для студій
+    });
+}
                             }
                         }
                     }
@@ -1064,7 +1101,18 @@ is_studios: isStudios,
                             if (!rawName) { var titleM = elM.querySelector('.title, .name, h5'); if (titleM) rawName = (titleM.textContent || '').trim(); else rawName = 'Model'; }
                             var countM = elM.querySelector('.videos'), count = countM ? (countM.textContent || '').trim() : '', urlM = linkM.getAttribute('href');
                             if (urlM && urlM.indexOf('http') !== 0) urlM = this.domain + urlM;
-                            if (rawName) results.push({ name: window.pluginx_formatTitle(rawName, count, '☰'), url: urlM, picture: imgSrc, img: imgSrc, is_grid: true, is_models: true });
+                            if (rawName) {
+    results.push({ 
+        name: rawName, 
+        url: urlM, 
+        picture: imgSrc, 
+        img: imgSrc, 
+        is_grid: true, 
+        is_models: true,
+        card_badge: count 
+    });
+}
+
                         }
                     } else if (isSitesList) {
                         var container = doc.querySelector('#list_content_sources_sponsors_list_items');
@@ -1101,7 +1149,15 @@ is_studios: isStudios,
                             var previewEl = elV.querySelector('.img.thumb__img'), pUrl = previewEl ? previewEl.getAttribute('data-preview') : '';
                             if (pUrl && pUrl.indexOf('//') === 0) pUrl = 'https:' + pUrl;
                             var timeEl = elV.querySelector('.duration'), timeText = timeEl ? (timeEl.textContent || '').replace(/Full Video/gi, '').trim() : '';
-                            results.push({ name: window.pluginx_formatTitle(nameV, timeText, '▶'), url: urlV, picture: imgV, img: imgV, preview: pUrl });
+                            results.push({ 
+    name: nameV, 
+    url: urlV, 
+    picture: imgV, 
+    img: imgV, 
+    preview: pUrl,
+    time: timeText 
+});
+
                         }
                     }
                     return results;
@@ -1240,7 +1296,8 @@ is_studios: isStudios,
                                     if (urlM.indexOf('http') !== 0) urlM = this.domain + (urlM.charAt(0) === '/' ? '' : '/') + urlM;
                                     if (urlM.indexOf('/videos') === -1) urlM = urlM.replace(/\/$/, '') + '/videos';
                                     var imgSrcM = imgM.getAttribute('data-thumb_url') || imgM.getAttribute('src') || ''; 
-                                    results.push({ name: window.pluginx_formatTitle(rawName, countText, '👸'), url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: true });
+                                    results.push({ name: rawName,
+card_badge: countText, url: urlM, picture: imgSrcM, img: imgSrcM, is_grid: true, is_models: true });
                                 }
                             }
                         }
@@ -1264,7 +1321,8 @@ is_studios: isStudios,
                                 if (nameS && urlS) {
                                     if (urlS.indexOf('http') !== 0) urlS = this.domain + (urlS.charAt(0) === '/' ? '' : '/') + urlS;
                                     var imgSrcS = imgS.getAttribute('src') || imgS.getAttribute('data-thumb_url') || '';
-                                    results.push({ name: window.pluginx_formatTitle(nameS, statsText, '🎬'), url: urlS, picture: imgSrcS, img: imgSrcS, is_grid: true });
+                                    results.push({ name: nameS,
+card_badge: statsText, url: urlS, picture: imgSrcS, img: imgSrcS, is_grid: true });
                                 }
                             }
                         }
@@ -1294,7 +1352,8 @@ is_studios: isStudios,
                                 
                                 if (title && href && href.indexOf('viewkey=') !== -1) {
                                     if (href.indexOf('http') !== 0) href = this.domain + (href.charAt(0) === '/' ? '' : '/') + href;
-                                    results.push({ name: window.pluginx_formatTitle(title, timeText, '▶'), url: href, picture: posterUrl, img: posterUrl });
+                                    results.push({ name: title,
+time: timeText, url: href, picture: posterUrl, img: posterUrl });
                                 }
                             }
                         }
@@ -1497,7 +1556,8 @@ is_studios: isStudios,
                             var name = titleEl ? (titleEl.textContent || '').trim() : (imgEl ? imgEl.getAttribute('alt') : (linkEl.textContent || '').trim());
                             name = name.replace(/\(\s*\d{2}\.\d{2}\.\d{4}\s*\)/, '').trim();
                             var time = timeEl ? (timeEl.textContent || '').trim() : '';
-                            if (name && vUrl) results.push({ name: window.pluginx_formatTitle(name, time, '▶'), url: vUrl, picture: img, img: img });
+                            if (name && vUrl) results.push({ name: name,
+time: time, url: vUrl, picture: img, img: img });
                         }
                     }
                     return results;
@@ -1594,7 +1654,8 @@ is_studios: isStudios,
                                 var nameV = titleSpan ? (titleSpan.textContent || '').replace(/\d+[KM]*$/, '').trim() : linkV.getAttribute('title') || '';
                                 if (!nameV && elV.querySelector('img')) nameV = elV.querySelector('img').getAttribute('alt') || '';
                                 var timeEl = elV.querySelector('.duration, .time'), time = timeEl ? (timeEl.textContent || '').trim() : '';
-                                if (nameV && urlV) results.push({ name: window.pluginx_formatTitle(nameV, time, '▶'), url: urlV, picture: imgV, img: imgV });
+                                if (nameV && urlV) results.push({ name: nameV,
+time: time, url: urlV, picture: imgV, img: imgV });
                             }
                         }
                     }
