@@ -1666,7 +1666,7 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                         var $view = $card.find('.card__view');
                         // Перевіряємо, чи ми вже не додали плашку
                         if ($view.length > 0 && $view.find('.pluginx-time-badge').length === 0) {
-                            var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; right: 7px; bottom: 7px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: normal; font-family: sans-serif; border: none; z-index: 10; pointer-events: none;">' + badgeText + '</div>';
+                            var badgeHtml = '<div class="pluginx-time-badge" style="position: absolute; right: 7px; bottom: 7px; background: rgba(0,0,0,0.6); color: #fff; padding: 2px 6px; border-radius: 4px; font-size: 12px; font-weight: normal; font-family: inherit; border: none; z-index: 10; pointer-events: none;">' + badgeText + '</div>';
 
 
 
