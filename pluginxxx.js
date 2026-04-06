@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.5.8',
+        version: '2.5.9',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -170,12 +170,35 @@ var css = '<style>\
                 getFilters: function(doc, currentUrl) {
                     var basePath = currentUrl.split('?')[0];
                     var pathOnly = basePath.replace(this.domain, '').replace(/\/+$/, '');
-                    
-                    // Відключаємо фільтри тільки на сторінках ЗАГАЛЬНИХ списків
-                    if (pathOnly === '/actors' || pathOnly === '/categories' || pathOnly === '/producers') return null;
+                    if (!pathOnly.startsWith('/')) pathOnly = '/' + pathOnly;
 
                     var filtersArray = [];
 
+                    // --- БЛОК 1: Сортування для списків (Актори, Категорії, Студії) ---
+                    if (pathOnly === '/actors' || pathOnly === '/categories' || pathOnly === '/producers') {
+                        var activeS = 'count'; // Дефолт за твоїм скріншотом
+                        if (currentUrl.indexOf('sort=likes') !== -1) activeS = 'likes';
+                        else if (currentUrl.indexOf('sort=views') !== -1) activeS = 'views';
+
+                        var listLabels = {
+                            'count': 'Video Count',
+                            'likes': 'Like Count',
+                            'views': 'View Count'
+                        };
+
+                        filtersArray.push({
+                            subtitle: '↕️ ' + listLabels[activeS],
+                            items: [
+                                { title: 'Video Count', url: basePath + '?sort=count' },
+                                { title: 'Like Count', url: basePath + '?sort=likes' },
+                                { title: 'View Count', url: basePath + '?sort=views' }
+                            ]
+                        });
+                        
+                        return filtersArray; // Повертаємо тільки це сортування для списків
+                    }
+
+                    // --- БЛОК 2: Сортування для сторінок з відео (Оригінальна логіка) ---
                     var activeSortValue = 'recent';
                     if (currentUrl.indexOf('sort=rating') !== -1) activeSortValue = 'rating';
                     else if (currentUrl.indexOf('sort=views') !== -1) activeSortValue = 'views';
@@ -266,7 +289,9 @@ var css = '<style>\
 
                     return filtersArray;
                 },
-                
+
+
+
                 getNavItems: function() {
                     return [
                         { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories', is_categories: true },
@@ -275,9 +300,12 @@ var css = '<style>\
                     ];
                 },
                 
+
                 parse: function(doc, currentUrl, object, htmlText) {
     var results = [];
     var _this = this;
+
+    // Визначаємо шлях сторінки
     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
     if (!targetPath.startsWith('/')) targetPath = '/' + targetPath;
 
@@ -285,23 +313,33 @@ var css = '<style>\
     var isStudios = object.is_studios || targetPath === '/producers';
     var isCategories = object.is_categories || targetPath === '/categories';
 
-    // --- БЛОК RSC (СПИСКИ) ---
+    // --- БЛОК 1: ЕКСТРАКЦІЯ ТА СОРТУВАННЯ RSC (СПИСКИ) ---
     if (isModels || isStudios || isCategories) {
         try {
             var source = htmlText || (doc.documentElement ? doc.documentElement.innerHTML : "");
             var fullPayload = "";
             var regex = /self\.__next_f\.push\(\[1,"(.*?)"\]\)/g;
             var match;
-            while ((match = regex.exec(source)) !== null) { fullPayload += match[1]; }
+            while ((match = regex.exec(source)) !== null) { 
+                fullPayload += match[1]; 
+            }
 
             if (fullPayload) {
-                var cleanData = fullPayload.replace(/\\n/g, '').replace(/\\"/g, '"').replace(/\\u0026/g, '&').replace(/\\\\/g, '\\');
+                // Очищення даних від екранування Next.js
+                var cleanData = fullPayload
+                    .replace(/\\n/g, '')
+                    .replace(/\\"/g, '"')
+                    .replace(/\\u0026/g, '&')
+                    .replace(/\\\\/g, '\\');
+
                 var startKey = '"items":[';
                 var startIndex = cleanData.indexOf(startKey);
 
                 if (startIndex !== -1) {
                     var jsonToParse = cleanData.substring(startIndex + startKey.length - 1);
                     var bracketCount = 0, finalJson = "";
+                    
+                    // Вирізаємо JSON масив за балансом дужок
                     for (var i = 0; i < jsonToParse.length; i++) {
                         if (jsonToParse[i] === '[') bracketCount++;
                         if (jsonToParse[i] === ']') bracketCount--;
@@ -310,15 +348,29 @@ var css = '<style>\
                     }
 
                     var items = JSON.parse(finalJson);
+
+                    // --- ЛОГІКА ВНУТРІШНЬОГО СОРТУВАННЯ ---
+                    if (currentUrl.indexOf('sort=likes') !== -1) {
+                        items.sort(function(a, b) { return (b.likes || 0) - (a.likes || 0); });
+                    } else if (currentUrl.indexOf('sort=views') !== -1) {
+                        items.sort(function(a, b) { return (b.views || 0) - (a.views || 0); });
+                    } else {
+                        // За замовчуванням: Video Count (count)
+                        items.sort(function(a, b) { return (b.count || 0) - (a.count || 0); });
+                    }
+
+                    // Формування карток
                     items.forEach(function(item) {
                         var name = item.category || item.actor || item.producer || item.name || item.title || "";
                         var slug = item.slug || (name ? name.toString().toLowerCase().replace(/\s+/g, '-') : "");
                         var typePath = isModels ? '/actors/' : (isStudios ? '/producers/' : '/categories/');
                         
+                        // Картинки: для категорій ігноруємо, для інших шукаємо
                         var img = "";
                         if (!isCategories) {
                             if (item.images && item.images[0]) img = item.images[0];
                             else if (item.thumbs_urls && item.thumbs_urls[0]) img = item.thumbs_urls[0];
+                            else if (item.image) img = item.image;
                         }
 
                         if (name) {
@@ -327,47 +379,73 @@ var css = '<style>\
                                 url: _this.domain + typePath + slug,
                                 picture: img,
                                 img: img,
-                                is_grid: true,
-                                is_noimg: isCategories, // АКТИВУЄ КЛАС noimg-grid
+                                is_grid: true,           // Робимо колонки
+                                noimg_grid: isCategories, // Активує стиль плашки (CSS noimg-grid)
+                                is_models: isModels,
+                                is_categories: isCategories,
+                                is_studios: isStudios,
                                 card_badge: (item.count && item.count !== '0') ? '🎬 ' + item.count : ''
                             });
                         }
                     });
                 }
             }
-        } catch (e) { console.error("RSC Error:", e); }
+        } catch (e) { 
+            console.error("AllPornStream RSC Parse Error:", e); 
+        }
     }
 
-    // --- БЛОК ВІДЕО ---
+    // --- БЛОК 2: СТАНДАРТНИЙ ПАРСИНГ (ДЛЯ ВІДЕО-ПОСТІВ) ---
     if (results.length === 0) {
         var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
         for (var j = 0; j < elements.length; j++) {
             var el = elements[j];
             var href = el.getAttribute('data-href') || el.getAttribute('data-slug');
             var title = el.getAttribute('data-title') || (el.querySelector('h2') ? el.querySelector('h2').textContent : '');
+            
             if (!href || !title) continue;
             
-            var vImg = '';
+            var videoImg = '';
             var dImg = el.getAttribute('data-images');
             if (dImg) {
                 try { 
-                    var imgs = JSON.parse(dImg.replace(/\\"/g, '"').replace(/&quot;/g, '"')); 
-                    if (imgs.length) vImg = imgs[0]; 
+                    var cleanImgs = dImg.replace(/\\"/g, '"').replace(/&quot;/g, '"');
+                    var imgs = JSON.parse(cleanImgs); 
+                    if (imgs.length) videoImg = imgs[0]; 
                 } catch(e) {}
             }
-            if (!vImg && el.querySelector('img')) vImg = el.querySelector('img').getAttribute('src') || '';
-            if (vImg && vImg.startsWith('/')) vImg = _this.domain + vImg;
+            
+            if (!videoImg && el.querySelector('img')) {
+                videoImg = el.querySelector('img').getAttribute('src') || '';
+            }
+
+            // Обробка проксі та відносних шляхів
+            if (videoImg && videoImg.indexOf('hqporner.com') !== -1 && videoImg.indexOf('/api/images') === -1) {
+                videoImg = _this.domain + '/api/images?src=' + encodeURIComponent(videoImg) + '&width=640&quality=75';
+            } else if (videoImg && videoImg.startsWith('/')) {
+                videoImg = _this.domain + videoImg;
+            }
+            
+            var time = '';
+            var spans = el.querySelectorAll('span');
+            for (var sp = 0; sp < spans.length; sp++) {
+                var txt = (spans[sp].textContent || '').trim();
+                if (/^\d+:\d+/.test(txt)) { time = txt; break; }
+            }
 
             results.push({
                 name: title,
                 url: href.indexOf('http') === 0 ? href : _this.domain + (href.indexOf('/') === 0 ? '' : '/') + href,
-                picture: vImg,
-                img: vImg
+                picture: videoImg,
+                img: videoImg,
+                time: time
             });
         }
     }
+
     return results;
 },
+
 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
                     var providers = [];
