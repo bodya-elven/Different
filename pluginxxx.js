@@ -313,8 +313,9 @@ var css = '<style>.main-grid { padding: 0 !important; } @media screen and (max-w
                             }
                         } 
                     } 
+                    
 
-                    } else {
+                    else {
                         var elements = doc.querySelectorAll('div[data-href*="/post/"], div[data-slug*="/post/"]');
                         for (var i = 0; i < elements.length; i++) {
                             var el = elements[i];
