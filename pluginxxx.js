@@ -168,6 +168,7 @@ var css = '<style>\
                     var url = object.url || (this.domain + '/videos/');
                     if (page > 1) {
                         var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
+                        // Пагінація головної: /videos/ -> /page-2/
                         if (base === this.domain || base.indexOf('/videos') !== -1) {
                             return this.domain + '/page-' + page + '/';
                         }
@@ -179,7 +180,7 @@ var css = '<style>\
                 getFilters: function(doc, currentUrl) {
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
                     
-                    // Відключаємо сортування в Пошуку, Списку категорій та Схожих відео
+                    // Немає сортування: Пошук, список категорій, схожі відео
                     if (currentUrl.indexOf('/search/') !== -1 || targetPath === '/porno' || currentUrl.indexOf('related') !== -1) return null;
 
                     var filters = [];
@@ -189,7 +190,7 @@ var css = '<style>\
                         .replace(/\/top-rated\/?$/, '')
                         .replace(/\/+$/, '');
 
-                    // 1. Динамічне сортування для КАТЕГОРІЙ ТА МОДЕЛЕЙ
+                    // 1. Динамічне сортування для КАТЕГОРІЙ ТА МОДЕЛЕЙ (умовний шлях)
                     if (targetPath.indexOf('/porno-') !== -1 || targetPath.indexOf('/pornstar/') !== -1) {
                         var activeSubSort = 'Новые';
                         if (currentUrl.indexOf('/most-popular/') !== -1) activeSubSort = 'Популярные';
@@ -246,20 +247,19 @@ var css = '<style>\
                 parse: function(doc, currentUrl, object) {
                     var results = [];
                     var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
-                    var isCatList = object.is_categories || targetPath === '/porno';
-                    var isModelsPage = targetPath.indexOf('/pornstar/') !== -1;
+                    var isCatListPage = object.is_categories || targetPath === '/porno';
 
                     var cleanCatName = function(str) {
                         if (!str) return "";
-                        // Видаляємо "Порно " на початку (з урахуванням регістру)
-                        var s = str.replace(/^порно\s+/i, '').trim();
-                        // Робимо Title Case: кожне слово з великої
+                        // Видаляємо "Порно " на початку (будь-який регістр)
+                        var s = str.replace(/^[пП]орно\s+/i, '').trim();
+                        // Кожне слово з великої букви
                         return s.split(/\s+/).map(function(w) {
                             return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
                         }).join(' ');
                     };
 
-                    if (isCatList) {
+                    if (isCatListPage) {
                         var cats = doc.querySelectorAll('.categories-block');
                         for (var i = 0; i < cats.length; i++) {
                             var elC = cats[i], linkC = elC.querySelector('a.link'), titleC = elC.querySelector('.title'), countC = elC.querySelector('.videos .text');
@@ -271,19 +271,19 @@ var css = '<style>\
                                     url: linkC.getAttribute('href'),
                                     picture: imgSrcC, img: imgSrcC,
                                     card_badge: countC ? '🎬 ' + countC.textContent.trim() : '',
-                                    is_grid: true
+                                    is_grid: true // Тільки для списку категорій (біла сітка)
                                 });
                             }
                         }
                     } else {
-                        // Використовуємо тільки .video-block, щоб уникнути пустих карток від пагінації
+                        // Тільки .video-block, щоб не було пустих карток
                         var items = doc.querySelectorAll('.video-block');
                         for (var j = 0; j < items.length; j++) {
-                            var elV = items[j], aV = elV.querySelector('a.link') || elV.querySelector('a'), titleV = elV.querySelector('.title, .name'), timeV = elV.querySelector('.duration');
+                            var elV = items[j], aV = elV.querySelector('a.link'), titleV = elV.querySelector('.title'), timeV = elV.querySelector('.duration');
                             if (aV) {
                                 var urlV = aV.getAttribute('href');
                                 if (urlV && urlV.indexOf('http') !== 0) urlV = this.domain + (urlV.startsWith('/') ? '' : '/') + urlV;
-                                var imgEl = elV.querySelector('img.thumb, img'), imgSrcV = imgEl ? (imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
+                                var imgEl = elV.querySelector('img.thumb'), imgSrcV = imgEl ? (imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
                                 if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
 
                                 var previewUrl = "";
@@ -297,8 +297,9 @@ var css = '<style>\
                                     picture: imgSrcV, img: imgSrcV,
                                     time: timeV ? (timeV.textContent || '').trim() : '',
                                     preview: previewUrl,
-                                    is_grid: isModelsPage, // Щоб моделі мали правильну сітку
-                                    is_models: isModelsPage
+                                    // ПРАВИЛЬНА СІТКА: для відео завжди false, щоб був main-grid (16:9)
+                                    is_grid: false,
+                                    is_models: false
                                 });
                             }
                         }
@@ -343,9 +344,10 @@ var css = '<style>\
 
 
 
-      //      ======================================
-      // БЛОК ALLPORNSTREAM
-      //    ======================================
+            // =========================================================================
+            // АДАПТЕР: ALLPORNSTREAM
+            // =========================================================================
+   
             allpornstream: {
                 title: 'AllPornStream',
                 domain: 'https://allpornstream.com',
