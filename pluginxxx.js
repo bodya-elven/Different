@@ -151,7 +151,7 @@ var css = '<style>\
 
 
             // =========================================================================
-            // ВАРІАНТ 1: Пріоритет data-src (Стандартний Lazy Load)
+            // ПЕРЕВІРКА 1: Пріоритет data-src (Стандартний Lazy Load)
             // =========================================================================
             porndish1: {
                 title: 'Porndish (data-src)',
@@ -163,6 +163,7 @@ var css = '<style>\
                     if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
                     return url;
                 },
+                getFilters: function() { return null; },
                 getNavItems: function() { return []; },
                 parse: function(doc, currentUrl, object) {
                     var results = [];
@@ -178,8 +179,7 @@ var css = '<style>\
                             results.push({
                                 name: (a.textContent || '').trim(),
                                 url: a.getAttribute('href'),
-                                picture: img,
-                                img: img,
+                                picture: img, img: img,
                                 time: timeEl ? (timeEl.textContent || '').trim() : ''
                             });
                         }
@@ -191,7 +191,7 @@ var css = '<style>\
             },
 
             // =========================================================================
-            // ВАРІАНТ 2: Найкраща якість (Парсинг srcset)
+            // ПЕРЕВІРКА 2: Найкраща якість (Парсинг data-srcset)
             // =========================================================================
             porndish2: {
                 title: 'Porndish (HQ srcset)',
@@ -203,6 +203,7 @@ var css = '<style>\
                     if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
                     return url;
                 },
+                getFilters: function() { return null; },
                 getNavItems: function() { return []; },
                 parse: function(doc, currentUrl, object) {
                     var results = [];
@@ -226,12 +227,14 @@ var css = '<style>\
                                     }
                                 }
                             }
-                            if (!img && imgEl) img = imgEl.getAttribute('data-src') || imgEl.getAttribute('src');
+                            if (!img && imgEl) {
+                                img = imgEl.getAttribute('data-src') || imgEl.getAttribute('src');
+                                if (img && img.indexOf('data:image') !== -1) img = imgEl.getAttribute('data-src') || '';
+                            }
                             results.push({
                                 name: (a.textContent || '').trim(),
                                 url: a.getAttribute('href'),
-                                picture: img,
-                                img: img,
+                                picture: img, img: img,
                                 time: timeEl ? (timeEl.textContent || '').trim() : ''
                             });
                         }
@@ -243,7 +246,7 @@ var css = '<style>\
             },
 
             // =========================================================================
-            // ВАРІАНТ 3: Через проксі weserv.nl (Найбільш стабільний)
+            // ПЕРЕВІРКА 3: Проксі weserv.nl (Обхід CORS та хотлінкінгу)
             // =========================================================================
             porndish3: {
                 title: 'Porndish (Proxy)',
@@ -255,6 +258,7 @@ var css = '<style>\
                     if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
                     return url;
                 },
+                getFilters: function() { return null; },
                 getNavItems: function() { return []; },
                 parse: function(doc, currentUrl, object) {
                     var results = [];
@@ -268,14 +272,13 @@ var css = '<style>\
                             var rawImg = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
                             if (rawImg && rawImg.indexOf('data:image') !== -1) rawImg = imgEl.getAttribute('data-src') || '';
                             
-                            // Використовуємо проксі для обходу обмежень завантаження
+                            // Формуємо посилання через проксі
                             var img = rawImg ? 'https://images.weserv.nl/?url=' + encodeURIComponent(rawImg) + '&w=600' : '';
 
                             results.push({
                                 name: (a.textContent || '').trim(),
                                 url: a.getAttribute('href'),
-                                picture: img,
-                                img: img,
+                                picture: img, img: img,
                                 time: timeEl ? (timeEl.textContent || '').trim() : ''
                             });
                         }
