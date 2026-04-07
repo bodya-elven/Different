@@ -151,138 +151,178 @@ var css = '<style>\
 
 
             // =========================================================================
-            // ПЕРЕВІРКА 4: Отримання ОРИГІНАЛУ (Видалення розмірів WordPress)
-            // Прибирає "-364x205", щоб дістати пряме посилання на HQ фото
+            // АДАПТЕР: BRAZZ.ORG
             // =========================================================================
-            porndish1: {
-                title: 'Porndish (HQ Clean)',
-                domain: 'https://www.porndish.com',
-                getHomeUrl: function() { return this.domain; },
-                getSearchUrl: function(query) { return this.domain + '/?s=' + encodeURIComponent(query); },
+            brazzorg: {
+                title: 'Brazz.org',
+                domain: 'https://brazz.org',
+                
+                getHomeUrl: function() { return this.domain + '/videos/free-brazz-premium-2026/'; },
+                
+                getSearchUrl: function(query) { 
+                    return this.domain + '/search/free-brazz-premium-2026/?s=' + encodeURIComponent(query); 
+                },
+                
                 getUrl: function(object, page) {
-                    var url = object.url || this.domain;
-                    if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
+                    var url = object.url || this.getHomeUrl();
+                    if (page > 1) {
+                        // Формат: /videos/page/2/ або /videos/sortby/rating/page/2/
+                        var parts = url.split('free-brazz-premium-2026');
+                        var base = parts[0].replace(/\/page\/\d+\/?$/, '').replace(/\/+$/, '');
+                        return base + '/page/' + page + '/free-brazz-premium-2026/';
+                    }
                     return url;
                 },
-                getFilters: function() { return null; },
-                getNavItems: function() { return []; },
+
+                getFilters: function(doc, currentUrl) {
+                    // Сортування доступне тільки в розділах з відео, не в категоріях/моделях
+                    if (currentUrl.indexOf('/categories/') !== -1 || currentUrl.indexOf('/pornstars/') !== -1 || currentUrl.indexOf('/sites/') !== -1) return null;
+
+                    var activeSort = 'Новые';
+                    if (currentUrl.indexOf('/sortby/rating/') !== -1) activeSort = 'Топ Рейтинг';
+                    else if (currentUrl.indexOf('/sortby/views/') !== -1) activeSort = 'Популярные';
+                    else if (currentUrl.indexOf('/sortby/beingwatched/') !== -1) activeSort = 'Смотрят сейчас';
+
+                    return [{
+                        subtitle: '↕️ ' + activeSort,
+                        items: [
+                            { title: 'Новые', url: this.domain + '/videos/free-brazz-premium-2026/' },
+                            { title: 'Топ Рейтинг', url: this.domain + '/videos/sortby/rating/free-brazz-premium-2026/' },
+                            { title: 'Популярные', url: this.domain + '/videos/sortby/views/free-brazz-premium-2026/' },
+                            { title: 'Смотрят сейчас', url: this.domain + '/videos/sortby/beingwatched/free-brazz-premium-2026/' }
+                        ]
+                    }];
+                },
+
+                getNavItems: function() {
+                    return [
+                        { title: '🎬 Новинки', action: 'nav', url: this.getHomeUrl() },
+                        { title: '🗄️ Категории', action: 'nav', url: this.domain + '/categories/free-brazz-premium-2026/', is_categories: true },
+                        { title: '🏢 Студии', action: 'nav', url: this.domain + '/sites/free-brazz-premium-2026/', is_categories: true },
+                        { title: '💃 Модели', action: 'nav', url: this.domain + '/pornstars/gender/female/free-brazz-premium-2026/', is_categories: true }
+                    ];
+                },
+
                 parse: function(doc, currentUrl, object) {
                     var results = [];
-                    // Розширений селектор, щоб точно не було порожньо
-                    var elements = doc.querySelectorAll('article.entry-tpl-grid, article.post, .g1-collection-item article');
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var a = el.querySelector('.entry-title a, a.g1-frame');
-                        var imgEl = el.querySelector('img');
-                        var timeEl = el.querySelector('.mace-video-duration, .entry-flags-duration');
-                        if (a) {
-                            var rawImg = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                            if (rawImg && rawImg.indexOf('data:image') !== -1) rawImg = imgEl.getAttribute('data-src') || '';
-                            
-                            // ЛОГІКА: Видаляємо хвіст ресайзу WordPress (напр. -364x205.jpg -> .jpg)
-                            var img = rawImg.replace(/-\d+x\d+(\.[a-z]+)$/i, '$1');
+                    var isGridPage = object.is_categories || currentUrl.indexOf('/categories/') !== -1 || currentUrl.indexOf('/sites/') !== -1 || currentUrl.indexOf('/pornstars/') !== -1;
 
-                            results.push({
-                                name: (a.getAttribute('title') || a.textContent || '').trim(),
-                                url: a.getAttribute('href'),
-                                picture: img, img: img,
-                                time: timeEl ? (timeEl.textContent || '').trim() : ''
-                            });
+                    // Чистка назви: видаляємо "Apr 06: "
+                    var cleanTitle = function(str) {
+                        if (!str) return "";
+                        return str.replace(/^[A-Z][a-z]{2}\s\d{2}:\s*/i, '').trim();
+                    };
+
+                    if (isGridPage) {
+                        // Парсинг Категорій, Студій та Моделей
+                        var items = doc.querySelectorAll('article.thumb-block');
+                        for (var i = 0; i < items.length; i++) {
+                            var el = items[i];
+                            // Для сторінки Студій ігноруємо відео (вони мають клас loop-video)
+                            if (currentUrl.indexOf('/sites/') !== -1 && el.classList.contains('loop-video')) continue;
+
+                            var a = el.querySelector('a');
+                            var titleEl = el.querySelector('.cat-title, .actor-title, .widget-title span, header span');
+                            var imgEl = el.querySelector('img');
+
+                            if (a && titleEl) {
+                                var imgSrc = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
+                                results.push({
+                                    name: titleEl.textContent.trim(),
+                                    url: a.getAttribute('href'),
+                                    picture: imgSrc, img: imgSrc,
+                                    is_grid: true,
+                                    card_grid: 'categories-grid'
+                                });
+                            }
+                        }
+                    } else {
+                        // Парсинг Відео
+                        var videos = doc.querySelectorAll('article.loop-video');
+                        for (var j = 0; j < videos.length; j++) {
+                            var v = videos[j];
+                            var link = v.querySelector('a');
+                            var imgV = v.querySelector('img');
+                            var dur = v.querySelector('.duration');
+                            var rate = v.querySelector('.rating-bar-meter');
+
+                            if (link) {
+                                var vImg = imgV ? (imgV.getAttribute('data-src') || imgV.getAttribute('src')) : '';
+                                var vTitle = cleanTitle(link.getAttribute('title') || v.querySelector('header span').textContent);
+                                
+                                // Логіка Трейлера (базується на UID та структурі CDN)
+                                var previewUrl = "";
+                                var uid = v.getAttribute('data-video-uid');
+                                if (uid && vImg.indexOf('poster_01.jpg') !== -1) {
+                                    previewUrl = vImg.replace('poster/poster_01.jpg', 'trailer.mp4');
+                                }
+
+                                results.push({
+                                    name: vTitle,
+                                    url: link.getAttribute('href'),
+                                    picture: vImg, img: vImg,
+                                    time: dur ? dur.textContent.trim() : '',
+                                    card_badge: rate ? '👍 ' + rate.style.width : '',
+                                    preview: previewUrl
+                                });
+                            }
                         }
                     }
                     return results;
                 },
-                getStreams: function(h, d, e, s, onError) { onError(); },
-                getMenu: function() { return []; }
-            },
 
-            // =========================================================================
-            // ПЕРЕВІРКА 5: Спеціальний Проксі з Referer (як у HQPorner)
-            // Використовує проксі, який ігнорує захист хотлінкінгу
-            // =========================================================================
-            porndish2: {
-                title: 'Porndish (Referer Proxy)',
-                domain: 'https://www.porndish.com',
-                getHomeUrl: function() { return this.domain; },
-                getSearchUrl: function(query) { return this.domain + '/?s=' + encodeURIComponent(query); },
-                getUrl: function(object, page) {
-                    var url = object.url || this.domain;
-                    if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
-                    return url;
-                },
-                getFilters: function() { return null; },
-                getNavItems: function() { return []; },
-                parse: function(doc, currentUrl, object) {
-                    var results = [];
-                    var elements = doc.querySelectorAll('article');
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var a = el.querySelector('.entry-title a');
-                        var imgEl = el.querySelector('img');
-                        if (a) {
-                            var rawImg = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                            if (rawImg && rawImg.indexOf('data:image') !== -1) rawImg = imgEl.getAttribute('data-src') || '';
-                            
-                            // ЛОГІКА: Проксі з примусовим Referer (через wsrv.nl з параметром)
-                            // Іноді допомагає додавання домену в параметр або використання іншого сервісу
-                            var img = rawImg ? 'https://images.weserv.nl/?url=' + encodeURIComponent(rawImg) + '&noreferer=true' : '';
-
-                            results.push({
-                                name: (a.textContent || '').trim(),
-                                url: a.getAttribute('href'),
-                                picture: img, img: img
-                            });
-                        }
+                getStreams: function(htmlText, doc, element, startPlayback, onError) {
+                    var iframe = doc.querySelector('iframe[name="player"]');
+                    if (iframe) {
+                        var src = iframe.getAttribute('src');
+                        // Використовуємо httpCall для переходу всередину плеєра
+                        window.httpCall(src, function(playerHtml) {
+                            var fileMatch = playerHtml.match(/file\s*:\s*["']([^"']+)["']/);
+                            if (fileMatch) {
+                                var videoUrl = fileMatch[1].replace(/\\/g, '');
+                                if (videoUrl.indexOf('http') === 0) {
+                                    startPlayback([{ title: 'Full HD', url: videoUrl }]);
+                                    return;
+                                }
+                            }
+                            onError();
+                        }, onError);
+                    } else {
+                        onError();
                     }
-                    return results;
                 },
-                getStreams: function(h, d, e, s, onError) { onError(); },
-                getMenu: function() { return []; }
-            },
 
-            // =========================================================================
-            // ПЕРЕВІРКА 6: Логіка "No-Referrer" через i.wp.com
-            // Використовуємо власний проксі WordPress (Jetpack), який часто обходить CORS
-            // =========================================================================
-            porndish3: {
-                title: 'Porndish (WP Jetpack)',
-                domain: 'https://www.porndish.com',
-                getHomeUrl: function() { return this.domain; },
-                getSearchUrl: function(query) { return this.domain + '/?s=' + encodeURIComponent(query); },
-                getUrl: function(object, page) {
-                    var url = object.url || this.domain;
-                    if (page > 1) return url.split('?')[0].replace(/\/+$/, '') + '/page/' + page + '/';
-                    return url;
-                },
-                getFilters: function() { return null; },
-                getNavItems: function() { return []; },
-                parse: function(doc, currentUrl, object) {
-                    var results = [];
-                    var elements = doc.querySelectorAll('article');
-                    for (var i = 0; i < elements.length; i++) {
-                        var el = elements[i];
-                        var a = el.querySelector('.entry-title a');
-                        var imgEl = el.querySelector('img');
-                        if (a) {
-                            var rawImg = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                            if (rawImg.indexOf('http') === -1) rawImg = 'https://www.porndish.com' + rawImg;
-
-                            // ЛОГІКА: Проксі через i0.wp.com (сервіс WordPress для картинок)
-                            // Він сам викачує картинку і віддає її без обмежень Referer
-                            var cleanImg = rawImg.replace(/^https?:\/\//i, '');
-                            var img = 'https://i0.wp.com/' + cleanImg;
-
-                            results.push({
-                                name: (a.textContent || '').trim(),
-                                url: a.getAttribute('href'),
-                                picture: img, img: img
-                            });
-                        }
+                getMenu: function(doc, htmlText, element) {
+                    var menu = [];
+                    
+                    // 1. Моделі
+                    var actors = doc.querySelectorAll('#video-actors a');
+                    for (var i = 0; i < actors.length; i++) {
+                        menu.push({ 
+                            title: '💃 ' + actors[i].textContent.trim(), 
+                            action: 'direct', 
+                            url: actors[i].getAttribute('href') 
+                        });
                     }
-                    return results;
-                },
-                getStreams: function(h, d, e, s, onError) { onError(); },
-                getMenu: function() { return []; }
+
+                    // 2. Студія
+                    var studio = doc.querySelector('#video-author a');
+                    if (studio) {
+                        menu.push({ 
+                            title: '🏢 ' + studio.textContent.trim(), 
+                            action: 'direct', 
+                            url: studio.getAttribute('href') 
+                        });
+                    }
+
+                    // 3. Категорії
+                    menu.push({ title: '🏷️ Категории', action: 'cats_custom', sel: '.tags-list a' });
+
+                    // 4. Схожі відео (тільки з блоку related)
+                    menu.push({ title: '🔥 Схожі відео', action: 'sim_custom', sel: '.under-video-block article' });
+
+                    return menu;
+                }
             },
 
 
