@@ -10,6 +10,7 @@
         var isOpened = false;
 
         this.init = function () {
+            // Для фільмів
             Lampa.Listener.follow('full', function (e) {
                 if (e.type === 'complite') {
                     _this.cleanup();
@@ -17,31 +18,23 @@
                         try {
                             _this.render(e.data.movie, e.object.activity.render(), 'movie');
                         } catch (err) {}
-                    }, 100);
+                    }, 50);
                 }
             });
 
+            // Для акторів (повертаємо ідеальний момент 'start' з першої спроби)
             Lampa.Listener.follow('activity', function (e) {
-                if (e.type === 'complite' && e.component === 'actor') {
+                if (e.type === 'start' && e.component === 'actor') {
                     _this.cleanup();
-                    
-                    var personData = e.object.activity.item || e.object.activity.data;
-                    if (!personData) return;
-
-                    var html = e.object.activity.render();
-                    var attempts = 0;
-                    
-                    // Чекаємо, поки відмалюється верхній блок з інформацією (а не конкретна кнопка)
-                    var tryRender = function() {
-                        var infoBlock = html.find('.full-start__info, .actor__info, .full-person__info, .full-start__head');
-                        if (infoBlock.length > 0) {
-                            setTimeout(function() { _this.render(personData, html, 'person'); }, 200);
-                        } else if (attempts < 15) { 
-                            attempts++;
-                            setTimeout(tryRender, 200);
-                        }
-                    };
-                    tryRender();
+                    setTimeout(function() {
+                        try {
+                            // Надійно отримуємо ID та дані актора
+                            var personData = e.object.activity.item || e.object.activity.data || e.object.activity.person;
+                            if (!personData && e.object.activity.id) personData = { id: e.object.activity.id, name: e.object.activity.title };
+                            
+                            _this.render(personData, e.object.activity.render(), 'person');
+                        } catch (err) {}
+                    }, 50);
                 }
             });
         };
@@ -65,7 +58,6 @@
             var style = '<style>' +
                 '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; gap: 7px; opacity: 0.7; transition: opacity 0.3s; } ' +
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
-                
                 '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.6em !important; height: 1.6em !important; max-width: 1.6em !important; max-height: 1.6em !important; object-fit: contain !important; margin: 0 7px 0 0 !important; } ' +
                 
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
@@ -89,7 +81,6 @@
                 '.wiki-loader { text-align: center; margin-top: 50px; color: #888; }' +
                 
                 '.wiki-content-scroll table { font-size: inherit !important; }' + 
-                
                 '.wiki-content-scroll h1, .wiki-content-scroll h2 { color: #fff; border-bottom: 1px solid #333; margin-top: 1.5em; padding-bottom: 0.3em; }' +
                 '.wiki-content-scroll p { margin-bottom: 1em; text-align: justify; }' +
                 '.wiki-content-scroll a { color: inherit !important; text-decoration: none; pointer-events: none; }' +
@@ -110,46 +101,18 @@
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
 
-            // НОВА УНІВЕРСАЛЬНА ЛОГІКА РОЗМІЩЕННЯ (без прив'язки до класів підписки)
-            var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
-            
+            // Успішна логіка розміщення з першої спроби
             if (type === 'person') {
-                if (buttons_container.length === 0) {
-                    // Шукаємо будь-яку кнопку у верхній частині (ігноруємо списки фільмів знизу)
-                    var topSelectors = container.find('.selector').filter(function() {
-                        return $(this).parents('.items-line, .scroll, .items-scroll').length === 0;
-                    });
-                    
-                    if (topSelectors.length > 0) {
-                        buttons_container = topSelectors.first().parent();
-                    } else {
-                        // Якщо кнопок взагалі 0, створюємо свій контейнер під інформацією
-                        var infoBlock = container.find('.full-start__info, .full-person__info, .full-start__head').first();
-                        if (infoBlock.length) {
-                            buttons_container = $('<div class="full-start__buttons" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>');
-                            infoBlock.append(buttons_container);
-                        }
-                    }
-                }
-
-                // Ставимо другою або першою, якщо вона одна
-                if (buttons_container.length) {
-                    var firstBtn = buttons_container.children('.selector').first();
-                    if (firstBtn.length) {
-                        firstBtn.after(button);
-                    } else {
-                        buttons_container.append(button);
-                    }
-                } else {
-                    container.append(button); // Глухий фоллбек
-                }
-
-            } else {
-                // Логіка для фільмів (додаємо в кінець)
-                if (buttons_container.length) {
-                    buttons_container.append(button);
+                var firstSelector = container.find('.selector').first();
+                if (firstSelector.length) {
+                    firstSelector.after(button); // Ставимо відразу після першої кнопки
                 } else {
                     container.append(button);
+                }
+            } else {
+                var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
+                if (buttons_container.length) {
+                    buttons_container.append(button);
                 }
             }
 
@@ -157,8 +120,9 @@
                 if (hasResults) button.addClass('ready');
             });
 
+            // ТУТ БУВ БАГ: тепер передаємо item, а не item.movie
             button.on('hover:enter click', function() {
-                if (!isOpened) _this.handleButtonClick(item, type);
+                if (!isOpened) _this.handleButtonClick(item, type); 
             });
         };
 
