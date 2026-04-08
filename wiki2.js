@@ -10,7 +10,6 @@
         var isOpened = false;
 
         this.init = function () {
-            // Слухач для сторінок фільмів та серіалів
             Lampa.Listener.follow('full', function (e) {
                 if (e.type === 'complite') {
                     _this.cleanup();
@@ -22,7 +21,6 @@
                 }
             });
 
-            // Слухач для сторінки персони/актора (чекаємо complite)
             Lampa.Listener.follow('activity', function (e) {
                 if (e.type === 'complite' && e.component === 'actor') {
                     _this.cleanup();
@@ -33,12 +31,12 @@
                     var html = e.object.activity.render();
                     var attempts = 0;
                     
-                    // Цикл очікування: чекаємо поки Lampa відмалює хоча б одну кнопку (документ або дзвіночок)
+                    // Чекаємо, поки відмалюється верхній блок з інформацією (а не конкретна кнопка)
                     var tryRender = function() {
-                        var hasButtons = html.find('.button--subscribe, .button--book, .full-start__button').length > 0;
-                        if (hasButtons) {
-                            _this.render(personData, html, 'person');
-                        } else if (attempts < 15) { // Чекаємо до 3 секунд
+                        var infoBlock = html.find('.full-start__info, .actor__info, .full-person__info, .full-start__head');
+                        if (infoBlock.length > 0) {
+                            setTimeout(function() { _this.render(personData, html, 'person'); }, 200);
+                        } else if (attempts < 15) { 
                             attempts++;
                             setTimeout(tryRender, 200);
                         }
@@ -112,18 +110,30 @@
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
 
-            // СМАРТ-ЛОГІКА РОЗМІЩЕННЯ КНОПКИ
+            // НОВА УНІВЕРСАЛЬНА ЛОГІКА РОЗМІЩЕННЯ (без прив'язки до класів підписки)
             var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
             
-            // Якщо стандартного контейнера немає (як у акторів), шукаємо будь-яку кнопку і беремо її контейнер
-            if (buttons_container.length === 0) {
-                var anyBtn = container.find('.button--subscribe, .button--book, .full-start__button').first();
-                if (anyBtn.length) buttons_container = anyBtn.parent();
-            }
+            if (type === 'person') {
+                if (buttons_container.length === 0) {
+                    // Шукаємо будь-яку кнопку у верхній частині (ігноруємо списки фільмів знизу)
+                    var topSelectors = container.find('.selector').filter(function() {
+                        return $(this).parents('.items-line, .scroll, .items-scroll').length === 0;
+                    });
+                    
+                    if (topSelectors.length > 0) {
+                        buttons_container = topSelectors.first().parent();
+                    } else {
+                        // Якщо кнопок взагалі 0, створюємо свій контейнер під інформацією
+                        var infoBlock = container.find('.full-start__info, .full-person__info, .full-start__head').first();
+                        if (infoBlock.length) {
+                            buttons_container = $('<div class="full-start__buttons" style="display:flex; flex-wrap:wrap; gap:10px; margin-top:10px;"></div>');
+                            infoBlock.append(buttons_container);
+                        }
+                    }
+                }
 
-            if (buttons_container.length) {
-                if (type === 'person') {
-                    // Для акторів: ставимо ДРУГОЮ (після першої знайденої кнопки)
+                // Ставимо другою або першою, якщо вона одна
+                if (buttons_container.length) {
                     var firstBtn = buttons_container.children('.selector').first();
                     if (firstBtn.length) {
                         firstBtn.after(button);
@@ -131,12 +141,16 @@
                         buttons_container.append(button);
                     }
                 } else {
-                    // Для фільмів: в кінець списку
-                    buttons_container.append(button);
+                    container.append(button); // Глухий фоллбек
                 }
+
             } else {
-                // Найбільш крайній резервний варіант, якщо кнопок взагалі немає
-                container.append(button);
+                // Логіка для фільмів (додаємо в кінець)
+                if (buttons_container.length) {
+                    buttons_container.append(button);
+                } else {
+                    container.append(button);
+                }
             }
 
             _this.performSearch(item, type, function(hasResults) {
