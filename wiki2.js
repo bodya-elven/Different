@@ -16,21 +16,24 @@
                     _this.cleanup();
                     setTimeout(function() {
                         try {
-                            _this.render(e.data, e.object.activity.render(), 'movie');
+                            // ВАЖЛИВО: Передаємо саме e.data.movie, щоб не ламати пошук по ID
+                            _this.render(e.data.movie, e.object.activity.render(), 'movie');
                         } catch (err) {}
                     }, 100);
                 }
             });
 
-            // Додано слухача для сторінки актора (компонент 'actor')
+            // Слухач для сторінки персони/актора
             Lampa.Listener.follow('activity', function (e) {
                 if (e.type === 'start' && e.component === 'actor') {
                     _this.cleanup();
                     setTimeout(function() {
                         try {
                             // Отримуємо дані актора
-                            var data = e.object.activity.data || e.object.activity.item;
-                            _this.render(data, e.object.activity.render(), 'person');
+                            var personData = e.object.activity.item || e.object.activity.data;
+                            if (personData) {
+                                _this.render(personData, e.object.activity.render(), 'person');
+                            }
                         } catch (err) {}
                     }, 100);
                 }
@@ -44,8 +47,8 @@
             isOpened = false;
         };
 
-        // Додано параметр type ('movie' або 'person')
-        this.render = function (data, html, type) {
+        // Замінив data на item для уникнення плутанини
+        this.render = function (item, html, type) {
             var container = $(html);
             if (container.find('.lampa-wiki-button').length) return;
 
@@ -102,22 +105,27 @@
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
 
-            // Шукаємо контейнер з кнопками (для фільмів це full-start__buttons, для акторів теж часто він)
-            var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
-            
-            // Якщо не знайшли (специфічний скін сторінки актора), шукаємо за будь-якою селектор-кнопкою
-            if (buttons_container.length === 0 && type === 'person') {
-                buttons_container = container.find('.selector').first().parent();
+            // Шукаємо кнопку підписки, щоб стати після неї (актуально для акторів)
+            var subscribeBtn = container.find('.button--subscribe');
+            if (subscribeBtn.length) {
+                subscribeBtn.after(button);
+            } else {
+                // Якщо кнопки підписки немає, шукаємо стандартний контейнер кнопок (для фільмів)
+                var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
+                if (buttons_container.length) {
+                    buttons_container.append(button);
+                } else if (type === 'person') {
+                    // Резервний варіант: ставимо після останньої кнопки-селектора
+                    container.find('.selector').last().after(button);
+                }
             }
 
-            buttons_container.append(button);
-
-            _this.performSearch(data, type, function(hasResults) {
+            _this.performSearch(item, type, function(hasResults) {
                 if (hasResults) button.addClass('ready');
             });
 
             button.on('hover:enter click', function() {
-                if (!isOpened) _this.handleButtonClick(data, type);
+                if (!isOpened) _this.handleButtonClick(item, type);
             });
         };
 
@@ -152,7 +160,6 @@
             var _this = this;
             var def = $.Deferred();
             
-            // Визначаємо метод API в залежності від типу (person, movie, tv)
             var method = type === 'person' ? 'person' : ((item.original_name || item.name) ? 'tv' : 'movie');
             var mainType = type === 'person' ? 'Біографія' : (method === 'tv' ? 'Серіал' : 'Фільм');
             var tmdbKey = Lampa.TMDB.key();
@@ -191,11 +198,9 @@
 
                             targets.push({ qId: mainQId, type: mainType });
 
-                            // Якщо це сторінка актора, шукаємо фільмографію (P1283)
                             if (type === 'person') {
                                 extractQIds('P1283', 'Фільмографія');
                             } else {
-                                // Якщо це фільм/серіал, шукаємо акторів та інше
                                 extractQIds('P144', 'Засновано на');
                                 extractQIds('P155', 'Попередник');
                                 extractQIds('P156', 'Наступник');
@@ -404,5 +409,3 @@
 
     if (window.Lampa) window.wiki_info = new WikiInfoPlugin().init();
 })();
-
-        
