@@ -10,7 +10,6 @@
         var isOpened = false;
 
         this.init = function () {
-            // Для фільмів
             Lampa.Listener.follow('full', function (e) {
                 if (e.type === 'complite') {
                     _this.cleanup();
@@ -18,37 +17,20 @@
                         try {
                             _this.render(e.data.movie, e.object.activity.render(), 'movie');
                         } catch (err) {}
-                    }, 100);
+                    }, 50);
                 }
             });
 
-            // Для персон (акторів, режисерів тощо)
             Lampa.Listener.follow('activity', function (e) {
-                // Слухаємо і start, і complite для надійності
-                if ((e.type === 'start' || e.type === 'complite') && e.component === 'actor') {
+                if (e.type === 'start' && e.component === 'actor') {
                     _this.cleanup();
                     setTimeout(function() {
                         try {
-                            var activity = e.object.activity;
-                            // СУПЕР-ПОШУК ID: перевіряємо всі можливі місця, включаючи пряме посилання з URL
-                            var id = activity.id || 
-                                     (activity.data && activity.data.id) || 
-                                     (activity.item && activity.item.id) || 
-                                     (activity.person && activity.person.id);
-                            
-                            var name = activity.title || 
-                                       (activity.data && (activity.data.name || activity.data.title)) || 
-                                       'Особа';
-
-                            if (id) {
-                                var personData = { id: id, name: name };
-                                _this.render(personData, activity.render(), 'person');
-                            } else {
-                                // Якщо навіть після цього не знайшли - виводимо в консоль для діагностики
-                                console.log('Wiki Plugin: Activity object structure:', activity);
-                            }
+                            // БІЛЬШЕ НІЯКИХ УМОВ ДЛЯ МАЛЮВАННЯ.
+                            // Просто передаємо весь об'єкт e.object.activity і гарантовано малюємо кнопку
+                            _this.render(e.object.activity, e.object.activity.render(), 'person');
                         } catch (err) {}
-                    }, 200); // Трохи збільшив затримку, щоб Lampa встигла заповнити об'єкт
+                    }, 50);
                 }
             });
         };
@@ -115,12 +97,18 @@
 
             if (!$('style#wiki-plugin-style').length) $('head').append('<style id="wiki-plugin-style">' + style + '</style>');
 
-            // Розміщення: другою кнопкою
-            var firstSelector = container.find('.selector').first();
-            if (firstSelector.length) {
-                firstSelector.after(button); 
+            if (type === 'person') {
+                var firstSelector = container.find('.selector').first();
+                if (firstSelector.length) {
+                    firstSelector.after(button); 
+                } else {
+                    container.append(button);
+                }
             } else {
-                container.append(button);
+                var buttons_container = container.find('.full-start-new__buttons, .full-start__buttons');
+                if (buttons_container.length) {
+                    buttons_container.append(button);
+                }
             }
 
             _this.performSearch(item, type, function(hasResults) {
@@ -132,14 +120,32 @@
             });
         };
 
+        // Функція для надійного витягування імені для заголовку
+        this.getTitle = function(item, type) {
+            if (type === 'person') {
+                return item.title || (item.item && item.item.name) || (item.data && item.data.name) || 'Особа';
+            }
+            return item.title || item.name;
+        };
+
         this.handleButtonClick = function(item, type) {
             var _this = this;
             if (!item) return;
             isOpened = true;
-            var title = item.title || item.name;
+
+            var title = _this.getTitle(item, type);
+
             if (cachedResults) {
                 if (cachedResults.length > 0) _this.showMenu(cachedResults, title);
                 else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
+            } else if (searchPromise) {
+                Lampa.Noty.show('Збір даних з Wikidata...');
+                searchPromise.done(function(results) {
+                    if (results.length) _this.showMenu(results, title);
+                    else { Lampa.Noty.show('Нічого не знайдено'); isOpened = false; }
+                }).fail(function() {
+                    Lampa.Noty.show('Помилка завантаження даних'); isOpened = false;
+                });
             } else {
                 _this.performSearch(item, type, function(hasResults) {
                      if (hasResults) _this.showMenu(cachedResults, title);
@@ -149,36 +155,55 @@
         };
 
         this.performSearch = function (item, type, callback) {
-            // Шпигун №1: Перевірка ID перед запитом
-            if (!item || !item.id) {
-                if (type === 'person') Lampa.Noty.show('Wiki: Не знайдено ID особи');
+            var id = null;
+
+            // АГРЕСИВНИЙ ПОШУК ID
+            if (type === 'person') {
+                // 1. Шукаємо у стандартних місцях об'єкта activity
+                id = item.id || (item.item && item.item.id) || (item.data && item.data.id) || (item.person && item.person.id);
+                
+                // 2. Якщо глухо, звертаємось до глобального активного об'єкта Lampa
+                if (!id && window.Lampa && Lampa.Activity && Lampa.Activity.active()) {
+                    var active = Lampa.Activity.active();
+                    id = active.id || (active.item && active.item.id) || (active.data && active.data.id);
+                }
+
+                // 3. Якщо і там немає, просто парсимо поточний URL (твій метод!)
+                if (!id && window.location.href.indexOf('id=') !== -1) {
+                    var match = window.location.href.match(/[?&]id=(\d+)/);
+                    if (match) id = match[1];
+                }
+            } else {
+                id = item ? item.id : null;
+            }
+
+            if (!id) {
+                if (type === 'person') Lampa.Noty.show('Wiki: Не знайдено ID особи навіть в URL');
                 return $.Deferred().reject().promise();
             }
             
             var _this = this;
             var def = $.Deferred();
+            
+            // Якщо ми шукаємо людину, метод для TMDB завжди 'person'
             var method = type === 'person' ? 'person' : ((item.original_name || item.name) ? 'tv' : 'movie');
             var mainType = type === 'person' ? 'Біографія' : (method === 'tv' ? 'Серіал' : 'Фільм');
             var tmdbKey = Lampa.TMDB.key();
 
-            // Шпигун №2: Який ID пішов у роботу
-            if (type === 'person') Lampa.Noty.show('Wiki: Шукаємо ID ' + item.id);
+            // Lampa.Noty.show('Wiki: Знайшли ID ' + id); // Зняв коментар, якщо захочеш перевірити, чи знаходить ID
 
             $.ajax({
-                url: Lampa.TMDB.api(method + '/' + item.id + '/external_ids?api_key=' + tmdbKey),
+                url: Lampa.TMDB.api(method + '/' + id + '/external_ids?api_key=' + tmdbKey),
                 dataType: 'json',
                 success: function(extResp) {
                     var mainQId = extResp.wikidata_id;
                     if (!mainQId) {
-                        if (type === 'person') Lampa.Noty.show('Wiki: Немає Wikidata ID');
+                        if (type === 'person') Lampa.Noty.show('Wiki: У Wikidata немає ID для цієї особи');
                         cachedResults = [];
                         if (callback) callback(false);
                         def.reject();
                         return;
                     }
-
-                    // Шпигун №3: Успіх у TMDB
-                    if (type === 'person') Lampa.Noty.show('Wiki: QID знайдено - ' + mainQId);
 
                     $.ajax({
                         url: 'https://www.wikidata.org/w/api.php?action=wbgetentities&ids=' + mainQId + '&props=claims&format=json&origin=*',
@@ -199,6 +224,8 @@
                             };
 
                             targets.push({ qId: mainQId, type: mainType });
+                            
+                            // Фільмографія для осіб
                             if (type === 'person') extractQIds('P1283', 'Фільмографія');
                             else {
                                 extractQIds('P144', 'Засновано на');
