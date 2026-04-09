@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const APPLECATION_VERSION = '1.2.1';
+    const APPLECATION_VERSION = '1.2';
 
     // Иконка плагина
     const PLUGIN_ICON = '<svg viewBox="110 90 180 210"xmlns=http://www.w3.org/2000/svg><g id=sphere><circle cx=200 cy=140 fill="hsl(200, 80%, 40%)"opacity=0.3 r=1.2 /><circle cx=230 cy=150 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=170 cy=155 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=245 cy=175 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=155 cy=180 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=215 cy=165 fill="hsl(200, 80%, 46%)"opacity=0.36 r=1.2 /><circle cx=185 cy=170 fill="hsl(200, 80%, 43%)"opacity=0.33 r=1.3 /><circle cx=260 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=140 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=250 cy=220 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=150 cy=225 fill="hsl(200, 80%, 47%)"opacity=0.37 r=1.4 /><circle cx=235 cy=240 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=165 cy=245 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=220 cy=255 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=180 cy=258 fill="hsl(200, 80%, 41%)"opacity=0.31 r=1.2 /><circle cx=200 cy=120 fill="hsl(200, 80%, 60%)"opacity=0.5 r=1.8 /><circle cx=240 cy=135 fill="hsl(200, 80%, 65%)"opacity=0.55 r=2 /><circle cx=160 cy=140 fill="hsl(200, 80%, 62%)"opacity=0.52 r=1.9 /><circle cx=270 cy=165 fill="hsl(200, 80%, 70%)"opacity=0.6 r=2.2 /><circle cx=130 cy=170 fill="hsl(200, 80%, 67%)"opacity=0.57 r=2.1 /><circle cx=255 cy=190 fill="hsl(200, 80%, 72%)"opacity=0.62 r=2.3 /><circle cx=145 cy=195 fill="hsl(200, 80%, 69%)"opacity=0.59 r=2.2 /><circle cx=280 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=120 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=275 cy=215 fill="hsl(200, 80%, 73%)"opacity=0.63 r=2.4 /><circle cx=125 cy=220 fill="hsl(200, 80%, 71%)"opacity=0.61 r=2.3 /><circle cx=260 cy=235 fill="hsl(200, 80%, 68%)"opacity=0.58 r=2.2 /><circle cx=140 cy=240 fill="hsl(200, 80%, 66%)"opacity=0.56 r=2.1 /><circle cx=245 cy=255 fill="hsl(200, 80%, 63%)"opacity=0.53 r=2 /><circle cx=155 cy=260 fill="hsl(200, 80%, 61%)"opacity=0.51 r=1.9 /><circle cx=225 cy=270 fill="hsl(200, 80%, 58%)"opacity=0.48 r=1.8 /><circle cx=175 cy=272 fill="hsl(200, 80%, 56%)"opacity=0.46 r=1.7 /><circle cx=200 cy=100 fill="hsl(200, 80%, 85%)"opacity=0.8 r=2.8 /><circle cx=230 cy=115 fill="hsl(200, 80%, 90%)"opacity=0.85 r=3 /><circle cx=170 cy=120 fill="hsl(200, 80%, 87%)"opacity=0.82 r=2.9 /><circle cx=250 cy=140 fill="hsl(200, 80%, 92%)"opacity=0.88 r=3.2 /><circle cx=150 cy=145 fill="hsl(200, 80%, 89%)"opacity=0.84 r=3.1 /><circle cx=265 cy=170 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.4 /><circle cx=135 cy=175 fill="hsl(200, 80%, 93%)"opacity=0.87 r=3.3 /><circle cx=275 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=125 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=200 cy=200 fill="hsl(200, 80%, 100%)"opacity=1 r=4 /><circle cx=220 cy=195 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.8 /><circle cx=180 cy=205 fill="hsl(200, 80%, 97%)"opacity=0.93 r=3.7 /><circle cx=240 cy=210 fill="hsl(200, 80%, 96%)"opacity=0.92 r=3.6 /><circle cx=160 cy=215 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.5 /><circle cx=270 cy=230 fill="hsl(200, 80%, 94%)"opacity=0.88 r=3.4 /><circle cx=130 cy=235 fill="hsl(200, 80%, 92%)"opacity=0.86 r=3.3 /><circle cx=255 cy=250 fill="hsl(200, 80%, 90%)"opacity=0.84 r=3.2 /><circle cx=145 cy=255 fill="hsl(200, 80%, 88%)"opacity=0.82 r=3.1 /><circle cx=235 cy=265 fill="hsl(200, 80%, 86%)"opacity=0.8 r=3 /><circle cx=165 cy=268 fill="hsl(200, 80%, 84%)"opacity=0.78 r=2.9 /><circle cx=215 cy=280 fill="hsl(200, 80%, 82%)"opacity=0.76 r=2.8 /><circle cx=185 cy=282 fill="hsl(200, 80%, 80%)"opacity=0.74 r=2.7 /><circle cx=200 cy=290 fill="hsl(200, 80%, 78%)"opacity=0.72 r=2.6 /><circle cx=210 cy=130 fill="hsl(200, 80%, 88%)"opacity=0.83 r=2.5 /><circle cx=190 cy=135 fill="hsl(200, 80%, 86%)"opacity=0.81 r=2.4 /><circle cx=225 cy=155 fill="hsl(200, 80%, 91%)"opacity=0.86 r=2.8 /><circle cx=175 cy=160 fill="hsl(200, 80%, 89%)"opacity=0.84 r=2.7 /><circle cx=245 cy=185 fill="hsl(200, 80%, 94%)"opacity=0.89 r=3.3 /><circle cx=155 cy=190 fill="hsl(200, 80%, 92%)"opacity=0.87 r=3.2 /><circle cx=260 cy=210 fill="hsl(200, 80%, 95%)"opacity=0.91 r=3.4 /><circle cx=140 cy=215 fill="hsl(200, 80%, 93%)"opacity=0.88 r=3.3 /><circle cx=250 cy=230 fill="hsl(200, 80%, 91%)"opacity=0.85 r=3.2 /><circle cx=150 cy=235 fill="hsl(200, 80%, 89%)"opacity=0.83 r=3.1 /><circle cx=230 cy=245 fill="hsl(200, 80%, 87%)"opacity=0.81 r=3 /><circle cx=170 cy=250 fill="hsl(200, 80%, 85%)"opacity=0.79 r=2.9 /><circle cx=210 cy=260 fill="hsl(200, 80%, 83%)"opacity=0.77 r=2.8 /><circle cx=190 cy=265 fill="hsl(200, 80%, 81%)"opacity=0.75 r=2.7 /></g></svg>';
@@ -67,9 +67,13 @@
             en: 'Choose where to display ratings',
             uk: 'Виберіть де відображати рейтинги'
         },
-        position_card: {
-            en: 'In card',
-            uk: 'У картці'
+        position_above_desc: {
+            en: 'Above description',
+            uk: 'Над описом'
+        },
+        position_under_desc: {
+            en: 'Under description',
+            uk: 'Під описом'
         },
         position_corner: {
             en: 'Bottom right corner',
@@ -224,7 +228,7 @@
             Lampa.Storage.set('applecation_show_ratings', false);
         }
         if (Lampa.Storage.get('applecation_ratings_position') === undefined) {
-            Lampa.Storage.set('applecation_ratings_position', 'card');
+            Lampa.Storage.set('applecation_ratings_position', 'above_desc');
         }
         if (Lampa.Storage.get('applecation_logo_scale') === undefined) {
             Lampa.Storage.set('applecation_logo_scale', '100');
@@ -316,10 +320,11 @@
                 name: 'applecation_ratings_position',
                 type: 'select',
                 values: {
-                    card: t('position_card'),
+                    above_desc: t('position_above_desc'),
+                    under_desc: t('position_under_desc'),
                     corner: t('position_corner')
                 },
-                default: 'card'
+                default: 'above_desc'
             },
             field: {
                 name: t('ratings_position'),
@@ -327,7 +332,7 @@
             },
             onChange: function(value) {
                 Lampa.Storage.set('applecation_ratings_position', value);
-                $('body').removeClass('applecation--ratings-card applecation--ratings-corner');
+                $('body').removeClass('applecation--ratings-above_desc applecation--ratings-under_desc applecation--ratings-corner');
                 $('body').addClass('applecation--ratings-' + value);
                 
                 // Оновлюємо шаблони та перезавантажуємо активність
@@ -565,7 +570,7 @@
         if (!Lampa.Storage.get('applecation_show_ratings', false)) {
             $('body').addClass('applecation--hide-ratings');
         }
-        $('body').addClass('applecation--ratings-' + Lampa.Storage.get('applecation_ratings_position', 'card'));
+        $('body').addClass('applecation--ratings-' + Lampa.Storage.get('applecation_ratings_position', 'above_desc'));
                 
         applyScales();
     }
@@ -651,9 +656,9 @@
         Lampa.Template.add('applecation_overlay', overlayTemplate);
     }
 
-    // Регистрируем кастомный шаблон страницы full
+    // Реєструємо кастомний шаблон сторінки full
     function addCustomTemplate() {
-        const ratingsPosition = Lampa.Storage.get('applecation_ratings_position', 'card');
+        const ratingsPosition = Lampa.Storage.get('applecation_ratings_position', 'above_desc');
         
         // Блок з рейтингами
         const ratingsBlock = `<!-- Рейтинги -->
@@ -684,11 +689,14 @@
                             </div>
                         </div>
                         
-                        ${ratingsPosition === 'card' ? ratingsBlock : ''}
+                        ${ratingsPosition === 'above_desc' ? ratingsBlock : ''}
                         
                         <div class="applecation__description-wrapper">
                             <div class="applecation__description"></div>
                         </div>
+                        
+                        ${ratingsPosition === 'under_desc' ? ratingsBlock : ''}
+                        
                         <div class="applecation__info"></div>
                     </div>
                     
@@ -763,6 +771,8 @@
     </div>`;
 
         Lampa.Template.add('full_start_new', template);
+    }
+    
         
 
         // Переопределяем шаблон эпизода для стиля Apple TV
@@ -979,34 +989,35 @@ body.applecation--ratings-corner .applecation__ratings {
 
 /* Обгортка для опису */
 .applecation__description-wrapper {
-    background-color: transparent;
-    padding: 0;
+    background-color: transparent !important;
+    padding: .15em .4em 0 .7em !important; /* Фіксуємо відступи назавжди */
+    margin-left: -0.7em; /* Тягнемо блок ліворуч, щоб текст стояв на одній лінії з рейтингами */
     border-radius: 1em;
     width: fit-content;
+    position: relative;
+    z-index: 1; /* Базовий рівень */
+    transform-origin: left center; /* Збільшення йде зліва направо, щоб не повзло вгору */
     opacity: 0;
-    transform: translateY(15px);
-    transition:
-        padding 0.25s ease,
-        transform 0.25s ease,
-        background-color 0.25s ease,
-        opacity 0.4s ease-out;
+    transform: translateY(15px) scale(1);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s ease-out;
     transition-delay: 0.1s;
 }
 
 .applecation__description-wrapper.show {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
 }
 
-/* Звичайне затемнення фону при наведенні (без ефекту скла та контурів) */
+/* Стан при наведенні (фокус) */
 .applecation__description-wrapper.focus {
     background-color: rgba(0, 0, 0, 0.6) !important;
-    padding: .15em .4em 0 .7em;
-    border-radius: 1em;
-    width: fit-content;
-    transform: scale(1.05) translateY(0);
+    z-index: 10; /* Плавно напливає поверх інших блоків, не розсуваючи їх */
+    transform: translateY(0) scale(1.05); /* Легкий зум без стрибків */
     transition-delay: 0s;
 }
+
 
 /* Опис */
 .applecation__description {
@@ -1029,7 +1040,7 @@ body.applecation--ratings-corner .applecation__ratings {
     text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
 }
 
-/* Додаткова інформація (Рік/тривалість) */
+/* Додаткова інформація (Тривалість) */
 .applecation__info {
     color: rgba(255, 255, 255, 0.75);
     font-size: 1em;
@@ -1367,61 +1378,63 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 }
 
 /* =========================================================
-   ПЕРСОНИ (АКТОРИ ТА ЗНІМАЛЬНА ГРУПА) - НОВА АНІМАЦІЯ
+   ПЕРСОНИ - ГОРИЗОНТАЛЬНИЙ ВИГЛЯД
    ========================================================= */
 
 .applecation .full-person {
     display: flex !important;
-    flex-direction: column !important;
+    flex-direction: row !important; /* Фото зліва, текст справа */
     align-items: center !important;
-    width: 10.7em !important;
-    background: none !important;
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
+    width: 22em !important; /* Ширина стандартної картки Lampa */
+    background: rgba(255, 255, 255, 0.04) !important;
+    border-radius: 12px !important;
+    padding: 0.5em !important;
+    margin: 0.5em 0.8em 0.5em 0 !important;
+    border: 2px solid transparent !important; /* Рамка під системний фокус */
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), border-color 0.3s, background-color 0.3s !important;
     will-change: transform;
     -webkit-animation: none !important;
     animation: none !important;
-    margin-left: 0;
+    box-sizing: border-box !important;
 }
 
+/* Стан фокусу - лише рамка системного кольору */
 .applecation .full-person.focus {
-    transform: scale(1.08) translateY(-6px) !important;
+    transform: scale(1.04) !important;
+    /* Жорстко тримаємо фон напівпрозорим, не даючи темі залити його градієнтом */
+    background: rgba(255, 255, 255, 0.1) !important;
+    
+    /* Беремо колір теми через змінну --main-color. 
+       Якщо в темі змінної немає, рамка буде красивого білого кольору (#fff) */
+    border-color: var(--main-color, #fff) !important; 
+    
+    box-shadow: 0 5px 15px rgba(0,0,0,0.3) !important;
     z-index: 10;
 }
 
-/* Фото персони - кругле за замовчуванням */
+/* Фото персони - квадрат із заокругленими краями */
 .applecation .full-person__photo {
     position: relative !important;
-    width: 9.4em !important;
-    height: 9.4em !important;
-    margin: 0 0 .3em 0 !important;
-    border-radius: 50% !important; /* Коло */
+    width: 3.8em !important;
+    height: 3.8em !important;
+    margin: 0 !important;
+    border-radius: 10px !important; 
     overflow: hidden !important;
     background: rgba(255, 255, 255, 0.05) !important;
     flex-shrink: 0 !important;
-    transition: border-radius 0.3s ease, box-shadow 0.3s ease !important;
 }
 
 .applecation .full-person__photo img {
     width: 100% !important;
     height: 100% !important;
     object-fit: cover !important;
-    border-radius: 50% !important; /* Коло */
-    transition: border-radius 0.3s ease !important;
+    border-radius: 10px !important; 
+    transition: none !important; /* Прибрали анімації радіуса, щоб не фрізило */
 }
 
-/* При фокусі - плавно стає квадратом із заокругленими краями (Squircle) */
-.applecation .full-person.focus .full-person__photo,
-.applecation .full-person.focus .full-person__photo img {
-    border-radius: 18% !important; 
-}
-
-.applecation .full-person.focus .full-person__photo {
-    box-shadow: 0 10px 25px rgba(0,0,0,0.5) !important;
-}
-
-/* Зміщуємо обличчя тільки при високій якості (w500), оскільки там інший кроп у TMDB */
+/* Зміщуємо обличчя тільки при високій якості (w500) */
 .applecation.applecation--poster-high .full-person__photo img {
-    object-position: center calc(50% + 20px) !important;
+    object-position: center top !important; /* Для горизонтальних карток краще фокус зверху */
 }
 
 /* Дефолтні заглушки залишаємо по центру, щоб не ламати симетрію іконок */
@@ -1434,16 +1447,18 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 .applecation .full-person__body {
     display: flex !important;
     flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-    width: 100% !important;
-    padding: 0 0.3em !important;
+    align-items: flex-start !important;
+    text-align: left !important;
+    padding-left: 0.8em !important;
+    overflow: hidden !important;
+    flex-grow: 1 !important;
+    width: calc(100% - 3.8em) !important; /* Обмежуємо ширину під рухомий рядок */
 }
 
 /* Ім'я персони */
 .applecation .full-person__name {
-    font-size: 1em !important;
-    font-weight: 600 !important;
+    font-size: 1.1em !important;
+    font-weight: 500 !important;
     color: #fff !important;
     line-height: 1.3 !important;
     width: 100% !important;
@@ -1488,7 +1503,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
 /* Роль персони */
 .applecation .full-person__role {
-    font-size: 0.8em !important;
+    font-size: 0.85em !important;
     font-weight: 400 !important;
     color: rgba(255, 255, 255, 0.5) !important;
     line-height: 1.3 !important;
@@ -1496,14 +1511,14 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     overflow: hidden !important;
     text-overflow: ellipsis !important;
     width: 100% !important;
-    margin-top: 0;
+    margin-top: 0.2em !important;
 }
 
 .applecation .full-person.focus .full-person__role {
     color: rgb(255, 255, 255) !important;
 }
 </style>`;
-        
+   
         Lampa.Template.add('applecation_css', styles);
         $('body').append(Lampa.Template.get('applecation_css', {}, true));
     }
