@@ -1955,110 +1955,97 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     }
 
     // ===================================================================
-    // ЗНІМАЛЬНА ГРУПА (CREW) ЗАМІСТЬ РЕЖИСЕРА
+    // ЗНІМАЛЬНА ГРУПА (CREW) ЗАМІСТЬ РЕЖИСЕРА - ВИПРАВЛЕНА ВЕРСІЯ
     // ===================================================================
 
-    // Функція для фільтрації та склеювання ролей "еліти" знімальної групи
     function getMainCrew(crewArray) {
         if (!crewArray || !crewArray.length) return [];
-        // Шукаємо тільки найголовніших
-        const targetJobs = ['Director', 'Screenplay', 'Writer', 'Story', 'Producer', 'Original Music Composer'];
+        const targetJobs = ['Director', 'Original Music Composer', 'Screenplay', 'Writer', 'Story', 'Producer'];
         let uniqueCrew = {};
 
         crewArray.forEach(person => {
             if (targetJobs.includes(person.job)) {
                 if (!uniqueCrew[person.id]) {
                     uniqueCrew[person.id] = { 
-                        id: person.id, 
-                        name: person.name, 
-                        profile_path: person.profile_path, 
-                        jobs: [person.job] 
+                        id: person.id, name: person.name, profile_path: person.profile_path, jobs: [person.job] 
                     };
                 } else if (!uniqueCrew[person.id].jobs.includes(person.job)) {
-                    // Якщо людина вже є, дописуємо їй ще одну роль
                     uniqueCrew[person.id].jobs.push(person.job);
                 }
             }
         });
 
         let finalCrew = Object.values(uniqueCrew);
-        
-        // Сортуємо: 1.Режисер -> 2.Композитор -> 3.Сценарист -> 4.Продюсер
         const jobWeight = { 'Director': 1, 'Original Music Composer': 2, 'Screenplay': 3, 'Writer': 3, 'Story': 4, 'Producer': 5 };
+        
         finalCrew.sort((a, b) => {
             let weightA = Math.min(...a.jobs.map(j => jobWeight[j] || 99));
             let weightB = Math.min(...b.jobs.map(j => jobWeight[j] || 99));
             return weightA - weightB;
         });
 
-        // Беремо максимум 8 людей (БЕЗ перекладу посад)
         return finalCrew.slice(0, 8).map(person => {
-            // Склеюємо оригінальні англійські ролі (наприклад: "Director / Original Music Composer")
             person.character = person.jobs.join(' / ');
             return person;
         });
     }
 
-    // Функція для заміни блоку на екрані телевізора
-    function renderCustomCrew(crewArray, activityRender) {
-        if (!activityRender || !crewArray) return;
+    function renderCustomCrew(crewArray, activity, activityRender) {
+        // Перевірка чи активність ще жива, щоб уникнути помилок undefined
+        if (!isAlive(activity) || !activityRender || !crewArray) return;
+
         const finalCrew = getMainCrew(crewArray);
         if (!finalCrew.length) return;
 
-        // Шукаємо заголовок "Режисер"
-        let directorTitle = null;
-        activityRender.find('.full-start__title').each(function() {
-            const text = $(this).text().trim().toLowerCase();
-            if (text === 'режисер' || text === 'режиссер' || text === 'director') {
-                directorTitle = $(this);
-            }
-        });
+        // Використовуємо таймаут, щоб не заважати основному циклу draw() Лампи
+        setTimeout(() => {
+            if (!isAlive(activity)) return;
 
-        if (directorTitle) {
-            const lang = Lampa.Storage.get('language', 'uk');
-            directorTitle.text(lang === 'en' ? 'Crew' : 'Знімальна група'); // Міняємо назву
-            
-            const scrollBody = directorTitle.next('.scroll').find('.scroll__body');
-            if (scrollBody.length) {
-                scrollBody.empty(); // Видаляємо стару картку
+            let directorTitle = activityRender.find('.full-start__title').filter(function() {
+                const text = $(this).text().trim().toLowerCase();
+                return text === 'режисер' || text === 'режиссер' || text === 'director';
+            }).first();
+
+            if (directorTitle.length) {
+                const lang = Lampa.Storage.get('language', 'uk');
+                directorTitle.text(lang === 'en' ? 'Crew' : 'Знімальна група');
                 
-                // Малюємо нові красиві картки
-                finalCrew.forEach(person => {
-                    const img = person.profile_path ? Lampa.TMDB.image('t/p/w200' + person.profile_path) : './img/actor.svg';
-                    const html = `
-                        <div class="full-person selector" data-id="${person.id}">
-                            <div class="full-person__photo">
-                                <img src="${img}" class="full-person__img" loading="lazy">
-                            </div>
-                            <div class="full-person__body">
-                                <div class="full-person__name">${person.name}</div>
-                                <div class="full-person__role">${person.character}</div>
-                            </div>
-                        </div>
-                    `;
-                    scrollBody.append(html);
-                });
+                const scroll = directorTitle.next('.scroll');
+                const scrollBody = scroll.find('.scroll__body');
                 
-                // Робимо картки клікабельними (перехід на актора)
-                scrollBody.find('.selector').on('hover:enter', function() {
-                    const id = $(this).data('id');
-                    if (id && window.Lampa && Lampa.Activity) {
-                        Lampa.Activity.push({ url: '', title: 'Персона', component: 'actor', id: id });
+                if (scrollBody.length) {
+                    scrollBody.empty(); // Тепер це безпечно всередині setTimeout
+                    
+                    finalCrew.forEach(person => {
+                        const img = person.profile_path ? Lampa.TMDB.image('t/p/w200' + person.profile_path) : './img/actor.svg';
+                        const html = `
+                            <div class="full-person selector" data-id="${person.id}">
+                                <div class="full-person__photo">
+                                    <img src="${img}" class="full-person__img" loading="lazy">
+                                </div>
+                                <div class="full-person__body">
+                                    <div class="full-person__name">${person.name}</div>
+                                    <div class="full-person__role">${person.character}</div>
+                                </div>
+                            </div>`;
+                        scrollBody.append(html);
+                    });
+                    
+                    scrollBody.find('.selector').on('hover:enter', function() {
+                        const id = $(this).data('id');
+                        if (id) Lampa.Activity.push({ url: '', title: 'Персона', component: 'actor', id: id });
+                    });
+
+                    // Оновлюємо бегучу строку, якщо вона є
+                    if (typeof attachPersonMarquee === 'function') {
+                        attachPersonMarquee(activity);
                     }
-                });
-
-                // Відновлюємо рухомий рядок для довгих імен
-                if (typeof attachPersonMarquee === 'function') {
-                    attachPersonMarquee({ render: function() { return activityRender; } });
                 }
             }
-        }
+        }, 100);
     }
 
-    // ===================================================================
-    // ОНОВЛЕНА ФУНКЦІЯ ОТРИМАННЯ ДОДАТКОВОЇ НАЗВИ ТА ЗНІМАЛЬНОЇ ГРУПИ
-    // ===================================================================
-    function checkLogoAndRenderExtra(card, activityRender) {
+    function checkLogoAndRenderExtra(card, activity, activityRender) {
         if (!Lampa.Storage.get('applecation_extra_title_show', true)) return;
 
         cleanOldTitleCache();
@@ -2067,15 +2054,14 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
         if (cached && (now - cached.timestamp < EXTRA_TITLE_CACHE_TTL)) {
             renderExtraTitle(cached.ukTitle, cached.enTitle, cached.hasLogo, cached.year, cached.country, activityRender);
-            // Кеш працює тільки для Extra Title, але ми все одно зробимо запит для екіпажу
         }
 
         const type = card.first_air_date ? "tv" : "movie";
-        
-        // ЗМІНА: Додали ,credits в URL, щоб одним махом отримати і лого, і знімальну групу
         const url = `https://api.themoviedb.org/3/${type}/${card.id}?api_key=${Lampa.TMDB.key()}&append_to_response=translations,images,credits&include_image_language=uk,en,null`;
 
         $.getJSON(url, function (data) {
+            if (!isAlive(activity)) return;
+
             let hasUkrainianLogo = false;
             if (data.images && data.images.logos) {
                 hasUkrainianLogo = data.images.logos.some(l => l.iso_639_1 === "uk");
@@ -2087,33 +2073,25 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
             if (data.translations && data.translations.translations) {
                 const translation = data.translations.translations.find(t => t.iso_3166_1 === "UA" || t.iso_639_1 === "uk");
-                if (translation) {
-                    ukTitle = translation.data.title || translation.data.name || enTitle;
-                }
+                if (translation) ukTitle = translation.data.title || translation.data.name || enTitle;
             }
 
             const dateStr = data.release_date || data.first_air_date || "";
             const year = dateStr ? dateStr.split("-")[0] : "";
-            
-            const countryList = (data.production_countries || []).map(c => getCountryUA(c.iso_3166_1));
-            const countryString = countryList.join(", "); 
+            const countryString = (data.production_countries || []).map(c => getCountryUA(c.iso_3166_1)).join(", "); 
 
             titleCache[card.id] = {
-                ukTitle: ukTitle || "", enTitle: enTitle || "", hasLogo: hasUkrainianLogo,
-                year: year || "", country: countryString || "", timestamp: now
+                ukTitle: ukTitle, enTitle: enTitle, hasLogo: hasUkrainianLogo,
+                year: year, country: countryString, timestamp: now
             };
             Lampa.Storage.set(EXTRA_TITLE_CACHE_KEY, titleCache);
 
             renderExtraTitle(ukTitle, enTitle, hasUkrainianLogo, year, countryString, activityRender);
 
-            // ЗМІНА: Викликаємо магію знімальної групи!
+            // Передаємо activity у функцію відмальовування знімальної групи
             if (data.credits && data.credits.crew) {
-                renderCustomCrew(data.credits.crew, activityRender);
+                renderCustomCrew(data.credits.crew, activity, activityRender);
             }
-
-        }).fail(function() {
-            const fallbackTitle = card.title || card.name || card.original_title || "";
-            renderExtraTitle(fallbackTitle, fallbackTitle, false, "", "", activityRender);
         });
     }
 
@@ -2435,7 +2413,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
                 // Запуск логіки Додаткової Назви
                 const movieData = event.data && event.data.movie;
                 if (movieData) {
-                    checkLogoAndRenderExtra(movieData, render);
+                    checkLogoAndRenderExtra(movieData, activity, render);
                 }                                
                                 
                 attachScrollBlur(activity);
