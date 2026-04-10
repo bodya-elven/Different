@@ -916,13 +916,13 @@
 
 /* Додаткова назва (Extra Title) */
 .applecation-extra-title {
-    font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
     line-height: 1.2;
     letter-spacing: 0.3px;
     display: flex;
     align-items: baseline;
     flex-wrap: wrap;
     justify-content: flex-start;
+    margin-top: 0.4em;
     margin-bottom: 0.4em;
     opacity: 0;
     transform: translateY(15px);
@@ -1393,7 +1393,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     display: flex !important;
     flex-direction: row !important; 
     align-items: center !important;
-    width: 26em !important; /* Збільшено з 22em */
+    width: 20em !important; /* Звузили ширину з 26em */
     border-radius: 14px !important; /* Трохи м'якші кути */
     padding: 0.8em !important; /* Збільшено з 0.5em */
     margin: 0.5em 1.2em 0.5em 0 !important;
@@ -1413,8 +1413,8 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 /* Фото персони - робимо значно більшим */
 .applecation .full-person__photo {
     position: relative !important;
-    width: 5.2em !important; /* Збільшено з 3.8em */
-    height: 5.2em !important; /* Збільшено з 3.8em */
+    width: 6.8em !important; /* Збільшили фото (було 5.2em) */
+    height: 6.8em !important; /* Збільшили фото (було 5.2em) */
     margin: 0 !important;
     border-radius: 12px !important; 
     overflow: hidden !important;
@@ -1439,12 +1439,12 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     padding-left: 1.2em !important; /* Збільшено відступ від фото */
     overflow: hidden !important;
     flex-grow: 1 !important;
-    width: calc(100% - 5.2em) !important; 
+    width: calc(100% - 6.8em) !important; /* Скоригували обчислення під нову ширину фото */
 }
 
-/* Ім'я персони - більший шрифт */
+/* Ім'я персони */
 .applecation .full-person__name {
-    font-size: 1.2em !important; /* Збільшено */
+    font-size: 1.2em !important;
     font-weight: 500 !important;
     color: #fff !important;
     line-height: 1.3 !important;
@@ -1457,7 +1457,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
 /* Роль персони */
 .applecation .full-person__role {
-    font-size: 0.9em !important; /* Збільшено */
+    font-size: 0.9em !important;
     color: rgba(255, 255, 255, 0.5) !important;
     line-height: 1.3 !important;
     width: 100% !important;
@@ -1481,16 +1481,6 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     object-position: center !important;
 }
 
-/* =========================================================
-   ВІДСТУПИ ЗАГОЛОВКІВ (РЕЖИСЕР, АКТОРИ, РЕКОМЕНДАЦІЇ)
-   ========================================================= */
-.applecation .full-start__title {
-    margin-top: 2em !important; /* Робимо великий відступ зверху */
-    margin-bottom: 0.8em !important; /* Відступ до карток */
-    font-size: 1.4em !important;
-    font-weight: 600 !important;
-    padding-left: 0 !important;
-}
 
 /* =========================================================
    РУХОМИЙ РЯДОК (MARQUEE)
@@ -1964,8 +1954,111 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
         if (target.length) target.before(html);
     }
 
+    // ===================================================================
+    // ЗНІМАЛЬНА ГРУПА (CREW) ЗАМІСТЬ РЕЖИСЕРА
+    // ===================================================================
+
+    // Функція для фільтрації та склеювання ролей "еліти" знімальної групи
+    function getMainCrew(crewArray) {
+        if (!crewArray || !crewArray.length) return [];
+        // Шукаємо тільки найголовніших
+        const targetJobs = ['Director', 'Screenplay', 'Writer', 'Story', 'Producer', 'Original Music Composer'];
+        let uniqueCrew = {};
+
+        crewArray.forEach(person => {
+            if (targetJobs.includes(person.job)) {
+                if (!uniqueCrew[person.id]) {
+                    uniqueCrew[person.id] = { 
+                        id: person.id, 
+                        name: person.name, 
+                        profile_path: person.profile_path, 
+                        jobs: [person.job] 
+                    };
+                } else if (!uniqueCrew[person.id].jobs.includes(person.job)) {
+                    // Якщо людина вже є, дописуємо їй ще одну роль
+                    uniqueCrew[person.id].jobs.push(person.job);
+                }
+            }
+        });
+
+        let finalCrew = Object.values(uniqueCrew);
+        
+        // Сортуємо: 1.Режисер -> 2.Композитор -> 3.Сценарист -> 4.Продюсер
+        const jobWeight = { 'Director': 1, 'Original Music Composer': 2, 'Screenplay': 3, 'Writer': 3, 'Story': 4, 'Producer': 5 };
+        finalCrew.sort((a, b) => {
+            let weightA = Math.min(...a.jobs.map(j => jobWeight[j] || 99));
+            let weightB = Math.min(...b.jobs.map(j => jobWeight[j] || 99));
+            return weightA - weightB;
+        });
+
+        // Беремо максимум 8 людей (БЕЗ перекладу посад)
+        return finalCrew.slice(0, 8).map(person => {
+            // Склеюємо оригінальні англійські ролі (наприклад: "Director / Original Music Composer")
+            person.character = person.jobs.join(' / ');
+            return person;
+        });
+    }
+
+    // Функція для заміни блоку на екрані телевізора
+    function renderCustomCrew(crewArray, activityRender) {
+        if (!activityRender || !crewArray) return;
+        const finalCrew = getMainCrew(crewArray);
+        if (!finalCrew.length) return;
+
+        // Шукаємо заголовок "Режисер"
+        let directorTitle = null;
+        activityRender.find('.full-start__title').each(function() {
+            const text = $(this).text().trim().toLowerCase();
+            if (text === 'режисер' || text === 'режиссер' || text === 'director') {
+                directorTitle = $(this);
+            }
+        });
+
+        if (directorTitle) {
+            const lang = Lampa.Storage.get('language', 'uk');
+            directorTitle.text(lang === 'en' ? 'Crew' : 'Знімальна група'); // Міняємо назву
+            
+            const scrollBody = directorTitle.next('.scroll').find('.scroll__body');
+            if (scrollBody.length) {
+                scrollBody.empty(); // Видаляємо стару картку
+                
+                // Малюємо нові красиві картки
+                finalCrew.forEach(person => {
+                    const img = person.profile_path ? Lampa.TMDB.image('t/p/w200' + person.profile_path) : './img/actor.svg';
+                    const html = `
+                        <div class="full-person selector" data-id="${person.id}">
+                            <div class="full-person__photo">
+                                <img src="${img}" class="full-person__img" loading="lazy">
+                            </div>
+                            <div class="full-person__body">
+                                <div class="full-person__name">${person.name}</div>
+                                <div class="full-person__role">${person.character}</div>
+                            </div>
+                        </div>
+                    `;
+                    scrollBody.append(html);
+                });
+                
+                // Робимо картки клікабельними (перехід на актора)
+                scrollBody.find('.selector').on('hover:enter', function() {
+                    const id = $(this).data('id');
+                    if (id && window.Lampa && Lampa.Activity) {
+                        Lampa.Activity.push({ url: '', title: 'Персона', component: 'actor', id: id });
+                    }
+                });
+
+                // Відновлюємо рухомий рядок для довгих імен
+                if (typeof attachPersonMarquee === 'function') {
+                    attachPersonMarquee({ render: function() { return activityRender; } });
+                }
+            }
+        }
+    }
+
+    // ===================================================================
+    // ОНОВЛЕНА ФУНКЦІЯ ОТРИМАННЯ ДОДАТКОВОЇ НАЗВИ ТА ЗНІМАЛЬНОЇ ГРУПИ
+    // ===================================================================
     function checkLogoAndRenderExtra(card, activityRender) {
-        // Якщо вимкнено в налаштуваннях - нічого не робимо (залишаємо рідну логіку Lampa)
         if (!Lampa.Storage.get('applecation_extra_title_show', true)) return;
 
         cleanOldTitleCache();
@@ -1974,11 +2067,13 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
         if (cached && (now - cached.timestamp < EXTRA_TITLE_CACHE_TTL)) {
             renderExtraTitle(cached.ukTitle, cached.enTitle, cached.hasLogo, cached.year, cached.country, activityRender);
-            return;
+            // Кеш працює тільки для Extra Title, але ми все одно зробимо запит для екіпажу
         }
 
         const type = card.first_air_date ? "tv" : "movie";
-        const url = `https://api.themoviedb.org/3/${type}/${card.id}?api_key=${Lampa.TMDB.key()}&append_to_response=translations,images&include_image_language=uk,en,null`;
+        
+        // ЗМІНА: Додали ,credits в URL, щоб одним махом отримати і лого, і знімальну групу
+        const url = `https://api.themoviedb.org/3/${type}/${card.id}?api_key=${Lampa.TMDB.key()}&append_to_response=translations,images,credits&include_image_language=uk,en,null`;
 
         $.getJSON(url, function (data) {
             let hasUkrainianLogo = false;
@@ -2004,21 +2099,24 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             const countryString = countryList.join(", "); 
 
             titleCache[card.id] = {
-                ukTitle: ukTitle || "",
-                enTitle: enTitle || "",
-                hasLogo: hasUkrainianLogo,
-                year: year || "",
-                country: countryString || "",
-                timestamp: now
+                ukTitle: ukTitle || "", enTitle: enTitle || "", hasLogo: hasUkrainianLogo,
+                year: year || "", country: countryString || "", timestamp: now
             };
             Lampa.Storage.set(EXTRA_TITLE_CACHE_KEY, titleCache);
 
             renderExtraTitle(ukTitle, enTitle, hasUkrainianLogo, year, countryString, activityRender);
+
+            // ЗМІНА: Викликаємо магію знімальної групи!
+            if (data.credits && data.credits.crew) {
+                renderCustomCrew(data.credits.crew, activityRender);
+            }
+
         }).fail(function() {
             const fallbackTitle = card.title || card.name || card.original_title || "";
             renderExtraTitle(fallbackTitle, fallbackTitle, false, "", "", activityRender);
         });
     }
+
     
 
     // Завантажуємо логотип фільму
