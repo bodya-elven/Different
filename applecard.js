@@ -806,7 +806,6 @@
     function addStyles() {
         const styles = `<style>
 
-
 /* Основний контейнер */
 .applecation {
     transition: all .3s;
@@ -1013,7 +1012,7 @@ body.applecation--ratings-corner .applecation__ratings {
 
 .applecation__description-wrapper.focus {
     background-color: rgba(0, 0, 0, 0.6) !important;
-    z-index: 11 !important; /* Трохи вище іншого тексту при наведенні */
+    z-index: 11 !important;
     transform: translateY(0) scale(1.05);
     transition-delay: 0s;
 }
@@ -1054,21 +1053,27 @@ body.applecation--ratings-corner .applecation__ratings {
 }
 
 /* ==================================================================
-   НОВА ІЄРАРХІЯ ШАРІВ (Фон -> Затемнення -> Контент)
+   ЛІВА ТА ПРАВА ЧАСТИНИ (КОНТЕНТ)
    ================================================================== */
 
-/* ШАР 10: УВЕСЬ КОНТЕНТ (Завжди нагорі!) */
-.applecation__left, 
-.applecation__right,
-.full-start-new__buttons {
+.applecation__left {
+    flex-grow: 1;
     position: relative;
-    z-index: 10 !important;
+    z-index: 10;
+}
+
+.applecation__right {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    position: relative;
 }
 
 body.applecation--ratings-corner .applecation__right {
     align-items: last baseline;
 }
 
+/* Приховуємо стандартний rate-line */
 .applecation .full-start-new__rate-line {
     margin: 0;
     height: 0;
@@ -1077,35 +1082,42 @@ body.applecation--ratings-corner .applecation__right {
     pointer-events: none;
 }
 
-/* ШАР 1: БАЗОВИЙ ФОН ТА ЙОГО КЛОНИ (Слайд-шоу) */
+/* ==================================================================
+   ФОН ТА ОВЕРЛЕЙ (БЕЗ ЖОРСТКИХ Z-INDEX)
+   ================================================================== */
+
 .full-start__background {
     height: calc(100% + 6em);
     left: 0 !important;
-    opacity: 0; 
-    /* Плавний перехід 1.5с для кросфейду */
-    transition: opacity 1.5s ease-in-out, filter 0.3s ease-out !important;
+    opacity: 0 !important; /* Управління через JS */
+    transition: opacity 1.5s ease-in-out, filter 0.3s ease-out !important; /* Кросфейд 1.5с */
     animation: none !important;
     transform: none !important;
     will-change: opacity, filter;
-    /* Гарантуємо заповнення екрана без розтягування облич */
+    overflow: hidden;
+    /* Налаштування заповнення екрана без деформації */
     object-fit: cover !important; 
     background-size: cover !important; 
     background-position: center top !important;
-    z-index: 1 !important; /* Найнижчий шар */
 }
 
 .full-start__background.loaded:not(.dim) {
-    opacity: 1;
+    opacity: 1 !important;
 }
 
 .full-start__background.dim {
-    filter: blur(30px) !important;
+    filter: blur(30px);
+}
+
+.full-start__background.loaded.applecation-animated {
+    opacity: 1 !important;
 }
 
 body:not(.menu--open) .full-start__background {
     mask-image: none;
 }
 
+/* Вимикаємо стандартну анімацію Lampa для фону */
 body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     animation: none !important;
 }
@@ -1114,18 +1126,13 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     display: none;
 }
 
-/* ШАР 2: ОВЕРЛЕЙ ЗАТЕМНЕННЯ (Між фоном та текстом) */
+/* Оригінальний оверлей (без z-index: 2, як у минулій спробі) */
 .applecation__overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2 !important;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0) 65%);
-    pointer-events: none; /* Щоб кліки проходили крізь нього до кнопок */
+    z-index: 1;
+    width: 90vw;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.792) 0%, rgba(0, 0, 0, 0.504) 25%, rgba(0, 0, 0, 0.264) 45%, rgba(0, 0, 0, 0.12) 55%, rgba(0, 0, 0, 0.043) 60%, rgba(0, 0, 0, 0) 65%);
+    pointer-events: none;
 }
-
 
 
 /* Епізоди Apple TV */
@@ -2037,11 +2044,10 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
         if (!backdrops || backdrops.length <= 1 || !isAlive(activity)) return;
 
         let currentIndex = 0;
-        const fadeDuration = 1500; // 1.5 секунди на плавний перехід (кросфейд)
-        const slideDuration = 7000; // 7 секунд на показ кожного слайду
+        const fadeDuration = 1500;
+        const slideDuration = 7000;
 
         function rotateBackground() {
-            // Перевірка, чи не перемкнув користувач фільм
             if (!isAlive(activity)) {
                 clearInterval(activity.__backdropTimer);
                 return;
@@ -2051,7 +2057,6 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             const backdropUrl = backdrops[currentIndex];
             const render = activity.render();
             
-            // Знаходимо поточний фон (оригінальний або попередній слайд)
             const $currentBg = render.find('.full-start__background:not(.applecation__overlay)').last();
             if ($currentBg.length === 0) return;
 
@@ -2059,24 +2064,21 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             img.onload = function() {
                 if (!isAlive(activity)) return;
 
-                // 1. Створюємо точну копію поточного фону
                 const $newBg = $currentBg.clone();
-                $newBg.removeClass('applecation-animated loaded dim'); // Очищаємо від старих станів
+                // Обов'язково знімаємо loaded, щоб не спрацював !important в CSS до анімації
+                $newBg.removeClass('loaded applecation-animated dim');
                 
-                // 2. Встановлюємо нову картинку (підтримуємо як тег <img>, так і <div>)
                 if ($newBg.is('img')) {
                     $newBg.attr('src', backdropUrl);
                 } else {
                     $newBg.css('background-image', 'url(' + backdropUrl + ')');
                 }
 
-                // 3. Робимо клон повністю прозорим і готуємо до анімації
                 $newBg.css({
                     'opacity': '0',
                     'transition': 'opacity ' + fadeDuration + 'ms ease-in-out'
                 });
 
-                // 4. Вставляємо новий фон ПІД затемнення (оверлей)
                 const $overlay = render.find('.applecation__overlay');
                 if ($overlay.length) {
                     $overlay.before($newBg);
@@ -2084,34 +2086,35 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
                     $currentBg.after($newBg);
                 }
 
-                // Форсуємо перемальовку DOM браузером
-                $newBg[0].offsetHeight;
+                $newBg[0].offsetHeight; // Примусове оновлення DOM
 
-                // 5. Запускаємо кросфейд (нова з'являється, стара згасає)
-                $newBg.css('opacity', '1').addClass('loaded');
-                $currentBg.css({
+                // Проявляємо новий фон (через CSS !important)
+                $newBg.addClass('loaded'); 
+                
+                // Гасимо старий (забираємо loaded, щоб inline opacity спрацював)
+                $currentBg.removeClass('loaded').css({
                     'transition': 'opacity ' + fadeDuration + 'ms ease-in-out',
                     'opacity': '0'
                 });
 
-                // 6. Видаляємо старий фон після завершення переходу, щоб не забивати пам'ять
+                // Видаляємо старий після анімації
                 setTimeout(() => {
                     if (!isAlive(activity)) return;
                     $currentBg.remove();
-                    // Підчищаємо будь-яке сміття, крім нашого нового фону і оверлею
                     render.find('.full-start__background:not(.applecation__overlay)').not($newBg).remove();
                 }, fadeDuration + 50);
             };
             img.src = backdropUrl;
         }
 
-        // Перший кадр міняється через 8 секунд, далі кожні 7 секунд
+        // 8с старт, далі кожні 7с
         activity.__backdropTimeout = setTimeout(() => {
             if (!isAlive(activity)) return;
-            rotateBackground(); // Робимо першу підміну
+            rotateBackground(); 
             activity.__backdropTimer = setInterval(rotateBackground, slideDuration);
         }, 8000);
     }
+
 
 
     // Допоміжна функція для перемішування масиву (Алгоритм Фішера-Єйтса)
