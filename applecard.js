@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const APPLECATION_VERSION = '1.2';
+    const APPLECATION_VERSION = '1.5';
 
     // Иконка плагина
     const PLUGIN_ICON = '<svg viewBox="110 90 180 210"xmlns=http://www.w3.org/2000/svg><g id=sphere><circle cx=200 cy=140 fill="hsl(200, 80%, 40%)"opacity=0.3 r=1.2 /><circle cx=230 cy=150 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=170 cy=155 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=245 cy=175 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=155 cy=180 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=215 cy=165 fill="hsl(200, 80%, 46%)"opacity=0.36 r=1.2 /><circle cx=185 cy=170 fill="hsl(200, 80%, 43%)"opacity=0.33 r=1.3 /><circle cx=260 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=140 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=250 cy=220 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=150 cy=225 fill="hsl(200, 80%, 47%)"opacity=0.37 r=1.4 /><circle cx=235 cy=240 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=165 cy=245 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=220 cy=255 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=180 cy=258 fill="hsl(200, 80%, 41%)"opacity=0.31 r=1.2 /><circle cx=200 cy=120 fill="hsl(200, 80%, 60%)"opacity=0.5 r=1.8 /><circle cx=240 cy=135 fill="hsl(200, 80%, 65%)"opacity=0.55 r=2 /><circle cx=160 cy=140 fill="hsl(200, 80%, 62%)"opacity=0.52 r=1.9 /><circle cx=270 cy=165 fill="hsl(200, 80%, 70%)"opacity=0.6 r=2.2 /><circle cx=130 cy=170 fill="hsl(200, 80%, 67%)"opacity=0.57 r=2.1 /><circle cx=255 cy=190 fill="hsl(200, 80%, 72%)"opacity=0.62 r=2.3 /><circle cx=145 cy=195 fill="hsl(200, 80%, 69%)"opacity=0.59 r=2.2 /><circle cx=280 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=120 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=275 cy=215 fill="hsl(200, 80%, 73%)"opacity=0.63 r=2.4 /><circle cx=125 cy=220 fill="hsl(200, 80%, 71%)"opacity=0.61 r=2.3 /><circle cx=260 cy=235 fill="hsl(200, 80%, 68%)"opacity=0.58 r=2.2 /><circle cx=140 cy=240 fill="hsl(200, 80%, 66%)"opacity=0.56 r=2.1 /><circle cx=245 cy=255 fill="hsl(200, 80%, 63%)"opacity=0.53 r=2 /><circle cx=155 cy=260 fill="hsl(200, 80%, 61%)"opacity=0.51 r=1.9 /><circle cx=225 cy=270 fill="hsl(200, 80%, 58%)"opacity=0.48 r=1.8 /><circle cx=175 cy=272 fill="hsl(200, 80%, 56%)"opacity=0.46 r=1.7 /><circle cx=200 cy=100 fill="hsl(200, 80%, 85%)"opacity=0.8 r=2.8 /><circle cx=230 cy=115 fill="hsl(200, 80%, 90%)"opacity=0.85 r=3 /><circle cx=170 cy=120 fill="hsl(200, 80%, 87%)"opacity=0.82 r=2.9 /><circle cx=250 cy=140 fill="hsl(200, 80%, 92%)"opacity=0.88 r=3.2 /><circle cx=150 cy=145 fill="hsl(200, 80%, 89%)"opacity=0.84 r=3.1 /><circle cx=265 cy=170 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.4 /><circle cx=135 cy=175 fill="hsl(200, 80%, 93%)"opacity=0.87 r=3.3 /><circle cx=275 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=125 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=200 cy=200 fill="hsl(200, 80%, 100%)"opacity=1 r=4 /><circle cx=220 cy=195 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.8 /><circle cx=180 cy=205 fill="hsl(200, 80%, 97%)"opacity=0.93 r=3.7 /><circle cx=240 cy=210 fill="hsl(200, 80%, 96%)"opacity=0.92 r=3.6 /><circle cx=160 cy=215 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.5 /><circle cx=270 cy=230 fill="hsl(200, 80%, 94%)"opacity=0.88 r=3.4 /><circle cx=130 cy=235 fill="hsl(200, 80%, 92%)"opacity=0.86 r=3.3 /><circle cx=255 cy=250 fill="hsl(200, 80%, 90%)"opacity=0.84 r=3.2 /><circle cx=145 cy=255 fill="hsl(200, 80%, 88%)"opacity=0.82 r=3.1 /><circle cx=235 cy=265 fill="hsl(200, 80%, 86%)"opacity=0.8 r=3 /><circle cx=165 cy=268 fill="hsl(200, 80%, 84%)"opacity=0.78 r=2.9 /><circle cx=215 cy=280 fill="hsl(200, 80%, 82%)"opacity=0.76 r=2.8 /><circle cx=185 cy=282 fill="hsl(200, 80%, 80%)"opacity=0.74 r=2.7 /><circle cx=200 cy=290 fill="hsl(200, 80%, 78%)"opacity=0.72 r=2.6 /><circle cx=210 cy=130 fill="hsl(200, 80%, 88%)"opacity=0.83 r=2.5 /><circle cx=190 cy=135 fill="hsl(200, 80%, 86%)"opacity=0.81 r=2.4 /><circle cx=225 cy=155 fill="hsl(200, 80%, 91%)"opacity=0.86 r=2.8 /><circle cx=175 cy=160 fill="hsl(200, 80%, 89%)"opacity=0.84 r=2.7 /><circle cx=245 cy=185 fill="hsl(200, 80%, 94%)"opacity=0.89 r=3.3 /><circle cx=155 cy=190 fill="hsl(200, 80%, 92%)"opacity=0.87 r=3.2 /><circle cx=260 cy=210 fill="hsl(200, 80%, 95%)"opacity=0.91 r=3.4 /><circle cx=140 cy=215 fill="hsl(200, 80%, 93%)"opacity=0.88 r=3.3 /><circle cx=250 cy=230 fill="hsl(200, 80%, 91%)"opacity=0.85 r=3.2 /><circle cx=150 cy=235 fill="hsl(200, 80%, 89%)"opacity=0.83 r=3.1 /><circle cx=230 cy=245 fill="hsl(200, 80%, 87%)"opacity=0.81 r=3 /><circle cx=170 cy=250 fill="hsl(200, 80%, 85%)"opacity=0.79 r=2.9 /><circle cx=210 cy=260 fill="hsl(200, 80%, 83%)"opacity=0.77 r=2.8 /><circle cx=190 cy=265 fill="hsl(200, 80%, 81%)"opacity=0.75 r=2.7 /></g></svg>';
@@ -813,6 +813,8 @@
 
 .applecation .full-start-new__body {
     height: 80vh;
+    position: relative;
+    z-index: 10 !important;
 }
 
 .applecation .full-start-new__right {
@@ -1099,9 +1101,10 @@ body.applecation--ratings-corner .applecation__right {
     object-fit: cover !important; 
     background-size: cover !important; 
     background-position: center top !important;
+    z-index: 1 !important;
 }
 
-.full-start__background.loaded:not(.dim) {
+.full-start__background.loaded {
     opacity: 1 !important;
 }
 
@@ -1126,12 +1129,17 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     display: none;
 }
 
-/* Оригінальний оверлей (без z-index: 2, як у минулій спробі) */
+/* Оверлей затемнення */
 .applecation__overlay {
-    z-index: 1;
+    z-index: 2 !important;
     width: 90vw;
     background: linear-gradient(to right, rgba(0, 0, 0, 0.792) 0%, rgba(0, 0, 0, 0.504) 25%, rgba(0, 0, 0, 0.264) 45%, rgba(0, 0, 0, 0.12) 55%, rgba(0, 0, 0, 0.043) 60%, rgba(0, 0, 0, 0) 65%);
     pointer-events: none;
+}
+
+.applecation .scroll__body {
+    position: relative;
+    z-index: 10 !important;
 }
 
 
@@ -2039,13 +2047,13 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     }
 
 
-    // Функція для запуску слайд-шоу фонів (Метод Клонування)
+    // Функція для запуску слайд-шоу фонів
     function startBackdropSlideshow(activity, backdrops) {
         if (!backdrops || backdrops.length <= 1 || !isAlive(activity)) return;
 
         let currentIndex = 0;
-        const fadeDuration = 1500;
-        const slideDuration = 7000;
+        const fadeDuration = 1500; // 1.5с на перехід
+        const slideDuration = 7000; // 7с показ
 
         function rotateBackground() {
             if (!isAlive(activity)) {
@@ -2065,19 +2073,16 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
                 if (!isAlive(activity)) return;
 
                 const $newBg = $currentBg.clone();
-                // Обов'язково знімаємо loaded, щоб не спрацював !important в CSS до анімації
-                $newBg.removeClass('loaded applecation-animated dim');
+                // Знімаємо клас, щоб фон був прозорим при появі
+                $newBg.removeClass('loaded applecation-animated');
+                
+                // Зверни увагу: клас .dim (блюр) скопіюється автоматично, якщо ти прокрутив вниз!
                 
                 if ($newBg.is('img')) {
                     $newBg.attr('src', backdropUrl);
                 } else {
                     $newBg.css('background-image', 'url(' + backdropUrl + ')');
                 }
-
-                $newBg.css({
-                    'opacity': '0',
-                    'transition': 'opacity ' + fadeDuration + 'ms ease-in-out'
-                });
 
                 const $overlay = render.find('.applecation__overlay');
                 if ($overlay.length) {
@@ -2086,28 +2091,25 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
                     $currentBg.after($newBg);
                 }
 
-                $newBg[0].offsetHeight; // Примусове оновлення DOM
+                $newBg[0].offsetHeight; // Форсуємо рендер
 
-                // Проявляємо новий фон (через CSS !important)
+                // Плавно проявляємо новий (вмикається opacity 1 через CSS)
                 $newBg.addClass('loaded'); 
                 
-                // Гасимо старий (забираємо loaded, щоб inline opacity спрацював)
-                $currentBg.removeClass('loaded').css({
-                    'transition': 'opacity ' + fadeDuration + 'ms ease-in-out',
-                    'opacity': '0'
-                });
+                // Плавно гасимо старий (вмикається opacity 0 через CSS)
+                $currentBg.removeClass('loaded');
 
-                // Видаляємо старий після анімації
                 setTimeout(() => {
                     if (!isAlive(activity)) return;
                     $currentBg.remove();
+                    // Підчищаємо дублікати, якщо швидко перемкнули
                     render.find('.full-start__background:not(.applecation__overlay)').not($newBg).remove();
                 }, fadeDuration + 50);
             };
             img.src = backdropUrl;
         }
 
-        // 8с старт, далі кожні 7с
+        // Чекаємо 8 секунд і стартуємо цикл
         activity.__backdropTimeout = setTimeout(() => {
             if (!isAlive(activity)) return;
             rotateBackground(); 
@@ -2309,27 +2311,22 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             // Встановлюємо pointer-events: none, щоб оверлей НЕ перехоплював кліки по кнопках
             // та не перекривав взаємодію з текстом
             overlay.css({
-                'pointer-events': 'none',
-                'z-index': '1'
+                'pointer-events': 'none'
             });
             
             background.after(overlay);
         }
     }
 
-    // Застосовуємо розмиття (blur) фону при прокручуванні сторінки вниз (до акторів)
+    // Застосовуємо розмиття (blur) фону при прокручуванні сторінки вниз
     function attachScrollBlur(activity) {
         const render = activity.render();
-        // Знаходимо саме контейнер фону (де тепер живуть наші слайди)
-        const background = render.find('.full-start__background:not(.applecation__overlay)')[0];
         const scrollBody = render.find('.scroll__body')[0];
         
-        if (!background || !scrollBody) return;
+        if (!scrollBody) return;
         
-        // Кешуємо стан для уникнення зайвих DOM-операцій (економія ресурсів ТБ)
         let isBlurred = false;
         
-        // Перехоплюємо сеттер стилю трансформації — найбільш продуктивний спосіб для ТБ
         const originalDescriptor = Object.getOwnPropertyDescriptor(scrollBody.style, '-webkit-transform') || 
                                    Object.getOwnPropertyDescriptor(CSSStyleDeclaration.prototype, 'webkitTransform');
         
@@ -2342,17 +2339,14 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
                         const yValue = parseFloat(value.substring(yStart, yEnd));
                         const shouldBlur = yValue < 0;
                         
-                        // Змінюємо клас 'dim' тільки при зміні стану
                         if (shouldBlur !== isBlurred) {
                             isBlurred = shouldBlur;
-                            if (background && background.classList) {
-                                background.classList.toggle('dim', shouldBlur);
-                            }
+                            // Динамічно знаходимо поточні фони і вмикаємо/вимикаємо блюр
+                            render.find('.full-start__background:not(.applecation__overlay)').toggleClass('dim', shouldBlur);
                         }
                     }
                 }
                 
-                // Викликаємо оригінальний сеттер Lampa
                 if (originalDescriptor && originalDescriptor.set) {
                     originalDescriptor.set.call(this, value);
                 } else {
@@ -2368,6 +2362,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             configurable: true
         });
     }
+
     
 
     // Додаємо рухому стрічку для довгих імен та ролей персон
