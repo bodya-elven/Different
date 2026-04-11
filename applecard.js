@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const APPLECATION_VERSION = '1.3';
+    const APPLECATION_VERSION = '1.2';
 
     // Иконка плагина
     const PLUGIN_ICON = '<svg viewBox="110 90 180 210"xmlns=http://www.w3.org/2000/svg><g id=sphere><circle cx=200 cy=140 fill="hsl(200, 80%, 40%)"opacity=0.3 r=1.2 /><circle cx=230 cy=150 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=170 cy=155 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=245 cy=175 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=155 cy=180 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=215 cy=165 fill="hsl(200, 80%, 46%)"opacity=0.36 r=1.2 /><circle cx=185 cy=170 fill="hsl(200, 80%, 43%)"opacity=0.33 r=1.3 /><circle cx=260 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=140 cy=200 fill="hsl(200, 80%, 50%)"opacity=0.4 r=1.5 /><circle cx=250 cy=220 fill="hsl(200, 80%, 48%)"opacity=0.38 r=1.4 /><circle cx=150 cy=225 fill="hsl(200, 80%, 47%)"opacity=0.37 r=1.4 /><circle cx=235 cy=240 fill="hsl(200, 80%, 45%)"opacity=0.35 r=1.3 /><circle cx=165 cy=245 fill="hsl(200, 80%, 44%)"opacity=0.34 r=1.3 /><circle cx=220 cy=255 fill="hsl(200, 80%, 42%)"opacity=0.32 r=1.2 /><circle cx=180 cy=258 fill="hsl(200, 80%, 41%)"opacity=0.31 r=1.2 /><circle cx=200 cy=120 fill="hsl(200, 80%, 60%)"opacity=0.5 r=1.8 /><circle cx=240 cy=135 fill="hsl(200, 80%, 65%)"opacity=0.55 r=2 /><circle cx=160 cy=140 fill="hsl(200, 80%, 62%)"opacity=0.52 r=1.9 /><circle cx=270 cy=165 fill="hsl(200, 80%, 70%)"opacity=0.6 r=2.2 /><circle cx=130 cy=170 fill="hsl(200, 80%, 67%)"opacity=0.57 r=2.1 /><circle cx=255 cy=190 fill="hsl(200, 80%, 72%)"opacity=0.62 r=2.3 /><circle cx=145 cy=195 fill="hsl(200, 80%, 69%)"opacity=0.59 r=2.2 /><circle cx=280 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=120 cy=200 fill="hsl(200, 80%, 75%)"opacity=0.65 r=2.5 /><circle cx=275 cy=215 fill="hsl(200, 80%, 73%)"opacity=0.63 r=2.4 /><circle cx=125 cy=220 fill="hsl(200, 80%, 71%)"opacity=0.61 r=2.3 /><circle cx=260 cy=235 fill="hsl(200, 80%, 68%)"opacity=0.58 r=2.2 /><circle cx=140 cy=240 fill="hsl(200, 80%, 66%)"opacity=0.56 r=2.1 /><circle cx=245 cy=255 fill="hsl(200, 80%, 63%)"opacity=0.53 r=2 /><circle cx=155 cy=260 fill="hsl(200, 80%, 61%)"opacity=0.51 r=1.9 /><circle cx=225 cy=270 fill="hsl(200, 80%, 58%)"opacity=0.48 r=1.8 /><circle cx=175 cy=272 fill="hsl(200, 80%, 56%)"opacity=0.46 r=1.7 /><circle cx=200 cy=100 fill="hsl(200, 80%, 85%)"opacity=0.8 r=2.8 /><circle cx=230 cy=115 fill="hsl(200, 80%, 90%)"opacity=0.85 r=3 /><circle cx=170 cy=120 fill="hsl(200, 80%, 87%)"opacity=0.82 r=2.9 /><circle cx=250 cy=140 fill="hsl(200, 80%, 92%)"opacity=0.88 r=3.2 /><circle cx=150 cy=145 fill="hsl(200, 80%, 89%)"opacity=0.84 r=3.1 /><circle cx=265 cy=170 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.4 /><circle cx=135 cy=175 fill="hsl(200, 80%, 93%)"opacity=0.87 r=3.3 /><circle cx=275 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=125 cy=200 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.5 /><circle cx=200 cy=200 fill="hsl(200, 80%, 100%)"opacity=1 r=4 /><circle cx=220 cy=195 fill="hsl(200, 80%, 98%)"opacity=0.95 r=3.8 /><circle cx=180 cy=205 fill="hsl(200, 80%, 97%)"opacity=0.93 r=3.7 /><circle cx=240 cy=210 fill="hsl(200, 80%, 96%)"opacity=0.92 r=3.6 /><circle cx=160 cy=215 fill="hsl(200, 80%, 95%)"opacity=0.9 r=3.5 /><circle cx=270 cy=230 fill="hsl(200, 80%, 94%)"opacity=0.88 r=3.4 /><circle cx=130 cy=235 fill="hsl(200, 80%, 92%)"opacity=0.86 r=3.3 /><circle cx=255 cy=250 fill="hsl(200, 80%, 90%)"opacity=0.84 r=3.2 /><circle cx=145 cy=255 fill="hsl(200, 80%, 88%)"opacity=0.82 r=3.1 /><circle cx=235 cy=265 fill="hsl(200, 80%, 86%)"opacity=0.8 r=3 /><circle cx=165 cy=268 fill="hsl(200, 80%, 84%)"opacity=0.78 r=2.9 /><circle cx=215 cy=280 fill="hsl(200, 80%, 82%)"opacity=0.76 r=2.8 /><circle cx=185 cy=282 fill="hsl(200, 80%, 80%)"opacity=0.74 r=2.7 /><circle cx=200 cy=290 fill="hsl(200, 80%, 78%)"opacity=0.72 r=2.6 /><circle cx=210 cy=130 fill="hsl(200, 80%, 88%)"opacity=0.83 r=2.5 /><circle cx=190 cy=135 fill="hsl(200, 80%, 86%)"opacity=0.81 r=2.4 /><circle cx=225 cy=155 fill="hsl(200, 80%, 91%)"opacity=0.86 r=2.8 /><circle cx=175 cy=160 fill="hsl(200, 80%, 89%)"opacity=0.84 r=2.7 /><circle cx=245 cy=185 fill="hsl(200, 80%, 94%)"opacity=0.89 r=3.3 /><circle cx=155 cy=190 fill="hsl(200, 80%, 92%)"opacity=0.87 r=3.2 /><circle cx=260 cy=210 fill="hsl(200, 80%, 95%)"opacity=0.91 r=3.4 /><circle cx=140 cy=215 fill="hsl(200, 80%, 93%)"opacity=0.88 r=3.3 /><circle cx=250 cy=230 fill="hsl(200, 80%, 91%)"opacity=0.85 r=3.2 /><circle cx=150 cy=235 fill="hsl(200, 80%, 89%)"opacity=0.83 r=3.1 /><circle cx=230 cy=245 fill="hsl(200, 80%, 87%)"opacity=0.81 r=3 /><circle cx=170 cy=250 fill="hsl(200, 80%, 85%)"opacity=0.79 r=2.9 /><circle cx=210 cy=260 fill="hsl(200, 80%, 83%)"opacity=0.77 r=2.8 /><circle cx=190 cy=265 fill="hsl(200, 80%, 81%)"opacity=0.75 r=2.7 /></g></svg>';
@@ -807,10 +807,7 @@
         const styles = `<style>
 
 
-/* =========================================================
-   ОСНОВНИЙ КОНТЕЙНЕР ТА ІЄРАРХІЯ ШАРІВ (z-index)
-   ========================================================= */
-
+/* Основний контейнер */
 .applecation {
     transition: all .3s;
 }
@@ -823,89 +820,6 @@
     display: flex;
     align-items: flex-end;
 }
-
-/* Вищий пріоритет для всієї інформації та кнопок (Шар 5) */
-.applecation__left, 
-.applecation__right,
-.full-start-new__buttons,
-.applecation-description-overlay {
-    position: relative;
-    z-index: 10 !important;
-}
-
-/* =========================================================
-   ФОН, СЛАЙД-ШОУ ТА ЕФЕКТИ
-   ========================================================= */
-
-/* 1. Базовий фон Lampa (Шар 1 - найнижчий) */
-.full-start__background {
-    height: calc(100% + 6em);
-    left: 0 !important;
-    opacity: 0 !important;
-    transition: opacity 0.6s ease-out, filter 0.3s ease-out !important;
-    animation: none !important;
-    transform: none !important;
-    will-change: opacity, filter;
-    overflow: hidden;
-    z-index: 1 !important;
-    background-size: cover !important;
-    background-position: center center !important;
-}
-
-/* 2. Контейнер слайд-шоу (Шар 2 - над базовим фоном) */
-.applecation-slideshow {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 2 !important;
-    pointer-events: none;
-}
-
-/* Шари окремих слайдів: заповнення 100% без деформації */
-.applecation-slideshow__layer {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-size: cover !important; /* Заповнення екрана зі збереженням пропорцій */
-    background-position: center center !important;
-    background-repeat: no-repeat;
-    opacity: 0;
-    transition: opacity 1000ms ease-in-out !important; 
-    will-change: opacity;
-}
-
-.applecation-slideshow__layer.active {
-    opacity: 1;
-}
-
-/* 3. Оверлей затемнення (Шар 3 - над слайдами, під текстом) */
-.applecation__overlay {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: 3 !important;
-    background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0) 65%);
-    pointer-events: none;
-}
-
-/* 4. Блюр (Шар 4 - ефект на весь фоновий стек) */
-.full-start__background.dim {
-    filter: blur(30px) !important;
-}
-
-.full-start__background.loaded:not(.dim) {
-    opacity: 1 !important;
-}
-
-/* =========================================================
-   ЕЛЕМЕНТИ ІНТЕРФЕЙСУ (ЛОГО, ТЕКСТ, ОПИС)
-   ========================================================= */
 
 .applecation .full-start-new__title {
     font-size: 2.5em;
@@ -938,11 +852,12 @@
     object-position: left center;
 }
 
+/* Контейнер для масштабованого контенту */
 .applecation__content-wrapper {
     font-size: 100%;
 }
 
-/* Метаінформація */
+/* Метаінформація (Тип/Жанр/піджанр) */
 .applecation__meta {
     display: flex;
     align-items: center;
@@ -984,6 +899,19 @@
 
 .applecation__meta-text {
     line-height: 1;
+}
+
+.applecation__meta .full-start__pg {
+    margin: 0 0 0 0.6em;
+    padding: 0.2em 0.5em;
+    font-size: 0.85em;
+    font-weight: 600;
+    border: 1.5px solid rgba(255, 255, 255, 0.4);
+    border-radius: 0.3em;
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    line-height: 1;
+    vertical-align: middle;
 }
 
 /* Додаткова назва (Extra Title) */
@@ -1044,7 +972,23 @@
     transform: translateY(0);
 }
 
-/* Опис */
+body.applecation--ratings-under_desc .applecation__ratings {
+    margin-top: 0.8em !important;
+}
+
+body.applecation--hide-ratings .applecation__ratings {
+    display: none !important;
+}
+
+body.applecation--ratings-corner .applecation__right {
+    gap: 1em;
+}
+
+body.applecation--ratings-corner .applecation__ratings {
+    margin-bottom: 0;
+}
+
+/* Обгортка для опису */
 .applecation__description-wrapper {
     background-color: transparent !important;
     padding: .15em .4em 0 .7em !important;
@@ -1052,25 +996,31 @@
     border-radius: 1em;
     width: fit-content;
     position: relative;
-    z-index: 10;
+    z-index: 1;
     transform-origin: left center;
     opacity: 0;
     transform: translateY(15px) scale(1);
-    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.4s ease-out;
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.4s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.4s ease-out;
     transition-delay: 0.1s;
 }
 
 .applecation__description-wrapper.show {
     opacity: 1;
+    transform: translateY(0) scale(1);
 }
 
 .applecation__description-wrapper.focus {
     background-color: rgba(0, 0, 0, 0.6) !important;
+    z-index: 11 !important; /* Трохи вище іншого тексту при наведенні */
     transform: translateY(0) scale(1.05);
+    transition-delay: 0s;
 }
 
 .applecation__description {
     color: #ffffff !important;
+    opacity: 1 !important;
     font-size: 0.95em;
     line-height: 1.5;
     margin-bottom: 0.5em;
@@ -1081,6 +1031,10 @@
     overflow: hidden;
     text-overflow: ellipsis;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+}
+
+.focus .applecation__description {
+    text-shadow: 0 2px 5px rgba(0, 0, 0, 0.9);
 }
 
 .applecation__info {
@@ -1099,17 +1053,77 @@
     transform: translateY(0);
 }
 
-/* Допоміжні класи */
-.full-start__background.loaded.applecation-animated {
-    opacity: 1 !important;
+/* ==================================================================
+   НОВА ІЄРАРХІЯ ШАРІВ (Фон -> Затемнення -> Контент)
+   ================================================================== */
+
+/* ШАР 10: УВЕСЬ КОНТЕНТ (Завжди нагорі!) */
+.applecation__left, 
+.applecation__right,
+.full-start-new__buttons {
+    position: relative;
+    z-index: 10 !important;
+}
+
+body.applecation--ratings-corner .applecation__right {
+    align-items: last baseline;
+}
+
+.applecation .full-start-new__rate-line {
+    margin: 0;
+    height: 0;
+    overflow: hidden;
+    opacity: 0;
+    pointer-events: none;
+}
+
+/* ШАР 1: БАЗОВИЙ ФОН ТА ЙОГО КЛОНИ (Слайд-шоу) */
+.full-start__background {
+    height: calc(100% + 6em);
+    left: 0 !important;
+    opacity: 0; 
+    /* Плавний перехід 1.5с для кросфейду */
+    transition: opacity 1.5s ease-in-out, filter 0.3s ease-out !important;
+    animation: none !important;
+    transform: none !important;
+    will-change: opacity, filter;
+    /* Гарантуємо заповнення екрана без розтягування облич */
+    object-fit: cover !important; 
+    background-size: cover !important; 
+    background-position: center top !important;
+    z-index: 1 !important; /* Найнижчий шар */
+}
+
+.full-start__background.loaded:not(.dim) {
+    opacity: 1;
+}
+
+.full-start__background.dim {
+    filter: blur(30px) !important;
 }
 
 body:not(.menu--open) .full-start__background {
     mask-image: none;
 }
 
+body.advanced--animation:not(.no--animation) .full-start__background.loaded {
+    animation: none !important;
+}
+
 .applecation .full-start__status {
     display: none;
+}
+
+/* ШАР 2: ОВЕРЛЕЙ ЗАТЕМНЕННЯ (Між фоном та текстом) */
+.applecation__overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2 !important;
+    background: linear-gradient(to right, rgba(0, 0, 0, 0.8) 0%, rgba(0, 0, 0, 0.5) 25%, rgba(0, 0, 0, 0) 65%);
+    pointer-events: none; /* Щоб кліки проходили крізь нього до кнопок */
 }
 
 
@@ -1911,6 +1925,7 @@ body:not(.menu--open) .full-start__background {
     
 
     function renderExtraTitle(ukTitle, enTitle, hasLogo, year, country, network, activityRender) {
+        // Додано аргумент network. Тепер їх 7, і activityRender на своєму місці.
         if (!activityRender || !activityRender.parent().length) return;
         $(".applecation-extra-title", activityRender).remove();
 
@@ -1935,9 +1950,8 @@ body:not(.menu--open) .full-start__background {
             infoSpan = `<span class="applecation-extra-title__info">${separator}${secondaryInfo}</span>`;
         }
 
-        // Додано клас "show" одразу, щоб текст точно проявився
         const html = `
-            <div class="applecation-extra-title show">
+            <div class="applecation-extra-title">
                 <span class="applecation-extra-title__main" style="font-size: ${sizePercent}%;">${displayTitle}</span>
                 ${infoSpan}
             </div>`;
@@ -1954,7 +1968,6 @@ body:not(.menu--open) .full-start__background {
         const cached = titleCache[card.id];
         const now = Date.now();
 
-        // ВИПРАВЛЕНО: Додано порожній рядок "" як 6-й аргумент, щоб зберегти порядок
         if (cached && (now - cached.timestamp < EXTRA_TITLE_CACHE_TTL)) {
             renderExtraTitle(cached.ukTitle, cached.enTitle, cached.hasLogo, cached.year, cached.country, "", activityRender);
         }
@@ -1990,20 +2003,23 @@ body:not(.menu--open) .full-start__background {
             };
             Lampa.Storage.set(EXTRA_TITLE_CACHE_KEY, titleCache);
 
-            // ВИПРАВЛЕНО: Додано порожній рядок "" як 6-й аргумент
             renderExtraTitle(ukTitle, enTitle, hasUkrainianLogo, year, countryString, "", activityRender);
 
             // ЗАПУСК СЛАЙД-ШОУ ФОНІВ
             if (data.images && data.images.backdrops) {
                 const anchorPath = data.backdrop_path;
                 
+                // 1. Беремо ВСІ чисті фони (без мови/тексту), крім стартового
                 let otherBackdrops = data.images.backdrops
                     .filter(b => b.iso_639_1 === null && b.file_path !== anchorPath)
                     .map(b => Lampa.TMDB.image('t/p/original' + b.file_path));
 
-                otherBackdrops = shuffleArray(otherBackdrops).slice(0, 5);
+                // 2. Рандомізуємо весь цей масив
+                if (typeof shuffleArray === 'function') {
+                    otherBackdrops = shuffleArray(otherBackdrops);
+                }
                 
-                // Захист від битих посилань, якщо anchorPath відсутній
+                // 3. Формуємо повний цикл: Стартовий фон -> Всі перемішані чисті фони
                 const finalBackdrops = [];
                 if (anchorPath) finalBackdrops.push(Lampa.TMDB.image('t/p/original' + anchorPath));
                 finalBackdrops.push(...otherBackdrops);
@@ -2014,80 +2030,89 @@ body:not(.menu--open) .full-start__background {
             }
         });
     }
-    
 
 
-    // Функція для запуску слайд-шоу фонів
+    // Функція для запуску слайд-шоу фонів (Метод Клонування)
     function startBackdropSlideshow(activity, backdrops) {
-        // backdrops[0] — це базовий фон, який вже є. Нам потрібні інші.
         if (!backdrops || backdrops.length <= 1 || !isAlive(activity)) return;
 
-        const render = activity.render();
-        let bgContainer = render.find('.full-start__background').first();
-        
-        if (!bgContainer.length) {
-            setTimeout(() => startBackdropSlideshow(activity, backdrops), 500);
-            return;
-        }
+        let currentIndex = 0;
+        const fadeDuration = 1500; // 1.5 секунди на плавний перехід (кросфейд)
+        const slideDuration = 7000; // 7 секунд на показ кожного слайду
 
-        // Створюємо окремий контейнер для слайдів всередині фону
-        if (bgContainer.find('.applecation-slideshow').length === 0) {
-            bgContainer.append('<div class="applecation-slideshow"></div>');
-        }
-        const slideshowCont = bgContainer.find('.applecation-slideshow');
-        
-        // Очищаємо старі шари
-        slideshowCont.empty();
-        slideshowCont.append('<div class="applecation-slideshow__layer layer-1"></div>');
-        slideshowCont.append('<div class="applecation-slideshow__layer layer-2"></div>');
-
-        const layers = [slideshowCont.find('.layer-1'), slideshowCont.find('.layer-2')];
-        let currentLayerIdx = 0;
-        let currentBackdropIdx = 0; // 0 — це база Lampa, ми її не вантажимо в шари
-
-        function nextSlide() {
-            if (!isAlive(activity)) return;
-
-            currentBackdropIdx++;
-
-            // Якщо ми пройшли всі додаткові фони (цикл завершився)
-            if (currentBackdropIdx >= backdrops.length) {
-                // Ховаємо всі шари слайд-шоу, щоб стало видно базовий фон Lampa
-                layers[0].removeClass('active');
-                layers[1].removeClass('active');
-                currentBackdropIdx = 0; // Повертаємося до бази
-                
-                // Чекаємо 8 секунд на базі та запускаємо коло знову
-                activity.__backdropTimeout = setTimeout(nextSlide, 8000);
+        function rotateBackground() {
+            // Перевірка, чи не перемкнув користувач фільм
+            if (!isAlive(activity)) {
+                clearInterval(activity.__backdropTimer);
                 return;
             }
 
-            // Робота з шарами для плавного перемикання
-            const nextLayerIdx = (currentLayerIdx + 1) % 2;
-            const nextLayer = layers[nextLayerIdx];
-            const currentLayer = layers[currentLayerIdx];
+            currentIndex = (currentIndex + 1) % backdrops.length;
+            const backdropUrl = backdrops[currentIndex];
+            const render = activity.render();
+            
+            // Знаходимо поточний фон (оригінальний або попередній слайд)
+            const $currentBg = render.find('.full-start__background:not(.applecation__overlay)').last();
+            if ($currentBg.length === 0) return;
 
-            // Вантажимо наступний фон (починаючи з індексу 1)
-            nextLayer.css('background-image', 'url(' + backdrops[currentBackdropIdx] + ')');
-
-            setTimeout(() => {
+            const img = new Image();
+            img.onload = function() {
                 if (!isAlive(activity)) return;
+
+                // 1. Створюємо точну копію поточного фону
+                const $newBg = $currentBg.clone();
+                $newBg.removeClass('applecation-animated loaded dim'); // Очищаємо від старих станів
                 
-                nextLayer.addClass('active');
-                // Якщо ми на другому фоні (перший слайд), то currentLayer ще порожній,
-                // але ми все одно знімаємо активність про всяк випадок
-                currentLayer.removeClass('active');
+                // 2. Встановлюємо нову картинку (підтримуємо як тег <img>, так і <div>)
+                if ($newBg.is('img')) {
+                    $newBg.attr('src', backdropUrl);
+                } else {
+                    $newBg.css('background-image', 'url(' + backdropUrl + ')');
+                }
 
-                currentLayerIdx = nextLayerIdx;
+                // 3. Робимо клон повністю прозорим і готуємо до анімації
+                $newBg.css({
+                    'opacity': '0',
+                    'transition': 'opacity ' + fadeDuration + 'ms ease-in-out'
+                });
 
-                // Всі наступні слайди по 7 секунд
-                activity.__backdropTimeout = setTimeout(nextSlide, 7000);
-            }, 200); // Короткий прелоад
+                // 4. Вставляємо новий фон ПІД затемнення (оверлей)
+                const $overlay = render.find('.applecation__overlay');
+                if ($overlay.length) {
+                    $overlay.before($newBg);
+                } else {
+                    $currentBg.after($newBg);
+                }
+
+                // Форсуємо перемальовку DOM браузером
+                $newBg[0].offsetHeight;
+
+                // 5. Запускаємо кросфейд (нова з'являється, стара згасає)
+                $newBg.css('opacity', '1').addClass('loaded');
+                $currentBg.css({
+                    'transition': 'opacity ' + fadeDuration + 'ms ease-in-out',
+                    'opacity': '0'
+                });
+
+                // 6. Видаляємо старий фон після завершення переходу, щоб не забивати пам'ять
+                setTimeout(() => {
+                    if (!isAlive(activity)) return;
+                    $currentBg.remove();
+                    // Підчищаємо будь-яке сміття, крім нашого нового фону і оверлею
+                    render.find('.full-start__background:not(.applecation__overlay)').not($newBg).remove();
+                }, fadeDuration + 50);
+            };
+            img.src = backdropUrl;
         }
 
-        // Перший запуск: чекаємо 8 секунд, поки висить рідний фон Lampa, і проявляємо другий
-        activity.__backdropTimeout = setTimeout(nextSlide, 8000);
+        // Перший кадр міняється через 8 секунд, далі кожні 7 секунд
+        activity.__backdropTimeout = setTimeout(() => {
+            if (!isAlive(activity)) return;
+            rotateBackground(); // Робимо першу підміну
+            activity.__backdropTimer = setInterval(rotateBackground, slideDuration);
+        }, 8000);
     }
+
 
     // Допоміжна функція для перемішування масиву (Алгоритм Фішера-Єйтса)
     function shuffleArray(array) {
@@ -2423,14 +2448,19 @@ body:not(.menu--open) .full-start__background {
                 activity.destroy = function() {
                     activity.__destroyed = true;
 
-                    // ЗУПИНКА СЛАЙД-ШОУ: Очищаємо таймер, щоб він не спрацював після закриття картки
+                    // ЗУПИНКА СЛАЙД-ШОУ: Очищаємо всі таймери
                     if (activity.__backdropTimeout) {
                         clearTimeout(activity.__backdropTimeout);
                         activity.__backdropTimeout = null;
                     }
+                    if (activity.__backdropTimer) {
+                        clearInterval(activity.__backdropTimer);
+                        activity.__backdropTimer = null;
+                    }
 
                     if (originalDestroy) originalDestroy.apply(activity, arguments);
                 };
+
 
                 // Додаємо клас залежно від вибраного розміру постерів
                 const posterSize = Lampa.Storage.field('poster_size');
