@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const SHOWCARD_VERSION = '1.6.3';
+    const SHOWCARD_VERSION = '1.6.4';
 
     // Іконка плагіна
     const PLUGIN_ICON = '<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="25" width="60" height="8" rx="4" fill="currentColor" opacity="0.3"/><rect x="20" y="45" width="40" height="12" rx="6" fill="currentColor" opacity="0.6"/><rect x="20" y="65" width="75" height="16" rx="8" fill="currentColor"/></svg>';
@@ -1241,7 +1241,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 }
 
 .showcard .full-episode--small.focus {
-    transform: scale(1.02);
+    transform: none !important; 
 }
 
 .showcard .full-episode--next .full-episode__img::after {
@@ -1347,7 +1347,7 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 
 .showcard .full-episode.focus{
   z-index: 10;
-  transform: scale(1.03) translateY(-6px);
+  transform: none !important; 
 }
 
 /* Тінь для епізодів при фокусі замість скла */
@@ -1488,21 +1488,41 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
     font-size: 0.9em !important;
 }
 
-/* Ефект матового скла (blur) для кнопок */
-.showcard .full-start__button {
-    background: rgba(255, 255, 255, 0.1) !important; /* Легкий напівпрозорий білий відтінок */
-    backdrop-filter: blur(12px) !important; 
-    -webkit-backdrop-filter: blur(12px) !important; /* Обов'язково для WebOS та Tizen */
-    border: 1px solid rgba(255, 255, 255, 0.05) !important; /* Ледве помітна рамка для об'єму */
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; /* М'яка тінь під кнопкою */
+/* Ховаємо кнопки на початку, щоб вони з'явилися разом з іншим контентом */
+.showcard .full-start-new__buttons {
+    opacity: 0;
+    transform: translateY(15px);
+    transition: opacity 0.4s ease-out, transform 0.4s ease-out;
+    transition-delay: 0.2s;
 }
 
-/* Стан фокусу: кнопка стає суцільною яскравою (стандартна поведінка) */
+.showcard .full-start-new__buttons.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+/* 1. БАЗОВІ СТИЛІ: Максимальний блюр, жодних рамок і збільшень ніколи */
+.showcard .full-start__button {
+    backdrop-filter: blur(30px) !important;
+    -webkit-backdrop-filter: blur(30px) !important;
+    border: none !important;
+    box-shadow: none !important;
+    transition: background 0.3s ease, color 0.3s ease !important;
+    transform: none !important; /* Намертво блокуємо збільшення */
+}
+
+/* 2. СТАН СПОКОЮ: Легке скло (застосовується тільки коли немає фокусу) */
+.showcard .full-start__button:not(.focus) {
+    background: rgba(0, 0, 0, 0.15) !important; /* Ледве помітне затемнення */
+}
+
+/* 3. СТАН ФОКУСУ: Дозволяємо плагіну lampaua_look.js залити кнопку своїм кольором */
 .showcard .full-start__button.focus {
-    background: #ffffff !important;
-    color: #000000 !important;
-    transform: scale(1.05) !important;
-    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3) !important; /* Світіння при наведенні */
+    /* Ми навмисно прибрали звідси background-color! 
+       Тепер колір фону та тексту автоматично прилетить із твоєї теми */
+    transform: none !important; 
+    border: none !important;
+    box-shadow: none !important; /* Глушимо будь-яке світіння, яке може давати тема */
 }
 
 </style>`;
@@ -2094,51 +2114,49 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
         waitForBackgroundLoad(activity, () => {
             if (!isAlive(activity)) return;
 
-        // Після завантаження фону показуємо контент
-        activity.render().find('.showcard-extra-title').addClass('show'); 
-        activity.render().find('.showcard__meta').addClass('show');
+            // Після завантаження фону показуємо контент
+            activity.render().find('.showcard-extra-title').addClass('show'); 
+            activity.render().find('.showcard__meta').addClass('show');
 
-        
-        const useOverlay = Lampa.Storage.get('showcard_description_overlay', true);
-        const descWrapper = activity.render().find('.showcard__description-wrapper').addClass('show');
-        
-        // --- ФІКСАЦІЯ ВИСОТИ ОПИСУ ---
-        const descText = activity.render().find('.showcard__description');
-        if (descText.length) {
-            const currentHeight = descText.height(); // Вимірюємо висоту тексту в пікселях
-            if (currentHeight > 0) {
-                descText.css('min-height', currentHeight + 'px'); // Фіксуємо цю мінімальну висоту
-            }
-        }
-        // ------------------------------
-        
-        if (useOverlay) {
-            descWrapper.addClass('selector');
-            if (window.Lampa && Lampa.Controller) {
-                Lampa.Controller.collectionAppend(descWrapper);
-                
-                // --- ФІКС ФОКУСУ ---
-                // Запобігаємо падінню фокусу на опис при відкритті картки
-                if (!activity.__focus_fixed) {
-                    activity.__focus_fixed = true;
-                    setTimeout(() => {
-                        const currentFocus = activity.render().find('.focus');
-                        // Якщо фокус на описі (або його взагалі ще немає), примусово ставимо на кнопку "Дивитися"
-                        if (currentFocus.length === 0 || currentFocus.hasClass('showcard__description-wrapper')) {
-                            const playBtn = activity.render().find('.button--play');
-                            if (playBtn.length) {
-                                Lampa.Controller.collectionFocus(playBtn, activity.render());
-                            }
-                        }
-                    }, 50); // Блискавична затримка, щоб система встигла оновити DOM
+            const useOverlay = Lampa.Storage.get('showcard_description_overlay', true);
+            const descWrapper = activity.render().find('.showcard__description-wrapper').addClass('show');
+            
+            // --- ФІКСАЦІЯ ВИСОТИ ОПИСУ ---
+            const descText = activity.render().find('.showcard__description');
+            if (descText.length) {
+                const currentHeight = descText.height(); 
+                if (currentHeight > 0) {
+                    descText.css('min-height', currentHeight + 'px'); 
                 }
-                // -------------------
             }
-        }
-        
-        activity.render().find('.showcard__info').addClass('show');
-        activity.render().find('.showcard__ratings').addClass('show');
-    });
+            // ------------------------------
+            
+            if (useOverlay) {
+                descWrapper.addClass('selector');
+                if (window.Lampa && Lampa.Controller) {
+                    Lampa.Controller.collectionAppend(descWrapper);
+                }
+            }
+            
+            activity.render().find('.showcard__info').addClass('show');
+            activity.render().find('.showcard__ratings').addClass('show');
+
+            // --- НОВЕ: ПОКАЗ КНОПОК І ФОКУС ---
+            const buttonsBlock = activity.render().find('.full-start-new__buttons');
+            buttonsBlock.addClass('show'); // Показуємо кнопки синхронно з іншим текстом
+
+            // Надійно ставимо фокус після повної побудови картки
+            setTimeout(() => {
+                if (isAlive(activity)) {
+                    const playBtn = activity.render().find('.button--play');
+                    if (playBtn.length) {
+                        Lampa.Controller.collectionFocus(playBtn, activity.render());
+                    }
+                }
+            }, 50);
+            // ----------------------------------
+        });
+
 
     const logoContainer = activity.render().find('.showcard__logo');
     const titleElement = activity.render().find('.full-start-new__title');
