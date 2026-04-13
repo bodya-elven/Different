@@ -706,6 +706,12 @@
                     margin-bottom: ${0.5 * spacingScale / 100}em !important;
                 }
 
+                /* Додаємо розширення до 50% при фокусі */
+                .showcard.focus .showcard__description,
+                .showcard__description-wrapper.focus .showcard__description {
+                    max-width: ${50 * textScale / 100}vw !important;
+                }
+
                 
                 .showcard .showcard__info {
                     margin-bottom: ${0.5 * spacingScale / 100}em !important;
@@ -1118,16 +1124,11 @@ body.showcard--ratings-corner .showcard__ratings {
     overflow: hidden;
     text-overflow: ellipsis;
     text-shadow: 0 1px 3px rgba(0, 0, 0, 0.7);
+    transition: max-width 0.4s cubic-bezier(0.16, 1, 0.3, 1) !important;
 }
 
 .focus .showcard__description {
     text-shadow: 0 2px 3px rgba(0, 0, 0, 0.8);
-}
-
-/* Знімаємо обмеження рядків при фокусі */
-.showcard__description-wrapper.focus .showcard__description,
-.showcard.focus .showcard__description {
-    -webkit-line-clamp: 100; /* Ставимо велике число, щоб текст вліз повністю */
 }
 
 
