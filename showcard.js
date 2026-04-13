@@ -1,7 +1,7 @@
 (function () {
     'use strict';
 
-    const SHOWCARD_VERSION = '1.6.2';
+    const SHOWCARD_VERSION = '1.6.3';
 
     // Іконка плагіна
     const PLUGIN_ICON = '<svg viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="20" y="25" width="60" height="8" rx="4" fill="currentColor" opacity="0.3"/><rect x="20" y="45" width="40" height="12" rx="6" fill="currentColor" opacity="0.6"/><rect x="20" y="65" width="75" height="16" rx="8" fill="currentColor"/></svg>';
@@ -1106,7 +1106,7 @@ body.showcard--ratings-corner .showcard__ratings {
 .showcard__description-wrapper.focus {
     background-color: transparent !important;
     z-index: 10;
-    transform: translateY(0) scale(1.2);
+    transform: translateY(0) scale(1.15);
     transition-delay: 0s;
 }
 
@@ -1487,6 +1487,24 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
 .showcard .full-person__role {
     font-size: 0.9em !important;
 }
+
+/* Ефект матового скла (blur) для кнопок */
+.showcard .full-start__button {
+    background: rgba(255, 255, 255, 0.1) !important; /* Легкий напівпрозорий білий відтінок */
+    backdrop-filter: blur(12px) !important; 
+    -webkit-backdrop-filter: blur(12px) !important; /* Обов'язково для WebOS та Tizen */
+    border: 1px solid rgba(255, 255, 255, 0.05) !important; /* Ледве помітна рамка для об'єму */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2) !important; /* М'яка тінь під кнопкою */
+}
+
+/* Стан фокусу: кнопка стає суцільною яскравою (стандартна поведінка) */
+.showcard .full-start__button.focus {
+    background: #ffffff !important;
+    color: #000000 !important;
+    transform: scale(1.05) !important;
+    box-shadow: 0 8px 25px rgba(255, 255, 255, 0.3) !important; /* Світіння при наведенні */
+}
+
 </style>`;
    
         Lampa.Template.add('showcard_css', styles);
@@ -2098,6 +2116,23 @@ body.advanced--animation:not(.no--animation) .full-start__background.loaded {
             descWrapper.addClass('selector');
             if (window.Lampa && Lampa.Controller) {
                 Lampa.Controller.collectionAppend(descWrapper);
+                
+                // --- ФІКС ФОКУСУ ---
+                // Запобігаємо падінню фокусу на опис при відкритті картки
+                if (!activity.__focus_fixed) {
+                    activity.__focus_fixed = true;
+                    setTimeout(() => {
+                        const currentFocus = activity.render().find('.focus');
+                        // Якщо фокус на описі (або його взагалі ще немає), примусово ставимо на кнопку "Дивитися"
+                        if (currentFocus.length === 0 || currentFocus.hasClass('showcard__description-wrapper')) {
+                            const playBtn = activity.render().find('.button--play');
+                            if (playBtn.length) {
+                                Lampa.Controller.collectionFocus(playBtn, activity.render());
+                            }
+                        }
+                    }, 50); // Блискавична затримка, щоб система встигла оновити DOM
+                }
+                // -------------------
             }
         }
         
