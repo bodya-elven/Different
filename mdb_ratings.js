@@ -1141,7 +1141,7 @@ function getCachedLogoColor(card) {
     return null;
 }
 
-/* Отримання домінантного кольору логотипу з кластеризацією */
+/* Отримання домінантного кольору логотипу */
 function fetchLogoColor(card, apiKey) {
     return new Promise(function(resolve) {
         var type = card.name ? 'tv' : 'movie';
@@ -1167,13 +1167,13 @@ function fetchLogoColor(card, apiKey) {
                 var ctx = canvas.getContext('2d');
                 canvas.width = img.width;
                 canvas.height = img.height;
-                ctx.drawImage(img, 0, 0);
-
+                
                 var imgData;
                 try {
+                    ctx.drawImage(img, 0, 0); 
                     imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 } catch (e) {
-                    return resolve(null);
+                    return resolve(null); // Захист від битих картинок
                 }
 
                 var buckets = {};
@@ -1181,88 +1181,73 @@ function fetchLogoColor(card, apiKey) {
                 var wCount = 0, wR = 0, wG = 0, wB = 0;
                 var bCount = 0, bR = 0, bG = 0, bB = 0;
 
-                // КРОК 1: Сортуємо пікселі по "кошиках"
                 for (var i = 0; i < imgData.length; i += 16) {
                     var a = imgData[i + 3];
-                    if (a < 50) continue; // Пропускаємо прозоре
+                    if (a < 50) continue; 
 
-                    var r = imgData[i];
-                    var g = imgData[i + 1];
-                    var b = imgData[i + 2];
+                    var r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
                     totalPixels++;
 
                     var isWhite = r > 240 && g > 240 && b > 240;
                     var isBlack = r < 25 && g < 25 && b < 25;
+                    var isGray = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
 
-                    if (isWhite) {
-                        wCount++; wR += r; wG += g; wB += b;
-                    } else if (isBlack) {
-                        bCount++; bR += r; bG += g; bB += b;
-                    } else {
-                        // Для градієнтів: групуємо схожі відтінки (з кроком 32 одиниці)
+                    if (isWhite) { wCount++; wR += r; wG += g; wB += b; } 
+                    else if (isBlack) { bCount++; bR += r; bG += g; bB += b; } 
+                    else if (isGray) { /* Ігноруємо сірий */ }
+                    else {
                         var step = 32;
                         var key = Math.floor(r / step) + ',' + Math.floor(g / step) + ',' + Math.floor(b / step);
-                        
                         if (!buckets[key]) buckets[key] = { count: 0, r: 0, g: 0, b: 0 };
-                        buckets[key].count++;
-                        buckets[key].r += r;
-                        buckets[key].g += g;
-                        buckets[key].b += b;
+                        buckets[key].count++; buckets[key].r += r; buckets[key].g += g; buckets[key].b += b;
                     }
                 }
 
                 if (totalPixels === 0) return resolve(null);
 
-                // КРОК 2: Застосовуємо твої правила (<10% та >50%)
                 var validBuckets = [];
-                
-                // Перевіряємо кольори: беремо тільки ті, яких більше 10%
+
+                // ФАЗА 1: Шукаємо колір >= 10%
                 for (var k in buckets) {
-                    if ((buckets[k].count / totalPixels) * 100 >= 10) {
-                        validBuckets.push(buckets[k]);
-                    }
+                    if ((buckets[k].count / totalPixels) * 100 >= 10) validBuckets.push(buckets[k]);
                 }
 
-                // Перевіряємо білий та чорний: беремо ТІЛЬКИ якщо їх від 10% до 35%
-                var wPercent = (wCount / totalPixels) * 100;
-                var bPercent = (bCount / totalPixels) * 100;
-
-                if (wPercent >= 10 && wPercent <= 35) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
-                if (bPercent >= 10 && bPercent <= 35) validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
-
-                // КРОК 3: Запасний план для екстремальних градієнтів ("веселки")
-                // Якщо після чистки всі кошики зникли, беремо той колір, якого було найбільше, ігноруючи правило 10%
+                // ФАЗА 2: "План Б" (Якщо немає 10%, шукаємо найбільший >= 3%)
                 if (validBuckets.length === 0) {
-                    var maxBkt = null;
+                    var maxColorBkt = null;
                     for (var key in buckets) {
-                        if (!maxBkt || buckets[key].count > maxBkt.count) maxBkt = buckets[key];
+                        if (!maxColorBkt || buckets[key].count > maxColorBkt.count) maxColorBkt = buckets[key];
                     }
-                    if (maxBkt) validBuckets.push(maxBkt);
-                    else if (wCount > bCount) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
-                    else validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
+                    if (maxColorBkt && (maxColorBkt.count / totalPixels) * 100 >= 3) {
+                        validBuckets.push(maxColorBkt);
+                    }
                 }
 
-                // КРОК 4: Вибираємо переможця (найбільший кошик з тих, що вижили)
+                // ФАЗА 3: Тільки якщо немає взагалі кольорів, беремо білий/чорний
+                if (validBuckets.length === 0) {
+                    var wPercent = (wCount / totalPixels) * 100;
+                    var bPercent = (bCount / totalPixels) * 100;
+
+                    if (wPercent >= 10 || bPercent >= 10) {
+                        if (wPercent > bPercent) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
+                        else validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
+                    }
+                }
+
+                if (validBuckets.length === 0) return resolve(null);
+
                 validBuckets.sort(function(a, b) { return b.count - a.count; });
                 var best = validBuckets[0];
 
-                if (!best || best.count === 0) return resolve(null);
-
-                // Рахуємо чистий середній колір тільки з цього переможного кошика
                 var finalR = Math.floor(best.r / best.count);
                 var finalG = Math.floor(best.g / best.count);
                 var finalB = Math.floor(best.b / best.count);
-
                 var brightness = (finalR * 299 + finalG * 587 + finalB * 114) / 1000;
                 var colorData = { r: finalR, g: finalG, b: finalB, brightness: brightness };
 
-                // Кешуємо результат
                 try {
                     var cache = JSON.parse(localStorage.getItem(storageKey) || '{}');
-                    cache[cacheKey] = {
-                        data: colorData,
-                        timestamp: Date.now() + (10 * 24 * 60 * 60 * 1000)
-                    };
+                    cache[cacheKey] = { data: colorData, timestamp: Date.now() + (10 * 24 * 60 * 60 * 1000) };
                     localStorage.setItem(storageKey, JSON.stringify(cache));
                 } catch (e) {}
                 
@@ -1274,7 +1259,8 @@ function fetchLogoColor(card, apiKey) {
     });
 }
 
-/* Застосування динамічного кольору до іконки (Градієнт для темних кольорів, без тіней) */
+
+/* Застосування діагонального градієнта */
 function applyDynamicColorToIcon($iconElement, colorData, isWide) {
     if (!colorData || !$iconElement.length || $iconElement.closest('.mdb-dynamic-color-wrapper').length || $iconElement.closest('.mdb-wide-color-wrapper').length) return;
 
@@ -1287,25 +1273,29 @@ function applyDynamicColorToIcon($iconElement, colorData, isWide) {
         brightness = (r * 299 + g * 587 + b * 114) / 1000;
     }
 
-    // Захист від чорного: примусово робимо іконку білою
+    // Захист від абсолютно чорного (якщо знайдено чорний логотип)
     if (brightness < 20) {
         r = 255; g = 255; b = 255;
-        brightness = 255;
+        brightness = 255; 
     }
 
-    // Базовий стиль фону (суцільний колір для світлих іконок)
-    var backgroundStyle = 'rgb(' + r + ',' + g + ',' + b + ')';
+    var targetR, targetG, targetB;
 
-    // Якщо колір темний (яскравість <= 76, нижні 30%), застосовуємо градієнт
-    if (brightness <= 76) {
-        // Висвітлюємо колір на 20% (математично зміщуємо його ближче до білого)
-        var lightR = Math.min(255, Math.floor(r + (255 - r) * 0.2));
-        var lightG = Math.min(255, Math.floor(g + (255 - g) * 0.2));
-        var lightB = Math.min(255, Math.floor(b + (255 - b) * 0.2));
-        
-        // Формуємо градієнт зліва направо: оригінал -> світліший на 20%
-        backgroundStyle = 'linear-gradient(to right, rgb(' + r + ',' + g + ',' + b + '), rgb(' + lightR + ',' + lightG + ',' + lightB + '))';
+    // Якщо колір в нижніх 50% (темний) -> цільовий колір на 25% світліший
+    if (brightness <= 127) {
+        targetR = Math.min(255, Math.floor(r + (255 - r) * 0.25));
+        targetG = Math.min(255, Math.floor(g + (255 - g) * 0.25));
+        targetB = Math.min(255, Math.floor(b + (255 - b) * 0.25));
+    } 
+    // Якщо колір у верхніх 50% (світлий) -> цільовий колір на 25% темніший
+    else {
+        targetR = Math.max(0, Math.floor(r * 0.75));
+        targetG = Math.max(0, Math.floor(g * 0.75));
+        targetB = Math.max(0, Math.floor(b * 0.75));
     }
+
+    // Формуємо діагональний градієнт зліва-зверху вправо-вниз
+    var backgroundStyle = 'linear-gradient(to bottom right, rgb(' + r + ',' + g + ',' + b + '), rgb(' + targetR + ',' + targetG + ',' + targetB + '))';
 
     var iconSrc = $iconElement.attr('src') || $iconElement.css('background-image').replace(/^url\(['"]?/, '').replace(/['"]?\)$/, '');
     
@@ -1316,19 +1306,18 @@ function applyDynamicColorToIcon($iconElement, colorData, isWide) {
             'display': 'inline-block',
             'width': $iconElement.width() + 'px',
             'height': $iconElement.height() + 'px',
-            'background': backgroundStyle, // Застосовуємо наш колір або градієнт
+            'background': backgroundStyle,
             '-webkit-mask-image': 'url(' + iconSrc + ')',
             '-webkit-mask-size': 'contain',
             '-webkit-mask-repeat': 'no-repeat',
             '-webkit-mask-position': 'center',
-            'opacity': '0', // Старт з невидимості (для плавної появи)
+            'opacity': '0', 
             'transition': 'opacity 0.4s ease'
         });
 
-        $iconElement.css('opacity', '0'); // Оригінал повністю ховаємо
+        $iconElement.css('opacity', '0'); 
         $iconElement.wrap($wideWrapper);
 
-        // Даємо браузеру мілісекунду на рендер і плавно проявляємо
         setTimeout(function() {
             $iconElement.closest('.mdb-wide-color-wrapper').css('opacity', '1');
         }, 50);
@@ -1340,24 +1329,24 @@ function applyDynamicColorToIcon($iconElement, colorData, isWide) {
             'display': 'inline-block',
             'width': $iconElement.width() + 'px',
             'height': $iconElement.height() + 'px',
-            'background': backgroundStyle, // Застосовуємо наш колір або градієнт
+            'background': backgroundStyle,
             '-webkit-mask-image': 'url(' + iconSrc + ')',
             '-webkit-mask-size': 'contain',
             '-webkit-mask-repeat': 'no-repeat',
             '-webkit-mask-position': 'center',
-            'opacity': '0', // Старт з невидимості
+            'opacity': '0', 
             'transition': 'opacity 0.4s ease'
         });
 
-        $iconElement.css('opacity', '0'); // Оригінал повністю ховаємо
+        $iconElement.css('opacity', '0'); 
         $iconElement.wrap($maskWrapper);
 
-        // Плавна поява
         setTimeout(function() {
             $iconElement.closest('.mdb-dynamic-color-wrapper').css('opacity', '1');
         }, 50);
     }
 }
+
 
 
 
