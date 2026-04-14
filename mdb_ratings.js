@@ -1294,8 +1294,8 @@ function applyDynamicColorToIcon($iconElement, colorData, isWide) {
     }
 
     // Тінь: чорна (0.5) для світлих кольорів (>76), біла (0.5) для темних
-    var shadowColor = brightness > 76 ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)';
-    var dropShadowStyle = 'drop-shadow(0px 1px 0px ' + shadowColor + ')';
+    var shadowColor = brightness > 76 ? 'rgba(0, 0, 0, 0.5)' : 'rgba(255, 255, 255, 0.1)';
+    var dropShadowStyle = 'drop-shadow(0px 0.5px 0.5px ' + shadowColor + ')';
 
     if (isWide) {
         // --- ШИРОКІ ЛОГОТИПИ ---
