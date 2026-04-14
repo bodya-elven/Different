@@ -1141,7 +1141,7 @@ function getCachedLogoColor(card) {
     return null;
 }
 
-/* Отримання домінантного кольору логотипу */
+/* Отримання домінантного кольору */
 function fetchLogoColor(card, apiKey) {
     return new Promise(function(resolve) {
         var type = card.name ? 'tv' : 'movie';
@@ -1151,13 +1151,15 @@ function fetchLogoColor(card, apiKey) {
 
         var url = 'https://api.themoviedb.org/3/' + type + '/' + id + '/images?api_key=' + apiKey;
         
-        fetch(url).then(function(res) { 
-            return res.json(); 
-        }).then(function(data) {
-            if (!data.logos || data.logos.length === 0) return resolve(null);
+        var network = new Lampa.Reguest();
+        network.silent(url, function(data) {
+            if (!data || !data.logos || data.logos.length === 0) return resolve(null);
 
             var logo = data.logos.find(function(l) { return l.iso_639_1 === 'uk'; });
             if (!logo) logo = data.logos.find(function(l) { return l.iso_639_1 === 'en'; });
+            if (!logo) logo = data.logos.find(function(l) { return l.iso_639_1 === null || l.iso_639_1 === ''; });
+            if (!logo) logo = data.logos[0];
+
             if (!logo) return resolve(null);
 
             var img = new Image();
@@ -1173,7 +1175,7 @@ function fetchLogoColor(card, apiKey) {
                     ctx.drawImage(img, 0, 0); 
                     imgData = ctx.getImageData(0, 0, canvas.width, canvas.height).data;
                 } catch (e) {
-                    return resolve(null); // Захист від битих картинок
+                    return resolve(null); 
                 }
 
                 var buckets = {};
@@ -1188,13 +1190,11 @@ function fetchLogoColor(card, apiKey) {
                     var r = imgData[i], g = imgData[i + 1], b = imgData[i + 2];
                     totalPixels++;
 
-                    var isWhite = r > 240 && g > 240 && b > 240;
-                    var isBlack = r < 25 && g < 25 && b < 25;
-                    var isGray = Math.abs(r - g) < 15 && Math.abs(g - b) < 15 && Math.abs(r - b) < 15;
+                    var isWhite = r > 230 && g > 230 && b > 230; 
+                    var isBlack = r < 30 && g < 30 && b < 30;    
 
                     if (isWhite) { wCount++; wR += r; wG += g; wB += b; } 
                     else if (isBlack) { bCount++; bR += r; bG += g; bB += b; } 
-                    else if (isGray) { /* Ігноруємо сірий */ }
                     else {
                         var step = 32;
                         var key = Math.floor(r / step) + ',' + Math.floor(g / step) + ',' + Math.floor(b / step);
@@ -1212,7 +1212,7 @@ function fetchLogoColor(card, apiKey) {
                     if ((buckets[k].count / totalPixels) * 100 >= 10) validBuckets.push(buckets[k]);
                 }
 
-                // ФАЗА 2: "План Б" (Якщо немає 10%, шукаємо найбільший >= 3%)
+                // ФАЗА 2: "План Б" (Шукаємо хоча б 3%)
                 if (validBuckets.length === 0) {
                     var maxColorBkt = null;
                     for (var key in buckets) {
@@ -1223,12 +1223,13 @@ function fetchLogoColor(card, apiKey) {
                     }
                 }
 
-                // ФАЗА 3: Тільки якщо немає взагалі кольорів, беремо білий/чорний
+                // ФАЗА 3: Беремо білий або чорний
                 if (validBuckets.length === 0) {
                     var wPercent = (wCount / totalPixels) * 100;
                     var bPercent = (bCount / totalPixels) * 100;
 
-                    if (wPercent >= 10 || bPercent >= 10) {
+                    // Знизив поріг до 5%, щоб алгоритм ніколи не здавався
+                    if (wPercent >= 5 || bPercent >= 5) {
                         if (wPercent > bPercent) validBuckets.push({ count: wCount, r: wR, g: wG, b: wB });
                         else validBuckets.push({ count: bCount, r: bR, g: bG, b: bB });
                     }
@@ -1255,7 +1256,9 @@ function fetchLogoColor(card, apiKey) {
             };
             img.onerror = function() { resolve(null); };
             img.src = 'https://image.tmdb.org/t/p/w300' + logo.file_path;
-        }).catch(function() { resolve(null); });
+        }, function() { 
+            resolve(null); 
+        });
     });
 }
 
