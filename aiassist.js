@@ -5,51 +5,54 @@
 
     var pluginManifest = {
         type: 'other',
-        version: 1.1,
-        name: 'AI Assistant Pro',
-        description: 'Інтелектуальний помічник: факти, перекази, рекомендації та аналіз фільмографій.',
+        version: 1.2,
+        name: 'AI Assistant Ultra',
+        description: 'AI Асистент з кастомним інтерфейсом та оптимізованим пошуком.',
         author: '@bodya_elven',
         icon: PLUGIN_ICON
     };
 
     var TARGET_MODEL = 'gemini-flash-lite-latest';
     var STORAGE_KEY = 'google_native_key_v1';
-    
     window.ai_cached_results = [];
 
-    // Реєстрація джерела для відображення карток
     if (window.Lampa && Lampa.Api) {
         Lampa.Api.sources.ai_list_source = {
-            list: function(params, oncomplite) {
-                oncomplite({ results: window.ai_cached_results, total_pages: 1 });
-            }
+            list: function(params, oncomplite) { oncomplite({ results: window.ai_cached_results, total_pages: 1 }); }
         };
     }
 
     function AIAssistantPlugin() {
         var _this = this;
+        var isOpened = false;
 
         this.init = function () {
-            if (!Lampa.Listener) return;
-
             this.setupSettings();
-
             Lampa.Listener.follow('full', function (e) {
                 if (e.type == 'complite' || e.type == 'complete') {
-                    var card = e.data.movie;
-                    if (card && card.id) {
-                        var render = e.object.activity.render();
-                        _this.drawButton(render, card);
-                    }
+                    var render = e.object.activity.render();
+                    _this.drawButton(render, e.data.movie);
                 }
             });
+            this.injectStyles();
+        };
 
-            $('<style>').prop('type', 'text/css').html(
+        this.injectStyles = function() {
+            if ($('#ai-assistant-styles').length) return;
+            $('<style id="ai-assistant-styles">').prop('type', 'text/css').html(
                 '.button--ai-assist { display: flex !important; align-items: center; justify-content: center; gap: 7px; } ' + 
-                '.button--ai-assist svg { width: 1.6em; height: 1.6em; margin: 0 !important; color: #0cf; } ' +
-                '.ai-facts-list { padding: 10px 20px; font-size: 1.1em; line-height: 1.5; } ' +
-                '.ai-facts-list b { color: #0cf; display: inline-block; margin-bottom: 5px; } ' +
-                '.ai-facts-list .fact-item { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.1); }'
+                '.button--ai-assist svg { width: 1.6em; height: 1.6em; margin: 0 7px 0 0 !important; color: #0cf; } ' +
+                '.ai-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
+                '.ai-viewer-body { width: 100%; height: 100%; background: #121212; display: flex; flex-direction: column; }' +
+                '.ai-header { padding: 15px; background: #1f1f1f; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
+                '.ai-title { font-size: 1.6em; color: #fff; font-weight: bold; }' +
+                '.ai-close-btn { width: 45px; height: 45px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 26px; cursor: pointer; border: 2px solid transparent; }' +
+                '.ai-close-btn.focus { border-color: #fff; background: #555; }' +
+                '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px 5%; color: #efefef; font-size: 1.3em; line-height: 1.6; }' +
+                '.ai-item-point { margin-bottom: 15px; padding-left: 20px; position: relative; }' +
+                '.ai-item-point:before { content: "•"; position: absolute; left: 0; color: #0cf; }' +
+                '.ai-fact-block { margin-bottom: 25px; border-bottom: 1px solid #333; padding-bottom: 15px; }' +
+                '.ai-fact-title { color: #0cf; font-weight: bold; display: block; margin-bottom: 5px; }'
             ).appendTo('head');
         };
 
@@ -71,34 +74,15 @@
             });
         };
 
-        // --- UI UTILS ---
-        var statusBox = null;
-        this.updateStatus = function(text) {
-            if (!statusBox) {
-                $('body').append('<div id="ai-assist-status" style="position: fixed; bottom: 80px; left: 0; right: 0; text-align: center; z-index: 10001; pointer-events: none;"><div style="display: inline-block; background: rgba(0,0,0,0.9); padding: 15px 25px; border-radius: 50px; border: 1px solid #0cf; box-shadow: 0 5px 20px rgba(0,0,0,0.8); backdrop-filter: blur(10px);"><span class="status-text" style="color: #fff; font-size: 1.2em; font-weight: 500;"></span></div></div>');
-                statusBox = $('#ai-assist-status');
-            }
-            statusBox.find('.status-text').text(text);
-            statusBox.fadeIn(200);
-        };
-        this.hideStatus = function() { if(statusBox) statusBox.fadeOut(500); };
-
         this.drawButton = function (render, card) {
             var container = render.find('.full-start-new__buttons, .full-start__buttons').first();
             if (!container.length || container.find('.button--ai-assist').length) return;
             var btn = $('<div class="full-start__button selector button--ai-assist">' + PLUGIN_ICON + '<span>AI Асистент</span></div>');
             btn.on('hover:enter click', function () { _this.openAiMenu(card, btn, render); });
-            var bookmarkBtn = container.find('.button--book, .button--like, .button--keywords').first();
+            var bookmarkBtn = container.find('.button--book, .button--like, .button--keywords, .lampa-wiki-button').first();
             if (bookmarkBtn.length) bookmarkBtn.before(btn); else container.append(btn);
         };
 
-        this.returnFocus = function(btnElement, renderContainer, prevController) {
-            if (Lampa.Activity.active() && Lampa.Activity.active().activity) Lampa.Activity.active().activity.toggle();
-            else if (prevController) Lampa.Controller.toggle(prevController);
-            if (!Lampa.Platform.is('touch') && btnElement && renderContainer) Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]);
-        };
-
-        // --- MENUS ---
         this.openAiMenu = function(card, btnElement, renderContainer) {
             var currCtrl = Lampa.Controller.enabled().name;
             var items = [
@@ -118,160 +102,176 @@
                     else if (item.action === 'mood') _this.actionMoodMenu(card, btnElement, renderContainer, currCtrl);
                     else if (item.action === 'recommendations') _this.actionRecommendations(card, btnElement, renderContainer, currCtrl);
                 },
-                onBack: function () { _this.returnFocus(btnElement, renderContainer, currCtrl); }
+                onBack: function () { Lampa.Controller.toggle(currCtrl); }
             });
+        };
+
+        // --- CUSTOM VIEWER (як у Wikipedia плагіні) ---
+        this.showViewer = function(title, contentHtml, prev_controller) {
+            var viewer = $('<div class="ai-viewer-container"><div class="ai-viewer-body">' +
+                                '<div class="ai-header">' +
+                                    '<div class="ai-title">' + title + '</div>' +
+                                    '<div class="ai-close-btn selector">×</div>' +
+                                '</div>' +
+                                '<div class="ai-content-scroll">' + contentHtml + '</div>' +
+                            '</div></div>');
+
+            $('body').append(viewer);
+
+            var closeViewer = function() {
+                viewer.remove();
+                Lampa.Controller.toggle(prev_controller);
+            };
+
+            viewer.find('.ai-close-btn').on('click hover:enter', function() { closeViewer(); });
+
+            Lampa.Controller.add('ai_viewer', {
+                toggle: function() {
+                    Lampa.Controller.collectionSet(viewer);
+                    Lampa.Controller.collectionFocus(viewer.find('.ai-close-btn')[0], viewer);
+                },
+                up: function() { viewer.find('.ai-content-scroll').scrollTop(viewer.find('.ai-content-scroll').scrollTop() - 100); },
+                down: function() { viewer.find('.ai-content-scroll').scrollTop(viewer.find('.ai-content-scroll').scrollTop() + 100); },
+                back: closeViewer
+            });
+            Lampa.Controller.toggle('ai_viewer');
         };
 
         // --- ACTIONS ---
 
-        // 1. ФАКТИ (Виправлено Script Error)
         this.actionFacts = function(card, btn, render, ctrl) {
-            var title = card.name || card.title || card.original_name || card.original_title;
-            _this.updateStatus('🤖 Шукаю факти про "' + title + '"...');
-            var prompt = 'Act as a movie expert. Write 5 interesting facts about "' + title + '" in Ukrainian. Return strictly a JSON array: [{"title": "Заголовок", "text": "Опис"}]. No markdown.';
-            _this.askGemini(prompt, function(text) {
+            var t = card.original_title || card.original_name;
+            _this.updateStatus('🤖 Шукаю факти...');
+            var p = 'Write 5 interesting facts about "' + t + '" in Ukrainian. Return JSON array: [{"title": "...", "text": "..."}].';
+            _this.askGemini(p, function(text) {
                 _this.hideStatus();
-                var facts = _this.parseJsonSafe(text);
-                if (!facts) { Lampa.Noty.show('Помилка обробки AI'); return; }
-                var html = $('<div class="ai-facts-list"></div>');
-                facts.forEach(function(f) { html.append('<div class="fact-item"><b>'+f.title+'</b><br><span>'+f.text+'</span></div>'); });
-                Lampa.Modal.show({ title: 'Факти: ' + title, html: html, size: 'large', onBack: function() { Lampa.Modal.close(); _this.returnFocus(btn, render, ctrl); } });
-            }, function(err) { _this.hideStatus(); Lampa.Noty.show(err); });
-        };
-
-        // 2. РАЗОМ У КАДРІ (Пріоритезація акторів)
-        this.actionTogether = function(card, btn, render, ctrl) {
-            var method = (card.name || card.original_name) ? 'tv' : 'movie';
-            _this.updateStatus('🤖 Аналізую акторський склад...');
-            // Отримуємо акторів з TMDB, якщо їх немає в картці
-            Lampa.Network.silent(Lampa.TMDB.api(method + '/' + card.id + '/credits?api_key=' + Lampa.TMDB.key()), function(res) {
-                var cast = res.cast || [];
-                if (cast.length < 2) { _this.hideStatus(); Lampa.Noty.show('Мало даних про акторів'); return; }
-                var top5 = cast.slice(0, 5).map(function(a) { return a.name; }).join(', ');
-                var other10 = cast.slice(5, 15).map(function(a) { return a.name; }).join(', ');
-                var prompt = 'Actors: [' + top5 + '] (PRIORITY) and [' + other10 + ']. Find 15 movies/TV shows where at least 2 of these actors work together. Prioritize those with PRIORITY actors. Return JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
-                _this.fetchList(prompt, 'Разом у кадрі', btn, render, ctrl);
+                var data = _this.parseJsonSafe(text);
+                if (!data) return;
+                var html = '';
+                data.forEach(function(f) { html += '<div class="ai-fact-block"><span class="ai-fact-title">'+f.title+'</span>'+f.text+'</div>'; });
+                _this.showViewer('Факти: ' + (card.title || card.name), html, ctrl);
             });
         };
 
-        // 3. СТИСЛИЙ ПЕРЕКАЗ (Динамічне меню)
         this.actionRecapMenu = function(card, btn, render, ctrl) {
             var items = [];
-            var title = card.name || card.title || card.original_name || card.original_title;
-
-            // Для серіалів
-            if (card.number_of_seasons && card.number_of_seasons > 1) {
-                for (var i = 1; i < card.number_of_seasons; i++) {
-                    items.push({ title: 'Сезон ' + i, type: 'season', value: i });
-                }
-            } 
-            // Для фільмів у колекції
-            else if (card.belongs_to_collection) {
-                _this.updateStatus('🤖 Шукаю частини франшизи...');
+            if (card.number_of_seasons > 1) {
+                for (var i = 1; i < card.number_of_seasons; i++) items.push({ title: 'Сезон ' + i, type: 'season', value: i });
+            } else if (card.belongs_to_collection) {
+                _this.updateStatus('🤖 Збираю історію колекції...');
                 Lampa.Network.silent(Lampa.TMDB.api('collection/' + card.belongs_to_collection.id + '?api_key=' + Lampa.TMDB.key() + '&language=uk-UA'), function(res) {
-                    var parts = res.parts || [];
-                    parts.forEach(function(p) {
-                        if (p.id != card.id) items.push({ title: (p.title || p.name), type: 'movie', value: p.title || p.original_title });
+                    (res.parts || []).forEach(function(p) {
+                        if (p.id != card.id) items.push({ title: p.title, type: 'movie', value: p.original_title });
                     });
-                    _this.showRecapSelect(items, title, btn, render, ctrl);
+                    if (items.length) _this.showRecapSelect(items, card, ctrl);
+                    else Lampa.Noty.show('Попередніх частин не знайдено');
                     _this.hideStatus();
                 });
                 return;
             }
-
-            if (items.length === 0) { Lampa.Noty.show('Немає попередніх частин/сезонів'); return; }
-            _this.showRecapSelect(items, title, btn, render, ctrl);
+            if (items.length) _this.showRecapSelect(items, card, ctrl);
+            else Lampa.Noty.show('Це перша частина або єдиний сезон');
         };
 
-        this.showRecapSelect = function(items, currentTitle, btn, render, ctrl) {
+        this.showRecapSelect = function(items, card, ctrl) {
             Lampa.Select.show({
-                title: 'Що переказати?',
+                title: 'Оберіть частину для переказу',
                 items: items,
                 onSelect: function(item) {
                     var target = item.type === 'season' ? item.title : '"' + item.value + '"';
-                    var prompt = 'I am watching "' + currentTitle + '". Give me a brief spoiler-filled recap of ' + target + ' in Ukrainian. 5-7 key plot points. Return JSON array: [{"point": "Опис події"}].';
+                    var p = 'Provide a brief recap of ' + target + ' in Ukrainian. 5-7 key points. Return JSON array: [{"point": "..."}].';
                     _this.updateStatus('🤖 Готую переказ...');
-                    _this.askGemini(prompt, function(text) {
+                    _this.askGemini(p, function(text) {
                         _this.hideStatus();
                         var data = _this.parseJsonSafe(text);
-                        if(!data) return;
-                        var html = $('<div class="ai-facts-list"></div>');
-                        data.forEach(function(p) { html.append('<div class="fact-item">• ' + p.point + '</div>'); });
-                        Lampa.Modal.show({ title: 'Переказ: ' + item.title, html: html, size: 'large', onBack: function() { Lampa.Modal.close(); _this.returnFocus(btn, render, ctrl); } });
+                        var html = '';
+                        (data || []).forEach(function(i) { html += '<div class="ai-item-point">' + i.point + '</div>'; });
+                        _this.showViewer('Переказ: ' + item.title, html, ctrl);
                     });
                 },
-                onBack: function() { _this.openAiMenu(card, btn, render); }
+                onBack: function() { Lampa.Controller.toggle(ctrl); }
             });
         };
 
-        // 4. НАСТРІЙ (Розширено)
+        this.actionTogether = function(card, btn, render, ctrl) {
+            var method = (card.name || card.original_name) ? 'tv' : 'movie';
+            _this.updateStatus('🤖 Аналізую акторів...');
+            Lampa.Network.silent(Lampa.TMDB.api(method + '/' + card.id + '/credits?api_key=' + Lampa.TMDB.key()), function(res) {
+                var cast = res.cast || [];
+                var names = cast.slice(0, 15).map(function(a) { return a.name; }).join(', ');
+                var p = 'Find 15 movies where at least 2 of these actors work together: ' + names + '. Prioritize first 5. Return JSON: [{"uk":"...","orig":"...","year":Year}].';
+                _this.fetchList(p, 'Разом у кадрі', ctrl);
+            });
+        };
+
         this.actionMoodMenu = function(card, btn, render, ctrl) {
             var items = [
-                { title: 'Візуальне задоволення', mood: 'Visual masterpiece, stunning cinematography, unique art style' },
-                { title: 'Темна сторона', mood: 'Dark atmosphere, anti-heroes, tragic or non-traditional ending' },
-                { title: 'Посміятися', mood: 'Comedy, lighthearted, funny' },
-                { title: 'Поплакати', mood: 'Emotional drama, tearjerker' }
+                { title: 'Візуальне задоволення', mood: 'Visual masterpiece' },
+                { title: 'Темна сторона', mood: 'Dark/Antivillain' },
+                { title: 'Посміятися', mood: 'Comedy' },
+                { title: 'Поплакати', mood: 'Drama' }
             ];
             Lampa.Select.show({
                 title: 'Настрій',
                 items: items,
                 onSelect: function(i) {
-                    var t = card.original_title || card.original_name;
-                    var prompt = 'Suggest 20 movies like "' + t + '" that match mood: ' + i.mood + '. Return JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
-                    _this.fetchList(prompt, i.title, btn, render, ctrl);
+                    var p = 'Suggest 20 movies like "' + (card.original_title || card.original_name) + '" with mood: ' + i.mood + '. Return JSON: [{"uk":"...","orig":"...","year":Year}].';
+                    _this.fetchList(p, i.title, ctrl);
                 },
-                onBack: function() { _this.openAiMenu(card, btn, render); }
+                onBack: function() { Lampa.Controller.toggle(ctrl); }
             });
         };
 
         this.actionRecommendations = function(card, btn, render, ctrl) {
-            var t = card.original_title || card.original_name;
-            var prompt = 'Suggest 20 movies/TV series similar to "' + t + '" in vibe and themes. Return JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
-            _this.fetchList(prompt, 'Рекомендації', btn, render, ctrl);
+            var p = 'Suggest 20 movies similar to "' + (card.original_title || card.original_name) + '". Return JSON: [{"uk":"...","orig":"...","year":Year}].';
+            _this.fetchList(p, 'Рекомендації', ctrl);
         };
 
-        // --- CORE LOGIC ---
+        // --- CORE ---
 
-        this.askGemini = function(prompt, onSuccess, onError) {
+        this.askGemini = function(prompt, onSuccess) {
             var key = Lampa.Storage.get(STORAGE_KEY, '').split(',')[0];
-            if (!key) return Lampa.Noty.show('Відсутній API ключ');
-            var url = 'https://generativelanguage.googleapis.com/v1beta/models/' + TARGET_MODEL + ':generateContent?key=' + key.trim();
-            fetch(url, { method: "POST", headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] }) })
-            .then(function(r) { return r.json().then(function(d) { if (!r.ok) throw new Error(d.error ? d.error.message : r.status); return d; }); })
-            .then(function(d) { if (d.candidates && d.candidates[0].content) onSuccess(d.candidates[0].content.parts[0].text); else throw new Error('Empty response'); })
-            .catch(function(e) { if(onError) onError('API Error: ' + e.message); });
+            if (!key) return Lampa.Noty.show('API Ключ не встановлено');
+            fetch('https://generativelanguage.googleapis.com/v1beta/models/'+TARGET_MODEL+':generateContent?key='+key.trim(), {
+                method: "POST", body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+            }).then(function(r) { return r.json(); }).then(function(d) {
+                if (d.candidates && d.candidates[0].content) onSuccess(d.candidates[0].content.parts[0].text);
+            }).catch(function() { _this.hideStatus(); Lampa.Noty.show('Помилка запиту'); });
         };
 
         this.parseJsonSafe = function(text) {
             try {
                 var clean = text.trim().replace(/^```json/gi, '').replace(/```$/g, '').trim();
                 var s = clean.indexOf('['), e = clean.lastIndexOf(']');
-                return (s !== -1 && e !== -1) ? JSON.parse(clean.substring(s, e + 1)) : JSON.parse(clean);
-            } catch (e) { console.log('Parse error', e, text); return null; }
+                return JSON.parse(clean.substring(s, e + 1));
+            } catch (e) { return null; }
         };
 
-        this.fetchList = function(prompt, title, btn, render, ctrl) {
-            _this.updateStatus('🤖 AI думає...');
+        this.fetchList = function(prompt, title, ctrl) {
+            _this.updateStatus('🤖 AI працює...');
             _this.askGemini(prompt, function(text) {
                 var list = _this.parseJsonSafe(text);
-                if (!list) { _this.hideStatus(); return; }
-                _this.updateStatus('🤖 Шукаю в TMDB (0/' + list.length + ')...');
-                var results = [], processed = 0;
+                if (!list) return _this.hideStatus();
+                
+                var results = [], processed = 0, ids = new Set();
+                _this.updateStatus('🤖 TMDB: пошук...');
+                
+                // Паралельний запуск запитів для швидкості
                 list.forEach(function(item) {
                     var q = encodeURIComponent(item.orig || item.uk);
                     Lampa.Network.silent(Lampa.TMDB.api('search/multi?query=' + q + '&api_key=' + Lampa.TMDB.key() + '&language=uk-UA'), function(res) {
                         processed++;
                         if (res.results && res.results[0]) {
                             var b = res.results[0];
-                            if (b.media_type !== 'person') {
+                            if (b.media_type !== 'person' && !ids.has(b.id)) {
+                                ids.add(b.id);
                                 b.source = 'tmdb';
                                 results.push(b);
                             }
                         }
-                        _this.updateStatus('🤖 TMDB: ' + results.length + ' знайдено (' + processed + '/' + list.length + ')');
                         if (processed === list.length) {
                             _this.hideStatus();
-                            if (results.length === 0) Lampa.Noty.show('Нічого не знайдено в TMDB');
+                            if (!results.length) Lampa.Noty.show('Нічого не знайдено');
                             else {
                                 window.ai_cached_results = results;
                                 Lampa.Activity.push({ url: 'ai_list', title: title, component: 'category_full', source: 'ai_list_source', page: 1 });
@@ -279,8 +279,18 @@
                         }
                     });
                 });
-            }, function(err) { _this.hideStatus(); Lampa.Noty.show(err); });
+            });
         };
+
+        this.updateStatus = function(text) {
+            if (!statusBox) {
+                $('body').append('<div id="ai-assist-status" style="position: fixed; bottom: 80px; left: 0; right: 0; text-align: center; z-index: 10001; pointer-events: none;"><div style="display: inline-block; background: rgba(0,0,0,0.9); padding: 15px 25px; border-radius: 50px; border: 1px solid #0cf;"><span class="status-text" style="color: #fff; font-size: 1.2em;"></span></div></div>');
+                statusBox = $('#ai-assist-status');
+            }
+            statusBox.find('.status-text').text(text);
+            statusBox.fadeIn(200);
+        };
+        this.hideStatus = function() { if(statusBox) statusBox.fadeOut(500); };
     }
 
     if (!window.plugin_ai_assistant_instance) {
