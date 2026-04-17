@@ -29,6 +29,7 @@
             });
         };
 
+        // --- ГЛОБАЛЬНИЙ ПОШУК (Позиція 3 + Розумний фільтр) ---
         this.setupGlobalSearch = function() {
             var searchSource = {
                 title: 'AI Пошук',
@@ -37,11 +38,11 @@
                     var limit = Lampa.Storage.get('ai_result_count', '20');
                     if (!q) return done([]);
                     
-                    var filter = 'movies and TV series';
-                    if (q.indexOf('фільм') > -1) filter = 'strictly only movies';
-                    else if (q.indexOf('серіал') > -1) filter = 'strictly only TV series';
+                    var typeFilter = 'movies and TV series';
+                    if (q.indexOf('фільм') > -1) typeFilter = 'strictly only movies';
+                    else if (q.indexOf('серіал') > -1) typeFilter = 'strictly only TV series';
 
-                    var p = 'Suggest exactly ' + limit + ' ' + filter + ' for: "' + q + '". Return JSON: [{"uk":"Title","orig":"Original","year":Year}].';
+                    var p = 'Suggest exactly ' + limit + ' ' + typeFilter + ' for: "' + q + '". Return JSON array: [{"uk":"Title","orig":"Original","year":Year}].';
                     _this.updateStatus('Пошук результатів');
                     _this.askGemini(p, function(text) {
                         var list = _this.parseJsonSafe(text);
@@ -58,59 +59,39 @@
             }, 1500);
         };
 
+        // --- ДИЗАЙН ТА АНІМАЦІЇ ---
         this.injectStyles = function() {
             if ($('#ai-assistant-styles').length) return;
-            var tCol = window.look_dynamic_current_hex || 'var(--main-color, #0cf)';
+            var themeColor = window.look_dynamic_current_hex || 'var(--main-color, #0cf)';
             $('<style id="ai-assistant-styles">').prop('type', 'text/css').html(
                 '.button--ai-assist { display: flex !important; align-items: center; justify-content: center; gap: 7px; } ' + 
                 '.button--ai-assist svg { width: 1.6em !important; height: 1.6em !important; margin: 0 !important; } ' +
                 '#ai-assist-status { position: fixed; bottom: 80px; left: 0; right: 0; text-align: center; z-index: 10001; pointer-events: none; display: flex; justify-content: center; }' +
-                '.ai-toast { display: inline-flex; align-items: center; justify-content: center; gap: 12px; background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 10px 24px; border-radius: 50px; color: #fff; font-size: 1.1em; line-height: 24px; min-height: 44px; position: relative; }' +
+                '.ai-toast { display: inline-flex; align-items: center; gap: 12px; background: rgba(0,0,0,0.2); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); padding: 10px 24px; border-radius: 50px; color: #fff; font-size: 1.1em; line-height: 24px; min-height: 44px; position: relative; }' +
                 '.ai-spinner { width: 24px; height: 24px; border: 3px solid transparent; border-top-color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; }' +
                 
-                /* НОВИЙ СТИЛЬ: Пульсуючий контур */
-                '.ai-st-contour { animation: ai-contour-pulsate 4s ease-in-out infinite; border: 2px solid transparent; }' +
-                '.ai-st-contour::before { content: ""; position: absolute; top: -2px; left: -2px; right: -2px; bottom: -2px; padding: 2px; border-radius: inherit; background: conic-gradient(from 0deg, #fff, '+tCol+', #f0f, #fff); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: ai-rot 2s linear infinite; }' +
-                '@keyframes ai-contour-pulsate { 0%, 100% { border-radius: 50px; } 50% { border-radius: 30% 70% 70% 30% / 50% 30% 70% 50%; } }' +
+                /* НОВИЙ СТИЛЬ: Fluid Waving Blob Contour */
+                '.ai-st-fluid-wave { animation: ai-blob-morph 4s linear infinite; border: none; }' +
+                '.ai-st-fluid-wave::before { content: ""; position: absolute; inset: -2px; padding: 2px; border-radius: inherit; background: conic-gradient(from 0deg, #fff, #0cf, #0077be, #0cf, #fff); -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0); -webkit-mask-composite: xor; mask-composite: exclude; animation: ai-rot 2.5s linear infinite; }' +
+                '@keyframes ai-blob-morph { 0%, 100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; } 25% { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; } 50% { border-radius: 60% 40% 30% 70% / 20% 60% 40% 80%; } 75% { border-radius: 40% 60% 70% 30% / 40% 40% 60% 60%; } }' +
 
-                /* Анімації завантаження */
+                /* Перші 4 стилі */
                 '.ai-st-rainbow .ai-spinner { animation: ai-rot 0.8s linear infinite, ai-col 3s linear infinite; border-top-color:#fff; }' +
-                '.ai-st-aura .ai-spinner { border:none; background: '+tCol+'; opacity:0.5; animation: ai-aura 1.5s infinite; }' +
+                '.ai-st-aura .ai-spinner { border:none; background: '+themeColor+'; opacity:0.5; animation: ai-aura 1.5s infinite; }' +
                 '.ai-st-film .ai-spinner { border-radius:4px; border:2px solid #fff; animation: ai-film 1s steps(4) infinite; }' +
                 '.ai-st-morph .ai-spinner { animation: ai-rot 1s infinite, ai-morph 2s infinite; border: 3px solid #fff; }' +
-                '.ai-st-helix .ai-spinner { border-top-color:#fff; border-bottom-color:'+tCol+'; animation: ai-rot 0.6s linear infinite; }' +
-                '.ai-st-scanner .ai-spinner { border:1px solid #fff; position:relative; } .ai-st-scanner .ai-spinner:after { content:""; position:absolute; top:0; left:0; width:100%; height:2px; background:#fff; animation: ai-scan 1s infinite; }' +
-                '.ai-st-particles .ai-spinner { border:none; box-shadow: 8px 0 0 #fff, -8px 0 0 '+tCol+'; animation: ai-rot 1s infinite; }' +
-                '.ai-st-breath .ai-spinner { border-color:#fff; animation: ai-aura 2s ease-in-out infinite; }' +
-                '.ai-st-quantum .ai-spinner { animation: ai-rot 2s cubic-bezier(0.68, -0.55, 0.27, 1.55) infinite; border-top-color:'+tCol+'; }' +
-                '.ai-st-infinity .ai-spinner { border:none; background: radial-gradient(circle, #fff 30%, transparent 30%); animation: ai-inf 1.2s infinite; }' +
 
-                /* Анімації пігулки */
-                '.ai-st-liquid { animation: ai-liquid 3s ease-in-out infinite; }' +
-                '.ai-st-glass-glide { position:relative; overflow:hidden; } .ai-st-glass-glide:after { content:""; position:absolute; top:0; left:-100%; width:40%; height:100%; background:linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent); animation: ai-glide 2s infinite; }' +
-                '.ai-st-blur-breath { animation: ai-blur-b 4s infinite; }' +
-                '.ai-st-inner-flow { background: linear-gradient(45deg, rgba(0,204,255,0.1), rgba(20,20,20,0.2)); animation: ai-flow 5s infinite; }' +
-                '.ai-st-elastic { animation: ai-elastic 0.5s ease-in-out; }' +
-                '.ai-st-glow-aura { box-shadow: 0 0 20px '+tCol+'; }' +
-                '.ai-st-corner-morph { animation: ai-c-morph 3s infinite; }' +
-                '.ai-st-frost { background: rgba(255,255,255,0.05); animation: ai-frost 2s infinite; }' +
-                '.ai-st-scale-pulse { animation: ai-s-pulse 2s infinite; }' +
-                '.ai-st-foggy { mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); -webkit-mask-image: linear-gradient(to right, transparent, black 15%, black 85%, transparent); }' +
-
-                '@keyframes ai-rot { to { transform: rotate(360deg); } } @keyframes ai-col { 0%{border-top-color:#fff} 50%{border-top-color:'+tCol+'} 100%{border-top-color:#fff} }' +
+                '@keyframes ai-rot { to { transform: rotate(360deg); } } @keyframes ai-col { 0%{border-top-color:#fff} 50%{border-top-color:'+themeColor+'} 100%{border-top-color:#fff} }' +
                 '@keyframes ai-aura { 0%,100%{transform:scale(0.8); opacity:0.3} 50%{transform:scale(1.1); opacity:0.8} } @keyframes ai-morph { 50%{border-radius:0%} }' +
-                '@keyframes ai-scan { 0%,100%{top:0%} 50%{top:100%} } @keyframes ai-inf { 0%,100%{transform:translateX(-5px)} 50%{transform:translateX(5px)} }' +
-                '@keyframes ai-liquid { 0%,100%{border-radius:50px} 50%{border-radius:20px 80px} } @keyframes ai-glide { to{left:150%} }' +
-                '@keyframes ai-blur-b { 0%,100%{backdrop-filter:blur(20px)} 50%{backdrop-filter:blur(5px)} } @keyframes ai-s-pulse { 50%{transform:scale(1.04)} }' +
                 
                 '.ai-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
-                '.ai-viewer-body { width: 80%; max-width: 800px; height: 70%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid ' + tCol + '; overflow: hidden; }' +
-                '.ai-header { height: 44px; padding: 0 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
-                '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; padding: 0; line-height: 1; }' +
-                '.ai-close-btn.focus { border-color: #fff; background: ' + tCol + '; }' +
+                '.ai-viewer-body { width: 80%; max-width: 800px; height: 70%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid ' + themeColor + '; overflow: hidden; }' +
+                '.ai-header { height: 40px; padding: 0 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
+                '.ai-close-btn { width: 30px; height: 30px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; padding: 0; line-height: 1; text-align: center; }' +
+                '.ai-close-btn.focus { border-color: #fff; background: ' + themeColor + '; }' +
                 '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 15px; color: #efefef; font-size: 1.15em; line-height: 1.4; }' +
-                '.ai-fact-block { margin-bottom: 12px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }' +
-                '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }'
+                '.ai-fact-block { margin-bottom: 10px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }' +
+                '.ai-fact-title { color: ' + themeColor + '; font-weight: bold; display: block; margin-bottom: 2px; }'
             ).appendTo('head');
         };
 
@@ -123,6 +104,7 @@
             if (lastBtn.length) lastBtn.after(btn); else container.append(btn);
         };
 
+        // --- НАВІГАЦІЯ ТА ФОКУС (Фікс циклічності та історії) ---
         this.openAiMenu = function(card, btnElement, renderContainer) {
             var currCtrl = Lampa.Controller.enabled().name;
             var items = [
@@ -147,7 +129,9 @@
                 },
                 onBack: function () { 
                     Lampa.Controller.toggle(currCtrl);
-                    if (!Lampa.Platform.is('touch')) Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]);
+                    if (!Lampa.Platform.is('touch')) {
+                        setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10);
+                    }
                 }
             });
         };
@@ -169,6 +153,7 @@
             Lampa.Controller.toggle('ai_viewer');
         };
 
+        // --- ЛОГІЧНІ ДІЇ (З контекстом: Тип + Рік) ---
         this.actionFacts = function(card, btn, render, ctrl) {
             var t = card.original_title || card.original_name;
             var type = card.number_of_seasons ? 'TV series' : 'movie';
@@ -202,7 +187,7 @@
 
         this.showRecapSelect = function(items, card, btn, render, ctrl) {
             Lampa.Select.show({
-                title: 'Що переказати?',
+                title: 'Переказ сюжету',
                 items: items,
                 onSelect: function(item) {
                     var t = card.original_title || card.original_name;
@@ -304,7 +289,7 @@
         };
 
         this.updateStatus = function(text) {
-            var sClass = Lampa.Storage.get('ai_loader_style', 'ai-st-rainbow');
+            var sClass = Lampa.Storage.get('ai_loader_style', 'ai-st-fluid-wave');
             if (!statusBox) {
                 $('body').append('<div id="ai-assist-status"><div class="ai-toast"><div class="ai-spinner"></div><span class="status-text"></span></div></div>');
                 statusBox = $('#ai-assist-status');
@@ -326,11 +311,8 @@
             }});
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_loader_style', type: 'select', values: { 
-                'ai-st-rainbow': 'Райдужна орбіта', 'ai-st-contour': 'Пульсуючий контур', 'ai-st-aura': 'Пульсуюча аура', 'ai-st-film': 'Кінострічка', 'ai-st-morph': 'Морфінг-фігура', 'ai-st-helix': 'Подвійна спіраль',
-                'ai-st-scanner': 'Кольоровий сканер', 'ai-st-particles': 'Частки світла', 'ai-st-breath': 'Ефект дихання', 'ai-st-quantum': 'Квантовий стрибок', 'ai-st-infinity': 'Нескінченна вісімка',
-                'ai-st-liquid': 'Рідкі краї (Пігулка)', 'ai-st-glass-glide': 'Скляний відблиск', 'ai-st-blur-breath': 'Пульсуючий блюр', 'ai-st-inner-flow': 'Кольорове наповнення', 'ai-st-elastic': 'Пружна капсула',
-                'ai-st-glow-aura': 'Аура світла', 'ai-st-corner-morph': 'Морфінг кутів', 'ai-st-frost': 'Ефект інею', 'ai-st-scale-pulse': 'Масштабний пульс', 'ai-st-foggy': 'Градієнтний туман'
-            }, default: 'ai-st-rainbow' }, field: { name: 'Стиль завантаження' } });
+                'ai-st-fluid-wave': 'Пульсуючий контур (Blob)', 'ai-st-rainbow': 'Райдужна орбіта', 'ai-st-aura': 'Пульсуюча аура', 'ai-st-film': 'Кінострічка', 'ai-st-morph': 'Морфінг-фігура'
+            }, default: 'ai-st-fluid-wave' }, field: { name: 'Стиль завантаження' } });
         };
     }
 
