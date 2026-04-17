@@ -18,7 +18,7 @@
         Lampa.Manifest.plugins['ai_assistant'] = pluginManifest;
     }
 
-    var TARGET_MODEL = 'gemini-2.0-flash';
+    var TARGET_MODEL = 'gemini-1.5-flash';
     var STORAGE_KEY = 'google_native_key_v1';
     
     // Глобальне сховище для результатів, щоб Lampa могла їх відрендерити як сторінку
