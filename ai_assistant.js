@@ -89,7 +89,7 @@
                     }
                 }
             });
-
+        }; 
 
         this.preloadTags = function(card) {
             if (card.ai_translated_tags !== undefined) return; // Щоб не вантажити двічі
