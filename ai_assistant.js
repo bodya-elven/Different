@@ -118,8 +118,11 @@
                 '.ai-close-btn.focus { border-color: #fff; background: ' + tCol + '; }' +
                 '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #efefef; font-size: 1.15em; line-height: 1.4; }' +
                 '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }' +
+                '.item[data-id="ai_load_more"] .card__img img { display: none !important; } ' +
                 '.item[data-id="ai_load_more"] .card__img { background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; } ' +
-                '.item[data-id="ai_load_more"] .card__img:after { content: "+"; font-size: 5em; font-weight: 300; color: #fff; opacity: 0.3; } '
+                '.item[data-id="ai_load_more"] .card__img:after { content: "ЩЕ"; font-size: 3em; font-weight: bold; color: #fff; opacity: 0.5; letter-spacing: 2px; } ' +
+                '.item[data-id="ai_load_more"] .card__title { visibility: hidden !important; } '
+
             ).appendTo('head');
         };
 
@@ -397,7 +400,7 @@
             });
         };
 
-        this.loadMore = function(activeActivity) {
+                this.loadMore = function(activeActivity) {
             if (window.ai_pagination.is_loading) return;
             window.ai_pagination.is_loading = true;
             _this.updateStatus('Підбір результатів...');
@@ -426,18 +429,44 @@
                         return;
                     }
 
-                    // Видаляємо стару картку "Ще" з кешу
+                    // --- МАГІЯ ДОДАВАННЯ БЕЗ ВТРАТИ СКРОЛУ ---
+                    
+                    // 1. Оновлюємо кеш
                     window.ai_cached_results = window.ai_cached_results.filter(function(r) { return !r.is_load_more; });
-                    
-                    // Зливаємо старі результати з новими
                     window.ai_cached_results = window.ai_cached_results.concat(results);
-                    
-                    // Додаємо нову картку "Ще" в самий кінець
                     window.ai_cached_results.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
 
-                    // Перемальовуємо сторінку, щоб відобразити нові картки
-                    if (activeActivity) {
-                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
+                    // 2. Готуємо масив для відмальовки (тільки нові фільми + нова кнопка)
+                    var items_to_append = results.slice();
+                    items_to_append.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
+
+                    // 3. Нативно додаємо на екран
+                    if (activeActivity && activeActivity.activity && activeActivity.activity.append) {
+                        var render = activeActivity.activity.render();
+                        
+                        // Ховаємо стару кнопку та прибираємо її з навігації пульта
+                        var oldBtn = render.find('.item[data-id="ai_load_more"]');
+                        if (oldBtn.length) {
+                            oldBtn.removeClass('selector').hide();
+                        }
+
+                        // Малюємо нові картки в кінці списку
+                        activeActivity.activity.append({ results: items_to_append });
+
+                        // Приємний бонус: автоматично переводимо фокус пульта на перший НОВИЙ фільм
+                        setTimeout(function() {
+                            var firstNewId = results[0].id;
+                            var firstNewEl = render.find('.item[data-id="' + firstNewId + '"]');
+                            if (firstNewEl.length) {
+                                Lampa.Controller.collectionFocus(firstNewEl[0], render[0]);
+                            }
+                        }, 100);
+
+                    } else {
+                        // Запасний варіант (якщо щось піде не так, просто перезавантажимо)
+                        if (activeActivity) {
+                            Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
+                        }
                     }
                 });
             }, function() {
@@ -446,6 +475,7 @@
                 window.ai_pagination.is_loading = false;
             });
         };
+
 
         this.fetchList = function(prompt_task, title, card, btn, render, ctrl) {
             window.ai_pagination = { base_prompt: prompt_task, exclude_list: [], is_loading: false };
