@@ -37,14 +37,30 @@
         var _this = this;
         var statusBox = null;
 
-        this.init = function () {
+                this.init = function () {
             this.setupSettings();
             this.injectStyles();
             this.setupGlobalSearch();
+            
             Lampa.Listener.follow('full', function (e) {
                 if (e.type == 'complite' || e.type == 'complete') {
                     _this.drawButton(e.object.activity.render(), e.data.movie);
-                    _this.preloadTags(e.data.movie); 
+                    _this.preloadTags(e.data.movie);
+                }
+            });
+
+            // Нативно перехоплюємо відмальовку картки і робимо з неї красиву кнопку "ЩЕ"
+            Lampa.Listener.follow('card', function(e) {
+                if (e.action == 'render' && e.card && e.card.is_load_more) {
+                    var view = e.element.find('.card__view, .item__view');
+                    // Видаляємо стандартне бите зображення та всі іконки
+                    view.empty(); 
+                    // Задаємо стилі для фону та центрування
+                    view.css({ background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' });
+                    // Додаємо великий напис "ЩЕ"
+                    view.append('<div style="font-size: 3.5em; font-weight: bold; color: #fff; opacity: 0.5; letter-spacing: 2px;">ЩЕ</div>');
+                    // Приховуємо текст знизу картки, щоб не дублювати
+                    e.element.find('.card__title, .item__title, .card__age, .item__age').css('visibility', 'hidden');
                 }
             });
         };
@@ -400,10 +416,17 @@
             });
         };
 
-                this.loadMore = function(activeActivity) {
+        this.loadMore = function(activeActivity) {
             if (window.ai_pagination.is_loading) return;
             window.ai_pagination.is_loading = true;
             _this.updateStatus('Підбір результатів...');
+
+            // Знаходимо ID картки, яка стоїть ПЕРЕД кнопкою "Ще"
+            var lastRealCardId = null;
+            var cacheLen = window.ai_cached_results.length;
+            if (cacheLen > 1) {
+                lastRealCardId = window.ai_cached_results[cacheLen - 2].id;
+            }
 
             var limit = Lampa.Storage.get('ai_result_count', '20');
             var exclusions = window.ai_pagination.exclude_list.slice(-100).join(', ');
@@ -429,44 +452,30 @@
                         return;
                     }
 
-                    // --- МАГІЯ ДОДАВАННЯ БЕЗ ВТРАТИ СКРОЛУ ---
-                    
-                    // 1. Оновлюємо кеш
+                    // 1. Оновлюємо кеш (видаляємо старе "Ще", додаємо нові фільми, додаємо нове "Ще")
                     window.ai_cached_results = window.ai_cached_results.filter(function(r) { return !r.is_load_more; });
                     window.ai_cached_results = window.ai_cached_results.concat(results);
                     window.ai_cached_results.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
 
-                    // 2. Готуємо масив для відмальовки (тільки нові фільми + нова кнопка)
-                    var items_to_append = results.slice();
-                    items_to_append.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
+                    // 2. Перезавантажуємо сторінку з новими даними
+                    if (activeActivity) {
+                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
 
-                    // 3. Нативно додаємо на екран
-                    if (activeActivity && activeActivity.activity && activeActivity.activity.append) {
-                        var render = activeActivity.activity.render();
-                        
-                        // Ховаємо стару кнопку та прибираємо її з навігації пульта
-                        var oldBtn = render.find('.item[data-id="ai_load_more"]');
-                        if (oldBtn.length) {
-                            oldBtn.removeClass('selector').hide();
-                        }
-
-                        // Малюємо нові картки в кінці списку
-                        activeActivity.activity.append({ results: items_to_append });
-
-                        // Приємний бонус: автоматично переводимо фокус пульта на перший НОВИЙ фільм
+                        // 3. МАГІЯ ФОКУСУ: Примусово повертаємо скрол на запам'ятовану картку
                         setTimeout(function() {
-                            var firstNewId = results[0].id;
-                            var firstNewEl = render.find('.item[data-id="' + firstNewId + '"]');
-                            if (firstNewEl.length) {
-                                Lampa.Controller.collectionFocus(firstNewEl[0], render[0]);
+                            var newActivity = Lampa.Activity.active();
+                            if (newActivity && newActivity.activity && lastRealCardId) {
+                                var newRender = newActivity.activity.render();
+                                var cardToFocus = newRender.find('.item[data-id="' + lastRealCardId + '"]');
+                                
+                                if (cardToFocus.length) {
+                                    // Передаємо фокус пульта
+                                    Lampa.Controller.collectionFocus(cardToFocus[0], newRender[0]);
+                                    // Центруємо екран на цій картці миттєво
+                                    cardToFocus[0].scrollIntoView({block: "center", behavior: "instant"});
+                                }
                             }
-                        }, 100);
-
-                    } else {
-                        // Запасний варіант (якщо щось піде не так, просто перезавантажимо)
-                        if (activeActivity) {
-                            Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
-                        }
+                        }, 250); // 250 мілісекунд, щоб Lampa встигла побудувати нову сітку
                     }
                 });
             }, function() {
