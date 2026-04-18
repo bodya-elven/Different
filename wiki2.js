@@ -45,7 +45,7 @@
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
                 
                 '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.6em !important; height: 1.6em !important; max-width: 1.6em !important; max-height: 1.6em !important; object-fit: contain !important; margin: 0 !important; transition: filter 0.3s; } ' +
-                '.wiki-invert-icon svg { filter: invert(1) brightness(1.1) contrast(1.1) !important; } ' +
+                '.wiki-invert-icon.focus svg { filter: invert(1) brightness(1.1) contrast(1.1) !important; } ' +
                
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
                 '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 85vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
@@ -102,12 +102,9 @@
                 if (!isOpened) _this.handleButtonClick(data.movie);
             });
 
-            // Розумна інверсія кольору з надійним таймером
-            var invertTimeout;
+            // Розумна інверсія кольору
             button.on('hover:focus', function() {
-                clearTimeout(invertTimeout);
-                invertTimeout = setTimeout(function() {
-                    // ЗАХИСТ: Якщо фокус вже перескочив на іншу кнопку, зупиняємось!
+                setTimeout(function() {
                     if (!button.hasClass('focus')) return; 
 
                     var color = button.css('color'); 
@@ -121,12 +118,6 @@
                         }
                     }
                 }, 50); 
-            });
-
-            // Надійно ловимо відхід курсора/фокуса (для ТБ і для мишки)
-            button.on('hover:leave hover:empty mouseleave blur', function() {
-                clearTimeout(invertTimeout); // Скасовуємо таймер, якщо дуже швидко проскролили
-                button.removeClass('wiki-invert-icon'); // Обов'язково повертаємо колір назад
             });
         };
 

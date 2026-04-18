@@ -25,9 +25,34 @@
             Lampa.Listener.follow('full', function (e) {
                 if (e.type == 'complite' || e.type == 'complete') {
                     _this.drawButton(e.object.activity.render(), e.data.movie);
+                    _this.preloadTags(e.data.movie); 
                 }
             });
         };
+
+        this.preloadTags = function(card) {
+            if (card.ai_translated_tags !== undefined) return; // Щоб не вантажити двічі
+            card.ai_translated_tags = null; 
+            
+            var method = (card.original_name || card.name) ? 'tv' : 'movie';
+            var url = Lampa.TMDB.api(method + '/' + card.id + '/keywords?api_key=' + Lampa.TMDB.key());
+
+            $.ajax({
+                url: url,
+                dataType: 'json',
+                success: function (resp) {
+                    var tags = resp.keywords || resp.results || [];
+                    if (tags.length > 0) {
+                        _this.translateTags(tags, function(translatedTags) {
+                            card.ai_translated_tags = translatedTags; // Зберігаємо готовий результат
+                        });
+                    } else {
+                        card.ai_translated_tags = []; // Тегів немає
+                    }
+                }
+            });
+        };
+        
 
         this.setupGlobalSearch = function() {
             var searchSource = {
@@ -86,8 +111,8 @@
             if (lastBtn.length) lastBtn.after(btn); else container.append(btn);
         };
 
-        this.openAiMenu = function(card, btnElement, renderContainer) {
-            var controllerName = Lampa.Controller.enabled().name; 
+        this.openAiMenu = function(card, btnElement, renderContainer, prevCtrl) {
+            var controllerName = prevCtrl || Lampa.Controller.enabled().name; 
             var items = [
                 { title: 'Рекомендації', action: 'recommendations' },
                 { title: 'Добірки за тегами', action: 'tags' },
@@ -117,6 +142,7 @@
                 }
             });
         };
+
 
 
         this.showViewer = function(title, contentHtml, btnElement, renderContainer, controllerName) {
@@ -216,28 +242,46 @@
         };
 
         this.actionTags = function(card, btn, render, ctrl) {
-            var method = (card.original_name || card.name) ? 'tv' : 'movie';
-            var url = Lampa.TMDB.api(method + '/' + card.id + '/keywords?api_key=' + Lampa.TMDB.key());
+            // 1. Якщо теги вже завантажені у фоні - показуємо миттєво
+            if (card.ai_translated_tags && card.ai_translated_tags.length > 0) {
+                _this.showTagsMenu(card.ai_translated_tags, card, btn, render, ctrl);
+            } 
+            // 2. Якщо вже відомо, що тегів немає
+            else if (card.ai_translated_tags && card.ai_translated_tags.length === 0) {
+                Lampa.Noty.show('Теги відсутні');
+                _this.openAiMenu(card, btn, render, ctrl);
+            } 
+            // 3. Якщо фонове завантаження ще не закінчилось (користувач дуже швидко натиснув)
+            else {
+                _this.updateStatus('Завантаження тегів');
+                var method = (card.original_name || card.name) ? 'tv' : 'movie';
+                var url = Lampa.TMDB.api(method + '/' + card.id + '/keywords?api_key=' + Lampa.TMDB.key());
 
-            _this.updateStatus('Завантаження тегів');
-            $.ajax({
-                url: url,
-                dataType: 'json',
-                success: function (resp) {
-                    var tags = resp.keywords || resp.results || [];
-                    if (tags.length > 0) {
-                        _this.translateTags(tags, function(translatedTags) {
+                $.ajax({
+                    url: url,
+                    dataType: 'json',
+                    success: function (resp) {
+                        var tags = resp.keywords || resp.results || [];
+                        if (tags.length > 0) {
+                            _this.translateTags(tags, function(translatedTags) {
+                                card.ai_translated_tags = translatedTags; // кешуємо
+                                _this.hideStatus();
+                                _this.showTagsMenu(translatedTags, card, btn, render, ctrl);
+                            });
+                        } else {
+                            card.ai_translated_tags = [];
                             _this.hideStatus();
-                            _this.showTagsMenu(translatedTags, card, btn, render, ctrl);
-                        });
-                    } else {
-                        _this.hideStatus();
-                        Lampa.Noty.show('Теги відсутні');
-                        _this.openAiMenu(card, btn, render);
+                            Lampa.Noty.show('Теги відсутні');
+                            _this.openAiMenu(card, btn, render, ctrl);
+                        }
+                    },
+                    error: function() { 
+                        _this.hideStatus(); 
+                        Lampa.Noty.show('Помилка завантаження тегів'); 
+                        _this.openAiMenu(card, btn, render, ctrl); 
                     }
-                },
-                error: function() { _this.hideStatus(); Lampa.Noty.show('Помилка завантаження тегів'); _this.openAiMenu(card, btn, render); }
-            });
+                });
+            }
         };
 
         this.translateTags = function (tags, callback) {
@@ -293,11 +337,10 @@
                     _this.fetchList(p, 'Тег: ' + item.title, card, btn, render, ctrl);
                 },
                 onBack: function () {
-                    _this.openAiMenu(card, btn, render);
+             _this.openAiMenu(card, btn, render, ctrl);
                 }
             });
         };
-        
 
         this.askGemini = function(p, onSuccess) {
             var key = Lampa.Storage.get(STORAGE_KEY, '').split(',')[0];
