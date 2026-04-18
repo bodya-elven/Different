@@ -49,21 +49,47 @@
                 }
             });
 
-            // Нативно перехоплюємо відмальовку картки і робимо з неї красиву кнопку "ЩЕ"
+            // Нативно перехоплюємо відмальовку картки
             Lampa.Listener.follow('card', function(e) {
-                if (e.action == 'render' && e.card && e.card.is_load_more) {
-                    var view = e.element.find('.card__view, .item__view');
-                    // Видаляємо стандартне бите зображення та всі іконки
-                    view.empty(); 
-                    // Задаємо стилі для фону та центрування
-                    view.css({ background: 'rgba(255,255,255,0.05)', display: 'flex', alignItems: 'center', justifyContent: 'center' });
-                    // Додаємо великий напис "ЩЕ"
-                    view.append('<div style="font-size: 3.5em; font-weight: bold; color: #fff; opacity: 0.5; letter-spacing: 2px;">ЩЕ</div>');
-                    // Приховуємо текст знизу картки, щоб не дублювати
-                    e.element.find('.card__title, .item__title, .card__age, .item__age').css('visibility', 'hidden');
+                if (e.action == 'render' && e.card) {
+                    // ФІКС 1: Додаємо data-id всім карткам, щоб плагін міг їх знайти і повернути скрол
+                    if (e.card.id) e.element.attr('data-id', e.card.id);
+
+                    if (e.card.is_load_more) {
+                        var view = e.element.find('.card__view, .item__view');
+                        view.empty(); 
+                        
+                        // Змінюємо розміри: робимо вузьку кнопку замість високого постера
+                        e.element.css({
+                            'width': '220px',
+                            'height': '55px',
+                            'margin': '15px'
+                        });
+
+                        // Дизайн зеленої кнопки (фон, заокруглення, тінь)
+                        view.css({ 
+                            background: '#28a745', 
+                            borderRadius: '12px', 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'center',
+                            height: '100%',
+                            width: '100%',
+                            boxShadow: '0 4px 15px rgba(40, 167, 69, 0.3)',
+                            transition: 'transform 0.2s, box-shadow 0.2s' // Додали плавність анімації
+                        });
+                        
+                        // Додаємо іконку робота та текст
+                        view.append('<div style="font-size: 1.1em; font-weight: bold; color: #fff; display: flex; align-items: center; gap: 8px;">' +
+                                    '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V10a3 3 0 0 1 3-3h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"></path></svg>' +
+                                    'Ще від AI</div>');
+                                    
+                        // Повністю приховуємо системні підписи Lampa
+                        e.element.find('.card__title, .item__title, .card__age, .item__age').css('display', 'none');
+                    }
                 }
             });
-        };
+
 
         this.preloadTags = function(card) {
             if (card.ai_translated_tags !== undefined) return; // Щоб не вантажити двічі
@@ -134,13 +160,11 @@
                 '.ai-close-btn.focus { border-color: #fff; background: ' + tCol + '; }' +
                 '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #efefef; font-size: 1.15em; line-height: 1.4; }' +
                 '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }' +
-                '.item[data-id="ai_load_more"] .card__img img { display: none !important; } ' +
-                '.item[data-id="ai_load_more"] .card__img { background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; } ' +
-                '.item[data-id="ai_load_more"] .card__img:after { content: "ЩЕ"; font-size: 3em; font-weight: bold; color: #fff; opacity: 0.5; letter-spacing: 2px; } ' +
-                '.item[data-id="ai_load_more"] .card__title { visibility: hidden !important; } '
-
+                // ФІКС 2: Анімація виділення (focus) для зеленої кнопки, коли на неї наведено пульт
+                '.item.focus[data-id="ai_load_more"] .card__view, .item.focus[data-id="ai_load_more"] .item__view { box-shadow: 0 0 0 3px #fff, 0 4px 15px rgba(40, 167, 69, 0.5) !important; transform: scale(1.05); }'
             ).appendTo('head');
         };
+
 
         this.drawButton = function (render, card) {
             var container = render.find('.full-start-new__buttons, .full-start__buttons').first();
@@ -459,7 +483,7 @@
 
                     // 2. Перезавантажуємо сторінку з новими даними
                     if (activeActivity) {
-                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
+                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category', source: 'ai_assistant_list', page: 1 });
 
                         // 3. МАГІЯ ФОКУСУ: Примусово повертаємо скрол на запам'ятовану картку
                         setTimeout(function() {
@@ -508,7 +532,7 @@
                     // Додаємо нашу фейкову картку "Ще" в кінець
                     window.ai_cached_results.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
 
-                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
+                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category', source: 'ai_assistant_list', page: 1 });
                 });
             }, function() {
                 _this.hideStatus();
