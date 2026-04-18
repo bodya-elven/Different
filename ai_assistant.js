@@ -36,7 +36,7 @@
                     var limit = Lampa.Storage.get('ai_result_count', '20');
                     if (!q) return done([]);
                     var filter = (q.indexOf('фільм') > -1) ? 'strictly only movies' : (q.indexOf('серіал') > -1 ? 'strictly only TV series' : 'movies and TV series');
-                    var p = 'Act as a movie expert. Suggest strictly ' + limit + ' ' + filter + ' for: "' + q + '". Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
+                    var p = 'Act as a movie expert. Suggest strictly ' + limit + ' ' + filter + ' for query: "' + q + '". Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
                     _this.updateStatus('Пошук результатів');
                     _this.askGemini(p, function(text) {
                         var list = _this.parseJsonSafe(text);
@@ -85,7 +85,6 @@
             if (lastBtn.length) lastBtn.after(btn); else container.append(btn);
         };
 
-        // --- НАВІГАЦІЯ (Логіка keywords.js) ---
         this.openAiMenu = function(card, btnElement, renderContainer) {
             var controllerName = Lampa.Controller.enabled().name; 
             var items = [{ title: 'Рекомендації', action: 'recommendations' }, { title: 'Цікаві факти', action: 'facts' }, { title: 'Спільні проєкти', action: 'together' }];
@@ -116,10 +115,9 @@
                             '</div></div>');
             $('body').append(viewer);
             
-            // Фікс навігації: при закритті повертаємося в картку фільму
             var close = function() { 
                 viewer.remove(); 
-                Lampa.Controller.toggle(controllerName);
+                Lampa.Controller.toggle(controllerName); // Повернення до картки фільму
                 if (!Lampa.Platform.is('touch')) {
                     setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10);
                 }
@@ -135,7 +133,6 @@
             Lampa.Controller.toggle('ai_viewer');
         };
 
-        // --- ЛОГІЧНІ ДІЇ ---
         this.actionFacts = function(card, btn, render, ctrl) {
             var t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
             _this.updateStatus('Пошук фактів');
@@ -201,7 +198,6 @@
             _this.fetchList(p, 'Рекомендації', card, btn, render, ctrl);
         };
 
-        // --- CORE API ---
         this.askGemini = function(p, onSuccess) {
             var key = Lampa.Storage.get(STORAGE_KEY, '').split(',')[0];
             if (!key) return Lampa.Noty.show('API Ключ не задано');
@@ -269,15 +265,15 @@
         };
     }
 
-    // Реєстрація плагіна в маніфесті Lampa
+    // Реєстрація плагіна
     Lampa.Plugins.add({
         id: 'ai_assistant',
         name: 'AI Асистент',
-        type: 'other',
+        type: 'other', 
         icon: PLUGIN_ICON,
         author: '@bodya_elven',
-        description: '',
-        version: '2.2',
+        description: 'Ваш персональний AI помічник',
+        version: '2.3',
         onInit: function() {
             if (!window.plugin_ai_assistant_instance) {
                 window.plugin_ai_assistant_instance = new AIAssistantPlugin();
@@ -285,5 +281,11 @@
             }
         }
     });
+
+    // Fallback ініціалізація, якщо маніфест не спрацював
+    if (!window.plugin_ai_assistant_instance) {
+        window.plugin_ai_assistant_instance = new AIAssistantPlugin();
+        if (window.appready) window.plugin_ai_assistant_instance.init();
+        else Lampa.Listener.follow('app', function(e) { if (e.type == 'ready') window.plugin_ai_assistant_instance.init(); });
+    }
 })();
-                                                                                                              
