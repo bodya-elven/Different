@@ -36,7 +36,7 @@
                     var limit = Lampa.Storage.get('ai_result_count', '20');
                     if (!q) return done([]);
                     var filter = (q.indexOf('фільм') > -1) ? 'strictly only movies' : (q.indexOf('серіал') > -1 ? 'strictly only TV series' : 'movies and TV series');
-                    var p = 'Act as a movie expert. Suggest strictly ' + limit + ' ' + filter + ' for the request: "' + q + '". Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
+                    var p = 'Act as a movie expert. Suggest strictly ' + limit + ' ' + filter + ' for: "' + q + '". Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
                     _this.updateStatus('Пошук результатів');
                     _this.askGemini(p, function(text) {
                         var list = _this.parseJsonSafe(text);
@@ -55,7 +55,7 @@
 
         this.injectStyles = function() {
             if ($('#ai-assistant-styles').length) return;
-            var tCol = window.look_dynamic_current_hex || 'var(--main-color, #0cf)'; // Використання кольору теми
+            var tCol = window.look_dynamic_current_hex || 'var(--main-color, #0cf)';
             $('<style id="ai-assistant-styles">').prop('type', 'text/css').html(
                 '.button--ai-assist { display: flex !important; align-items: center; justify-content: center; gap: 5px; } ' + 
                 '.button--ai-assist svg { width: 1.8em !important; height: 1.8em !important; margin: 0 !important; } ' +
@@ -90,7 +90,6 @@
             var controllerName = Lampa.Controller.enabled().name; 
             var items = [{ title: 'Рекомендації', action: 'recommendations' }, { title: 'Цікаві факти', action: 'facts' }, { title: 'Спільні проєкти', action: 'together' }];
             if ((card.number_of_seasons && card.number_of_seasons > 1) || card.belongs_to_collection) items.push({ title: 'Стислий переказ', action: 'recap' });
-            items.push({ title: 'По настрою', action: 'mood' });
 
             Lampa.Select.show({
                 title: 'AI Асистент',
@@ -99,25 +98,33 @@
                     if (item.action === 'facts') _this.actionFacts(card, btnElement, renderContainer, controllerName);
                     else if (item.action === 'together') _this.actionTogether(card, btnElement, renderContainer, controllerName);
                     else if (item.action === 'recap') _this.actionRecapMenu(card, btnElement, renderContainer, controllerName);
-                    else if (item.action === 'mood') _this.actionMoodMenu(card, btnElement, renderContainer, controllerName);
                     else if (item.action === 'recommendations') _this.actionRecommendations(card, btnElement, renderContainer, controllerName);
                 },
                 onBack: function () { 
-                    Lampa.Controller.toggle(controllerName); // Повернення нативного контролера
+                    Lampa.Controller.toggle(controllerName); 
                     if (!Lampa.Platform.is('touch')) {
-                        setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10); // Повернення фокусу
+                        setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10); 
                     }
                 }
             });
         };
 
-        this.showViewer = function(title, contentHtml, backAction) {
+        this.showViewer = function(title, contentHtml, btnElement, renderContainer, controllerName) {
             var viewer = $('<div class="ai-viewer-container"><div class="ai-viewer-body">' +
                                 '<div class="ai-header"><div class="ai-title">' + title + '</div><div class="ai-close-btn selector">×</div></div>' +
                                 '<div class="ai-content-scroll">' + contentHtml + '</div>' +
                             '</div></div>');
             $('body').append(viewer);
-            var close = function() { viewer.remove(); backAction(); };
+            
+            // Фікс навігації: при закритті повертаємося в картку фільму
+            var close = function() { 
+                viewer.remove(); 
+                Lampa.Controller.toggle(controllerName);
+                if (!Lampa.Platform.is('touch')) {
+                    setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10);
+                }
+            };
+
             viewer.find('.ai-close-btn').on('click hover:enter', close);
             Lampa.Controller.add('ai_viewer', {
                 toggle: function() { Lampa.Controller.collectionSet(viewer); Lampa.Controller.collectionFocus(viewer.find('.ai-close-btn')[0], viewer); },
@@ -128,17 +135,17 @@
             Lampa.Controller.toggle('ai_viewer');
         };
 
-        // --- ЛОГІКА ДІЙ ---
+        // --- ЛОГІЧНІ ДІЇ ---
         this.actionFacts = function(card, btn, render, ctrl) {
             var t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
             _this.updateStatus('Пошук фактів');
-            var p = 'Provide strictly 5 interesting facts about "' + t + '" (' + year + ') in Ukrainian. IMPORTANT: This project is already released. Return strictly a JSON array: [{"title":"..","text":".."}].';
+            var p = 'Provide strictly 5 interesting facts about the movie "' + t + '" (' + year + ') in Ukrainian. IMPORTANT: This project is already released. Return strictly a JSON array: [{"title":"..","text":".."}].';
             _this.askGemini(p, function(text) {
                 _this.hideStatus();
                 var data = _this.parseJsonSafe(text);
                 if (!data) return;
                 var html = (data || []).map(function(f){ return '<div style="margin-bottom:12px"><span class="ai-fact-title">'+f.title+'</span>'+f.text+'</div>'; }).join('');
-                _this.showViewer('Цікаві факти: ' + (card.title || card.name), html, function() { _this.openAiMenu(card, btn, render); });
+                _this.showViewer('Цікаві факти: ' + (card.title || card.name), html, btn, render, ctrl);
             });
         };
 
@@ -169,7 +176,7 @@
                         _this.hideStatus();
                         var data = _this.parseJsonSafe(text);
                         var html = (data || []).map(function(i){ return '<div style="margin-bottom:10px">• '+i.point+'</div>'; }).join('');
-                        _this.showViewer('Переказ: ' + item.title, html, function() { _this.showRecapSelect(items, card, btn, render, ctrl); });
+                        _this.showViewer('Переказ: ' + item.title, html, btn, render, ctrl);
                     });
                 },
                 onBack: function() { _this.openAiMenu(card, btn, render); }
@@ -183,22 +190,8 @@
                 var cast = res.cast || [], crew = res.crew || [], dir = crew.filter(function(p){return p.job==='Director'})[0];
                 var names = cast.slice(0, 15).map(function(a){return a.name});
                 if(dir) names.push('Director: ' + dir.name);
-                var p = 'Name strictly ' + limit + ' projects where these people (including director) crossed paths: ' + names.join(', ') + '. Priority to director and first 5 names. Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
+                var p = 'Name strictly ' + limit + ' movies/TV shows where these people crossed paths: ' + names.join(', ') + '. Priority to director and first 5 names. Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
                 _this.fetchList(p, 'Спільні проєкти', card, btn, render, ctrl);
-            });
-        };
-
-        this.actionMoodMenu = function(card, btn, render, ctrl) {
-            var items = [{ title: 'Візуальне задоволення', mood: 'Visual masterpiece' }, { title: 'Темна сторона', mood: 'Dark/Antivillain' }, { title: 'Посміятися', mood: 'Comedy' }, { title: 'Поплакати', mood: 'Drama' }];
-            Lampa.Select.show({
-                title: 'Настрій',
-                items: items,
-                onSelect: function(item) {
-                    var limit = Lampa.Storage.get('ai_result_count', '20'), t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
-                    var p = 'Suggest strictly ' + limit + ' projects similar to "' + t + ' (' + year + ')" that match this mood: ' + item.mood + '. Return strictly a JSON array: [{"uk":"Назва","orig":"Original Title","year":Year}].';
-                    _this.fetchList(p, item.title, card, btn, render, ctrl);
-                },
-                onBack: function() { _this.openAiMenu(card, btn, render); }
             });
         };
 
@@ -276,9 +269,21 @@
         };
     }
 
-    if (!window.plugin_ai_assistant_instance) {
-        window.plugin_ai_assistant_instance = new AIAssistantPlugin();
-        if (window.appready) window.plugin_ai_assistant_instance.init();
-        else Lampa.Listener.follow('app', function(e) { if (e.type == 'ready') window.plugin_ai_assistant_instance.init(); });
-    }
+    // Реєстрація плагіна в маніфесті Lampa
+    Lampa.Plugins.add({
+        id: 'ai_assistant',
+        name: 'AI Асистент',
+        type: 'other',
+        icon: PLUGIN_ICON,
+        author: '@bodya_elven',
+        description: '',
+        version: '2.2',
+        onInit: function() {
+            if (!window.plugin_ai_assistant_instance) {
+                window.plugin_ai_assistant_instance = new AIAssistantPlugin();
+                window.plugin_ai_assistant_instance.init();
+            }
+        }
+    });
 })();
+                                                                                                              
