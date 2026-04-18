@@ -41,7 +41,7 @@
 
             var style = '<style>' +
                 /* Перевірено: кнопка - це флекс-контейнер з відступом */
-                '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; gap: 7px; opacity: 0.7; transition: opacity 0.3s; } ' +
+                '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; gap: 5px !important; opacity: 0.7; transition: opacity 0.3s; } ' +
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
                 
                 '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.6em !important; height: 1.6em !important; max-width: 1.6em !important; max-height: 1.6em !important; object-fit: contain !important; margin: 0 !important; } ' +
