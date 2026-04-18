@@ -44,9 +44,9 @@
                 '.lampa-wiki-button { display: flex !important; align-items: center; justify-content: center; gap: 4px; opacity: 0.7; transition: opacity 0.3s; } ' +
                 '.lampa-wiki-button.ready { opacity: 1; } ' +
                 
-                '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.6em !important; height: 1.6em !important; max-width: 1.6em !important; max-height: 1.6em !important; object-fit: contain !important; margin: 0 !important; } ' +
-                '.wiki-invert-icon svg { filter: invert(1) !important; } ' +
-                
+                '.lampa-wiki-button svg, .lampa-wiki-button img { width: 1.6em !important; height: 1.6em !important; max-width: 1.6em !important; max-height: 1.6em !important; object-fit: contain !important; margin: 0 !important; transition: filter 0.3s; } ' +
+                '.wiki-invert-icon svg { filter: invert(1) brightness(1.3) contrast(1.3) !important; } ' +
+               
                 '.wiki-select-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); z-index: 5000; display: flex; align-items: center; justify-content: center; }' +
                 '.wiki-select-body { width: 90%; max-width: 700px; background: #1a1a1a; border-radius: 10px; padding: 20px; border: 1px solid #333; max-height: 85vh; display: flex; flex-direction: column; position: relative; overflow: hidden; }' +
                 '.wiki-items-list { overflow-y: auto; flex: 1; -webkit-overflow-scrolling: touch; }' +
@@ -102,23 +102,28 @@
                 if (!isOpened) _this.handleButtonClick(data.movie);
             });
 
-            // Розумна інверсія кольору
+            // Розумна інверсія кольору з мікро-затримкою
             button.on('hover:focus', function() {
-                var color = button.css('color'); // Читаємо колір, який задала Лампа
-                var rgb = color.match(/\d+/g);   // Витягуємо цифри RGB
-                if (rgb && rgb.length >= 3) {
-                    // Формула яскравості (від 0 до 255)
-                    var brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
-                    if (brightness < 128) { 
-                        button.addClass('wiki-invert-icon'); // Якщо колір темний, інвертуємо SVG
+                setTimeout(function() {
+                    var color = button.css('color'); // Читаємо фактичний колір тексту
+                    var rgb = color.match(/\d+/g);   // Витягуємо цифри RGB
+                    if (rgb && rgb.length >= 3) {
+                        // Математична формула яскравості
+                        var brightness = (parseInt(rgb[0]) * 299 + parseInt(rgb[1]) * 587 + parseInt(rgb[2]) * 114) / 1000;
+                        if (brightness < 128) { 
+                            button.addClass('wiki-invert-icon'); // Темний текст -> інвертуємо SVG
+                        } else {
+                            button.removeClass('wiki-invert-icon'); // Світлий текст -> залишаємо як є
+                        }
                     }
-                }
+                }, 50); // Чекаємо 50мс, щоб відпрацювала анімація Лампи
             });
 
             button.on('hover:empty', function() {
-                button.removeClass('wiki-invert-icon'); // Завжди знімаємо інверсію, коли фокус іде
+                button.removeClass('wiki-invert-icon'); // Забираємо інверсію при знятті фокусу
             });
         };
+
 
         this.handleButtonClick = function(movie) {
             var _this = this;
