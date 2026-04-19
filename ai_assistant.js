@@ -27,13 +27,10 @@
         Lampa.Api.sources.ai_assistant_list = {
             list: function(params, oncomplite) { 
                 oncomplite({ results: window.ai_cached_results, total_pages: 1 }); 
-            },
-            category: function(params, oncomplite) { 
-                // ФІКС: Для дизайну 'category' потрібно повертати чистий масив, а не об'єкт!
-                oncomplite(window.ai_cached_results); 
             }
         };
     }
+
 
 
     function AIAssistantPlugin() {
@@ -486,7 +483,7 @@
 
                     // 2. Перезавантажуємо сторінку з новими даними
                     if (activeActivity) {
-                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category', source: 'ai_assistant_list', page: 1 });
+                        Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1, movie: activeActivity.movie || activeActivity.card });
 
                         // 3. МАГІЯ ФОКУСУ: Примусово повертаємо скрол на запам'ятовану картку
                         setTimeout(function() {
@@ -535,7 +532,7 @@
                     // Додаємо нашу фейкову картку "Ще" в кінець
                     window.ai_cached_results.push({ id: 'ai_load_more', title: 'Завантажити ще', name: 'Завантажити ще', is_load_more: true, poster_path: '' });
 
-                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category', source: 'ai_assistant_list', page: 1 });
+                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category_full', source: 'ai_assistant_list', page: 1, movie: card });
                 });
             }, function() {
                 _this.hideStatus();
