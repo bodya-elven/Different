@@ -28,9 +28,9 @@
             list: function(params, oncomplite) { 
                 oncomplite({ results: window.ai_cached_results, total_pages: 1 }); 
             },
-            // ФІКС: Додаємо метод category, щоб Lampa знала, як малювати новий дизайн
             category: function(params, oncomplite) { 
-                oncomplite({ results: window.ai_cached_results, total_pages: 1 }); 
+                // ФІКС: Для дизайну 'category' потрібно повертати чистий масив, а не об'єкт!
+                oncomplite(window.ai_cached_results); 
             }
         };
     }
