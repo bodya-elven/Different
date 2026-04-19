@@ -8,7 +8,6 @@
     window.ai_pagination = { base_prompt: '', exclude_list: [], is_loading: false };
     window.ai_cached_results = [];
 
-    // Перехоплюємо клік по картці
     if (!window.ai_push_patched) {
         var originalPush = Lampa.Activity.push;
         Lampa.Activity.push = function(obj) {
@@ -22,7 +21,6 @@
         window.ai_push_patched = true;
     }
 
-    // Реєструємо стандартне джерело для category_full
     if (window.Lampa && Lampa.Api) {
         Lampa.Api.sources.ai_assistant_list = {
             list: function(params, oncomplite) { oncomplite({ results: window.ai_cached_results, total_pages: 1 }); }
@@ -49,16 +47,10 @@
                 if (e.action == 'render' && e.card) {
                     if (e.card.is_load_more) {
                         e.element.attr('data-id', 'ai_load_more');
-                        e.element.empty(); 
-                        
-                        // Змінюємо клас на нативний card-more
-                        e.element.removeClass('card').addClass('card-more');
-                        
-                        // Малюємо красиву зелену кнопку в стилістиці Лампи
-                        var box = $('<div class="card-more__box" style="background: rgba(40, 167, 69, 0.2); border-radius: 12px; border: 2px solid rgba(40, 167, 69, 0.5);"><div class="card-more__title" style="color: #4CAF50; font-weight: bold;">' + (e.card.title || 'Завантажити ще') + '</div></div>');
-                        e.element.append(box);
-                        
-                        e.element.css({ 'width': '100%', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'padding': '15px' });
+                        // Ми більше не видаляємо класи, щоб не ламати сітку
+                        var view = e.element.find('.card__view, .item__view');
+                        // Додаємо наш текст
+                        view.append('<div class="ai-btn-text">' + (e.card.title || 'Завантажити ще') + '</div>');
                     } else if (e.card.id) {
                         e.element.attr('data-id', e.card.id);
                     }
@@ -133,7 +125,13 @@
                 '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; line-height: 1; padding: 0; }' +
                 '.ai-close-btn.focus { border-color: #fff; background: ' + tCol + '; }' +
                 '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #efefef; font-size: 1.15em; line-height: 1.4; }' +
-                '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }'
+                '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }' +
+                
+                /* ЗАЛІЗОБЕТОННИЙ CSS ДЛЯ КНОПКИ "ЩЕ" */
+                '.item[data-id="ai_load_more"] .card__img, .item[data-id="ai_load_more"] .card__view svg, .item[data-id="ai_load_more"] .card__title, .item[data-id="ai_load_more"] .card__age, .item[data-id="ai_load_more"] .card__icons { display: none !important; opacity: 0 !important; }' +
+                '.item[data-id="ai_load_more"] .card__view { background: rgba(40, 167, 69, 0.15) !important; border: 2px solid rgba(40, 167, 69, 0.5) !important; border-radius: 12px !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: transform 0.2s, background 0.2s, border-color 0.2s !important; }' +
+                '.item.focus[data-id="ai_load_more"] .card__view { background: rgba(40, 167, 69, 0.3) !important; border-color: #4CAF50 !important; transform: scale(1.05) !important; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4) !important; }' +
+                '.ai-btn-text { color: #4CAF50; font-size: 1.3em; font-weight: bold; text-align: center; z-index: 2; pointer-events: none; }'
             ).appendTo('head');
         };
 
@@ -402,7 +400,8 @@
             window.ai_pagination.is_loading = true;
 
             var actRender = activeActivity && activeActivity.activity ? activeActivity.activity.render() : null;
-            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] .card-more__title') : null;
+            // Оновлено селектор для пошуку тексту
+            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] .ai-btn-text') : null;
             if (btnTitle && btnTitle.length) btnTitle.text('Шукаю...');
 
             _this.updateStatus('Підбір результатів...');
@@ -485,7 +484,6 @@
                     window.ai_cached_results = results;
                     window.ai_cached_results.push({ id: 'ai_load_more', is_load_more: true });
 
-                    // ВАЖЛИВО: Використовуємо стабільний category_full, без передачі movie
                     Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
                 });
             }, function(errText) {
@@ -517,7 +515,7 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '2.5',
+    version: '2.5.1',
     name: 'AI Асистент',
     description: 'Ваш персональний ШІ помічник',
     author: '@bodya_elven',
