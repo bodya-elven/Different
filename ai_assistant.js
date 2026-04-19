@@ -47,10 +47,22 @@
                 if (e.action == 'render' && e.card) {
                     if (e.card.is_load_more) {
                         e.element.attr('data-id', 'ai_load_more');
-                        // Ми більше не видаляємо класи, щоб не ламати сітку
-                        var view = e.element.find('.card__view, .item__view');
-                        // Додаємо наш текст
-                        view.append('<div class="ai-btn-text">' + (e.card.title || 'Завантажити ще') + '</div>');
+                        
+                        // Генеруємо короткий SVG постер
+                        var svg = '<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#1a1a1a"/><svg x="150" y="220" width="100" height="100" viewBox="0 0 24 24" fill="#4CAF50"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V10a3 3 0 0 1 3-3h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg><text x="50%" y="380" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="42" fill="#4CAF50" font-weight="bold">ЩЕ ВІД AI</text></svg>';
+                        var imgUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+                        
+                        var view = e.element.find('.card__view');
+                        // Повністю знищуємо оригінальний вміст (відключаємо втручання Лампи)
+                        view.empty(); 
+                        
+                        // Вставляємо нашу нову, незалежну картинку з SVG
+                        var newImg = $('<img class="card__img loaded" src="' + imgUri + '" style="width: 100%; height: 100%; object-fit: cover; opacity: 1 !important;" />');
+                        view.append(newImg);
+                        
+                        // Приховуємо написи під карткою
+                        e.element.find('.card__title, .card__age').hide();
+                        
                     } else if (e.card.id) {
                         e.element.attr('data-id', e.card.id);
                     }
@@ -108,7 +120,8 @@
 
         this.injectStyles = function() {
             if ($('#ai-assistant-styles').length) return;
-            var tCol = window.look_dynamic_current_hex || 'var(--main-color, #0cf)';
+            
+            // Замість розрахунку кольору через JS, використовуємо нативну CSS змінну var(--main-color)
             $('<style id="ai-assistant-styles">').prop('type', 'text/css').html(
                 '.button--ai-assist { display: flex !important; align-items: center; justify-content: center; gap: 1px; } ' + 
                 '.button--ai-assist svg { width: 1.9em !important; height: 1.9em !important; margin: 0 !important; } ' +
@@ -118,20 +131,14 @@
                 '@keyframes ai-shimmer { to {left:150%} }' +
                 '.ai-spinner { width: 22px; height: 22px; border-radius: 50%; border: 3px solid transparent; border-top-color: #fff; animation: ai-rot 0.8s linear infinite, ai-rainbow 3s linear infinite; }' +
                 '@keyframes ai-rot { to { transform: rotate(360deg); } }' +
-                '@keyframes ai-rainbow { 0%{border-top-color:#fff} 25%{border-top-color:'+tCol+'} 50%{border-top-color:#0cf} 75%{border-top-color:#f0f} 100%{border-top-color:#fff} }' +
+                '@keyframes ai-rainbow { 0%{border-top-color:#fff} 25%{border-top-color:var(--main-color, #0cf)} 50%{border-top-color:#0cf} 75%{border-top-color:#f0f} 100%{border-top-color:#fff} }' +
                 '.ai-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
-                '.ai-viewer-body { width: 80%; max-width: 800px; height: 70%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid ' + tCol + '; overflow: hidden; }' +
+                '.ai-viewer-body { width: 80%; max-width: 800px; height: 70%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid var(--main-color, #0cf); overflow: hidden; }' +
                 '.ai-header { height: 44px; padding: 0 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
                 '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; line-height: 1; padding: 0; }' +
-                '.ai-close-btn.focus { border-color: #fff; background: ' + tCol + '; }' +
+                '.ai-close-btn.focus { border-color: #fff; background: var(--main-color, #0cf); }' +
                 '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #efefef; font-size: 1.15em; line-height: 1.4; }' +
-                '.ai-fact-title { color: ' + tCol + '; font-weight: bold; display: block; margin-bottom: 2px; }' +
-                
-                /* ЗАЛІЗОБЕТОННИЙ CSS ДЛЯ КНОПКИ "ЩЕ" */
-                '.item[data-id="ai_load_more"] .card__img, .item[data-id="ai_load_more"] .card__view svg, .item[data-id="ai_load_more"] .card__title, .item[data-id="ai_load_more"] .card__age, .item[data-id="ai_load_more"] .card__icons { display: none !important; opacity: 0 !important; }' +
-                '.item[data-id="ai_load_more"] .card__view { background: rgba(40, 167, 69, 0.15) !important; border: 2px solid rgba(40, 167, 69, 0.5) !important; border-radius: 12px !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: transform 0.2s, background 0.2s, border-color 0.2s !important; }' +
-                '.item.focus[data-id="ai_load_more"] .card__view { background: rgba(40, 167, 69, 0.3) !important; border-color: #4CAF50 !important; transform: scale(1.05) !important; box-shadow: 0 4px 15px rgba(40, 167, 69, 0.4) !important; }' +
-                '.ai-btn-text { color: #4CAF50; font-size: 1.3em; font-weight: bold; text-align: center; z-index: 2; pointer-events: none; }'
+                '.ai-fact-title { color: var(--main-color, #0cf); font-weight: bold; display: block; margin-bottom: 2px; }'
             ).appendTo('head');
         };
 
@@ -400,9 +407,9 @@
             window.ai_pagination.is_loading = true;
 
             var actRender = activeActivity && activeActivity.activity ? activeActivity.activity.render() : null;
-            // Оновлено селектор для пошуку тексту
-            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] .ai-btn-text') : null;
-            if (btnTitle && btnTitle.length) btnTitle.text('Шукаю...');
+            // Показуємо користувачеві процес прямо на картці
+            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] text').last() : null;
+            if (btnTitle && btnTitle.length) btnTitle.text('ШУКАЮ...');
 
             _this.updateStatus('Підбір результатів...');
 
@@ -414,7 +421,7 @@
                 var list = _this.parseJsonSafe(text);
                 if (!list || !list.length) {
                     _this.hideStatus(); Lampa.Noty.show('Більше нічого не знайдено');
-                    if (btnTitle && btnTitle.length) btnTitle.text('Завантажити ще');
+                    if (btnTitle && btnTitle.length) btnTitle.text('ВІД AI');
                     window.ai_pagination.is_loading = false; return;
                 }
 
@@ -424,7 +431,7 @@
                     _this.hideStatus(); window.ai_pagination.is_loading = false;
                     if (!results.length) { 
                         Lampa.Noty.show('Більше нічого не знайдено'); 
-                        if (btnTitle && btnTitle.length) btnTitle.text('Завантажити ще');
+                        if (btnTitle && btnTitle.length) btnTitle.text('ВІД AI');
                         return; 
                     }
 
@@ -460,7 +467,7 @@
             }, function(errText) {
                 _this.hideStatus();
                 Lampa.Noty.show('Помилка: ' + (errText || 'генерації'));
-                if (btnTitle && btnTitle.length) btnTitle.text('Помилка');
+                if (btnTitle && btnTitle.length) btnTitle.text('ПОМИЛКА');
                 window.ai_pagination.is_loading = false;
             });
         };
@@ -515,7 +522,7 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '2.5.1',
+    version: '2.6',
     name: 'AI Асистент',
     description: 'Ваш персональний ШІ помічник',
     author: '@bodya_elven',
