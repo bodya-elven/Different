@@ -8,6 +8,7 @@
     window.ai_pagination = { base_prompt: '', exclude_list: [], is_loading: false };
     window.ai_cached_results = [];
 
+    // Перехоплення Activity.push для кліку по кнопці "Ще"
     if (!window.ai_push_patched) {
         var originalPush = Lampa.Activity.push;
         Lampa.Activity.push = function(obj) {
@@ -48,20 +49,27 @@
                     if (e.card.is_load_more) {
                         e.element.attr('data-id', 'ai_load_more');
                         
-                        // Генеруємо короткий SVG постер
-                        var svg = '<svg width="400" height="600" xmlns="http://www.w3.org/2000/svg"><rect width="100%" height="100%" fill="#1a1a1a"/><svg x="150" y="220" width="100" height="100" viewBox="0 0 24 24" fill="#4CAF50"><path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a3 3 0 0 1 3 3v2h2a1 1 0 0 1 1 1v4a1 1 0 0 1-1 1h-2v2a3 3 0 0 1-3 3H9a3 3 0 0 1-3-3v-2H4a1 1 0 0 1-1-1v-4a1 1 0 0 1 1-1h2V10a3 3 0 0 1 3-3h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/></svg><text x="50%" y="380" dominant-baseline="middle" text-anchor="middle" font-family="sans-serif" font-size="42" fill="#4CAF50" font-weight="bold">ЩЕ ВІД AI</text></svg>';
-                        var imgUri = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(svg);
+                        // Живий HTML-постер з розірваною іконкою та текстом
+                        var svg = '<svg width="100%" height="100%" viewBox="0 0 400 600" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;border-radius:12px;z-index:2;">' +
+                                  '<rect width="100%" height="100%" fill="#1a1a1a"/>' +
+                                  '<text class="ai-load-text" x="200" y="320" font-family="sans-serif" font-size="55" font-weight="bold" fill="var(--main-color, #4CAF50)" text-anchor="middle">ЩЕ</text>' +
+                                  '<g fill="var(--main-color, #4CAF50)" transform="translate(45, 245) scale(4.5)">' +
+                                  '<polygon points="7.36 15.13 6.62 13.88 3.09 13.88 2 12 4.18 8.25 7.25 8.25 8.31 6.39 9.5 6.39 9.5 5.13 7.56 5.13 6.5 7 4.91 7 7.1 3.25 11.38 3.25 11.38 8.25 9.64 8.25 8.91 9.5 11.38 9.5 11.38 12 9.11 12 8.06 10.13 5.25 10.13 4.53 11.38 7.33 11.38 8.38 13.25 11.38 13.25 11.38 17.63 7.97 17.63 8.69 18.88 11.38 18.88 11.38 20.75 7.1 20.75 3.82 15.13 5.91 15.13 6.64 16.38 9.5 16.38 9.5 15.13 7.36 15.13"/>' +
+                                  '</g>' +
+                                  '<g fill="var(--main-color, #4CAF50)" transform="translate(240, 245) scale(4.5)">' +
+                                  '<polygon points="16.64 15.13 17.38 13.88 20.91 13.88 22 12 19.82 8.25 16.75 8.25 15.69 6.39 14.5 6.39 14.5 5.13 16.44 5.13 17.5 7 19.09 7 16.9 3.25 12.63 3.25 12.63 8.25 14.36 8.25 15.09 9.5 12.63 9.5 12.63 12 14.89 12 15.94 10.13 18.75 10.13 19.47 11.38 16.67 11.38 15.62 13.25 12.63 13.25 12.63 17.63 16.03 17.63 15.31 18.88 12.63 18.88 12.63 20.75 16.9 20.75 20.18 15.13 18.09 15.13 17.36 16.38 14.5 16.38 14.5 15.13 16.64 15.13"/>' +
+                                  '</g>' +
+                                  '</svg>';
                         
-                        var view = e.element.find('.card__view');
-                        // Повністю знищуємо оригінальний вміст (відключаємо втручання Лампи)
+                        var view = e.element.find('.card__view, .item__view');
+                        // Знищуємо оригінальний вміст (відключаємо втручання Лампи з її картинками)
                         view.empty(); 
                         
-                        // Вставляємо нашу нову, незалежну картинку з SVG
-                        var newImg = $('<img class="card__img loaded" src="' + imgUri + '" style="width: 100%; height: 100%; object-fit: cover; opacity: 1 !important;" />');
-                        view.append(newImg);
+                        // Вставляємо наш SVG постер
+                        view.append(svg);
                         
                         // Приховуємо написи під карткою
-                        e.element.find('.card__title, .card__age').hide();
+                        e.element.find('.card__title, .card__age, .item__title, .item__age').hide();
                         
                     } else if (e.card.id) {
                         e.element.attr('data-id', e.card.id);
@@ -120,8 +128,6 @@
 
         this.injectStyles = function() {
             if ($('#ai-assistant-styles').length) return;
-            
-            // Замість розрахунку кольору через JS, використовуємо нативну CSS змінну var(--main-color)
             $('<style id="ai-assistant-styles">').prop('type', 'text/css').html(
                 '.button--ai-assist { display: flex !important; align-items: center; justify-content: center; gap: 1px; } ' + 
                 '.button--ai-assist svg { width: 1.9em !important; height: 1.9em !important; margin: 0 !important; } ' +
@@ -407,9 +413,9 @@
             window.ai_pagination.is_loading = true;
 
             var actRender = activeActivity && activeActivity.activity ? activeActivity.activity.render() : null;
-            // Показуємо користувачеві процес прямо на картці
-            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] text').last() : null;
-            if (btnTitle && btnTitle.length) btnTitle.text('ШУКАЮ...');
+            // Оновлено для взаємодії з новим SVG-постером
+            var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] .ai-load-text') : null;
+            if (btnTitle && btnTitle.length) btnTitle.text('ПОШУК');
 
             _this.updateStatus('Підбір результатів...');
 
@@ -421,7 +427,7 @@
                 var list = _this.parseJsonSafe(text);
                 if (!list || !list.length) {
                     _this.hideStatus(); Lampa.Noty.show('Більше нічого не знайдено');
-                    if (btnTitle && btnTitle.length) btnTitle.text('ВІД AI');
+                    if (btnTitle && btnTitle.length) btnTitle.text('ЩЕ');
                     window.ai_pagination.is_loading = false; return;
                 }
 
@@ -431,7 +437,7 @@
                     _this.hideStatus(); window.ai_pagination.is_loading = false;
                     if (!results.length) { 
                         Lampa.Noty.show('Більше нічого не знайдено'); 
-                        if (btnTitle && btnTitle.length) btnTitle.text('ВІД AI');
+                        if (btnTitle && btnTitle.length) btnTitle.text('ЩЕ');
                         return; 
                     }
 
@@ -467,7 +473,7 @@
             }, function(errText) {
                 _this.hideStatus();
                 Lampa.Noty.show('Помилка: ' + (errText || 'генерації'));
-                if (btnTitle && btnTitle.length) btnTitle.text('ПОМИЛКА');
+                if (btnTitle && btnTitle.length) btnTitle.text('ЗБІЙ');
                 window.ai_pagination.is_loading = false;
             });
         };
@@ -522,7 +528,7 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '2.6',
+    version: '2.8',
     name: 'AI Асистент',
     description: 'Ваш персональний ШІ помічник',
     author: '@bodya_elven',
