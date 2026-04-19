@@ -441,7 +441,14 @@
 
                     window.ai_cached_results = window.ai_cached_results.filter(function(r) { return !r.is_load_more; });
                     window.ai_cached_results = window.ai_cached_results.concat(results);
-                    window.ai_cached_results.push({ id: 'ai_load_more', is_load_more: true });
+                    window.ai_cached_results.push({ 
+    id: 'ai_load_more', 
+    is_load_more: true, 
+    poster: 'https://bodya-elven.github.io/different/icons/more.webp', // Даємо Лампі пряме посилання!
+    img: 'https://bodya-elven.github.io/different/icons/more.webp',    // Дублюємо для 100% надійності
+    name: '' // Щоб не виводився текст під постером
+});
+
 
                     if (activeActivity && activeActivity.activity) {
                         var act = activeActivity.activity;
@@ -493,7 +500,14 @@
                     if (!results.length) { Lampa.Noty.show('Нічого не знайдено'); return; }
 
                     window.ai_cached_results = results;
-                    window.ai_cached_results.push({ id: 'ai_load_more', is_load_more: true });
+                    window.ai_cached_results.push({ 
+    id: 'ai_load_more', 
+    is_load_more: true, 
+    poster: 'https://bodya-elven.github.io/different/icons/more.webp', // Даємо Лампі пряме посилання!
+    img: 'https://bodya-elven.github.io/different/icons/more.webp',    // Дублюємо для 100% надійності
+    name: '' // Щоб не виводився текст під постером
+});
+
 
                     Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
                 });
