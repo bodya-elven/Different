@@ -8,6 +8,7 @@
     window.ai_pagination = { base_prompt: '', exclude_list: [], is_loading: false };
     window.ai_cached_results = [];
 
+    // Перехоплюємо клік по картці
     if (!window.ai_push_patched) {
         var originalPush = Lampa.Activity.push;
         Lampa.Activity.push = function(obj) {
@@ -21,10 +22,10 @@
         window.ai_push_patched = true;
     }
 
+    // Реєструємо стандартне джерело для category_full
     if (window.Lampa && Lampa.Api) {
         Lampa.Api.sources.ai_assistant_list = {
-            list: function(params, oncomplite) { oncomplite({ results: window.ai_cached_results, total_pages: 1 }); },
-            category: function(params, oncomplite) { oncomplite(window.ai_cached_results); }
+            list: function(params, oncomplite) { oncomplite({ results: window.ai_cached_results, total_pages: 1 }); }
         };
     }
 
@@ -50,14 +51,13 @@
                         e.element.attr('data-id', 'ai_load_more');
                         e.element.empty(); 
                         
-                        // Замінюємо клас card на нативний card-more
+                        // Змінюємо клас на нативний card-more
                         e.element.removeClass('card').addClass('card-more');
                         
-                        // Додаємо нативний HTML Лампи
+                        // Малюємо красиву зелену кнопку в стилістиці Лампи
                         var box = $('<div class="card-more__box" style="background: rgba(40, 167, 69, 0.2); border-radius: 12px; border: 2px solid rgba(40, 167, 69, 0.5);"><div class="card-more__title" style="color: #4CAF50; font-weight: bold;">' + (e.card.title || 'Завантажити ще') + '</div></div>');
                         e.element.append(box);
                         
-                        // Робимо так, щоб кнопка займала все місце рівно
                         e.element.css({ 'width': '100%', 'display': 'flex', 'align-items': 'center', 'justify-content': 'center', 'padding': '15px' });
                     } else if (e.card.id) {
                         e.element.attr('data-id', e.card.id);
@@ -401,7 +401,6 @@
             if (window.ai_pagination.is_loading) return;
             window.ai_pagination.is_loading = true;
 
-            // Знаходимо нашу кнопку і змінюємо їй текст на "Шукаю..."
             var actRender = activeActivity && activeActivity.activity ? activeActivity.activity.render() : null;
             var btnTitle = actRender ? actRender.find('.item[data-id="ai_load_more"] .card-more__title') : null;
             if (btnTitle && btnTitle.length) btnTitle.text('Шукаю...');
@@ -430,29 +429,23 @@
                         return; 
                     }
 
-                    // 1. Оновлюємо кеш карток
                     window.ai_cached_results = window.ai_cached_results.filter(function(r) { return !r.is_load_more; });
                     window.ai_cached_results = window.ai_cached_results.concat(results);
                     window.ai_cached_results.push({ id: 'ai_load_more', is_load_more: true });
 
-                    // 2. Плавне додавання карток без перезавантаження
                     if (activeActivity && activeActivity.activity) {
                         var act = activeActivity.activity;
                         var rnder = act.render();
                         
-                        // Видаляємо стару кнопку з екрану повністю
                         var oldBtn = rnder.find('.item[data-id="ai_load_more"]');
                         if (oldBtn.length) oldBtn.remove();
                         
-                        // Готуємо новий масив (фільми + нова кнопка "Ще")
                         var items_to_append = results.slice();
                         items_to_append.push({ id: 'ai_load_more', is_load_more: true });
 
                         if (act.append) {
-                            // Нативний метод Лампи плавно домальовує картки
                             act.append(items_to_append);
                             
-                            // Фокусуємо пульт на першому щойно доданому фільмі
                             setTimeout(function() {
                                 var firstNewId = results[0].id;
                                 var cardToFocus = rnder.find('.item[data-id="' + firstNewId + '"]');
@@ -461,9 +454,7 @@
                                 }
                             }, 100);
                         } else {
-                            // Запасний план (на всяк випадок)
-                            var activeMovie = activeActivity.movie || activeActivity.card;
-                            Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category', source: 'ai_assistant_list', page: 1, movie: activeMovie });
+                            Lampa.Activity.replace({ url: 'ai_assistant_list', title: activeActivity.title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
                         }
                     }
                 });
@@ -492,11 +483,10 @@
                     if (!results.length) { Lampa.Noty.show('Нічого не знайдено'); return; }
 
                     window.ai_cached_results = results;
-                    // Додаємо кнопку "Ще" в кінець кешу
                     window.ai_cached_results.push({ id: 'ai_load_more', is_load_more: true });
 
-                    // Відкриваємо з компонентом category та передаємо фільм для бічної панелі
-                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category', source: 'ai_assistant_list', page: 1, movie: card });
+                    // ВАЖЛИВО: Використовуємо стабільний category_full, без передачі movie
+                    Lampa.Activity.push({ url: 'ai_assistant_list', title: title, component: 'category_full', source: 'ai_assistant_list', page: 1 });
                 });
             }, function(errText) {
                 _this.hideStatus();
@@ -525,7 +515,6 @@
         };
     }
 
-// Реєстрація в маніфесті
 var pluginManifest = {
     type: 'other',
     version: '2.5',
