@@ -241,31 +241,38 @@
 
 
         this.actionFacts = function(card, btn, render, ctrl) {
-            var t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
+            // Обов'язкові змінні, які ти випадково загубив минулого разу:
+            var ukrT = card.title || card.name;
+            var origT = card.original_title || card.original_name;
+            var year = (card.release_date || card.first_air_date || '').slice(0,4);
             var type = (card.name || card.original_name) ? 'TV series' : 'movie';
             
             window.ai_active_controller = ctrl || Lampa.Controller.enabled().name;
             _this.updateStatus('Пошук фактів');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                var p = 'Provide 6 to 10 interesting facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. Otherwise, return strictly a JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
+                var p = 'Provide 6 to 10 interesting, little-known facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. ' +
+                        'CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. ' +
+                        'If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. ' +
+                        'Otherwise, return strictly a JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
                 
                 _this.askGemini(p, function(text) {
                     _this.hideStatus();
-                    // ЗАХИСТ: Якщо юзер вже вийшов з картки - просто глушимо відповідь
-                    if (Lampa.Activity.active().component !== 'full') return; 
+                    // Захист від втрати фокусу, якщо користувач вийшов з картки
+                    if (Lampa.Activity.active() && Lampa.Activity.active().component !== 'full') return; 
                     
                     var data = _this.parseJsonSafe(text);
                     if (!data) { 
                         Lampa.Noty.show('Помилка обробки результату'); 
-                        if (window.ai_active_controller) Lampa.Controller.toggle(window.ai_active_controller);
+                        _this.restoreFocus(btn, render, ctrl);
                         return; 
                     }
                     var html = (data || []).map(function(f){ return '<div style="margin-bottom:12px"><span class="ai-fact-title">'+f.title+'</span>'+f.text+'</div>'; }).join('');
-                    _this.showViewer('Цікаві факти: ' + (card.title || card.name), html, btn, render, ctrl);
+                    _this.showViewer('Цікаві факти: ' + ukrT, html, btn, render, ctrl);
                 });
             });
         };
+
 
         this.actionRecapMenu = function(card, btn, render, ctrl) {
             var items = [];
@@ -709,7 +716,6 @@
                         'gemini-3-flash-preview': '\u200Bgemini-3-flash-preview',
                         'gemini-2.5-flash-lite': '\u200Bgemini-2.5-flash-lite',
                         'gemini-2.5-flash': '\u200Bgemini-2.5-flash',
-                        'gemini-3.1-pro-preview': '\u200Bgemini-3.1-pro-preview',
                         'gemma-4-31b-it': '\u200Bgemma-4-31b-it',
                         'gemma-3-27b-it': '\u200Bgemma-3-27b-it',
                         'gemma-3-4b-it': '\u200Bgemma-3-4b-it'
