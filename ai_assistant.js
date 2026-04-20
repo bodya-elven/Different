@@ -146,9 +146,9 @@
                 '.ai-viewer-body { width: 85%; max-width: 900px; height: 80%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid var(--main-color, #0cf); overflow: hidden; }' +
                 '.ai-header { height: 48px; padding: 0 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
                 '.ai-title { font-size: 1.25em; font-weight: bold; }' +
-                '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; border: 2px solid transparent; line-height: 1; padding: 0; }' +
-                '.ai-close-btn.focus { border-color: #fff; background: var(--main-color, #0cf); }' +
-                '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 20px; color: #efefef; font-size: 1.25em; line-height: 1.4; }' +
+                '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-family: sans-serif; cursor: pointer; border: 2px solid transparent; line-height: 0; padding-bottom: 3px; }' +
+                '.ai-close-btn.focus { background: #fff; color: #000; outline: none; }' +
+                '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 5px 20px 20px 20px; color: #efefef; font-size: 1.25em; line-height: 1.4; }' +
                 '.ai-fact-title { color: var(--main-color, #0cf); font-weight: bold; display: block; margin-bottom: 2px; }'
             ).appendTo('head');
         };
@@ -160,6 +160,19 @@
             btn.on('hover:enter click', function () { _this.openAiMenu(card, btn, render); });
             var lastBtn = container.find('.selector').last();
             if (lastBtn.length) lastBtn.after(btn); else container.append(btn);
+        };
+
+        this.restoreFocus = function(controllerName) {
+            Lampa.Controller.toggle(controllerName || 'full');
+            setTimeout(function() {
+                var act = Lampa.Activity.active();
+                // Шукаємо нашу кнопку тільки якщо ми досі в картці фільму
+                if (act && act.activity && act.component === 'full') {
+                    var rnder = act.activity.render();
+                    var btn = rnder.find('.button--ai-assist');
+                    if (btn.length) Lampa.Controller.collectionFocus(btn[0], btn.closest('.full-start-new__buttons, .full-start__buttons')[0]);
+                }
+            }, 50);
         };
 
         this.openAiMenu = function(card, btnElement, renderContainer, prevCtrl) {
@@ -179,17 +192,17 @@
                 title: 'AI Асистент',
                 items: items,
                 onSelect: function (item) {
-                    if (item.action === 'facts') _this.actionFacts(card, btnElement, renderContainer, controllerName);
-                    else if (item.action === 'together') _this.actionTogether(card, btnElement, renderContainer, controllerName);
-                    else if (item.action === 'recap') _this.actionRecapMenu(card, btnElement, renderContainer, controllerName);
-                    else if (item.action === 'recommendations') _this.actionRecommendations(card, btnElement, renderContainer, controllerName);
-                    else if (item.action === 'tags') _this.actionTags(card, btnElement, renderContainer, controllerName);
+                    // Даємо Лампі 50мс, щоб вона спокійно закрила своє меню перед нашими діями
+                    setTimeout(function() {
+                        if (item.action === 'facts') _this.actionFacts(card, btnElement, renderContainer, controllerName);
+                        else if (item.action === 'together') _this.actionTogether(card, btnElement, renderContainer, controllerName);
+                        else if (item.action === 'recap') _this.actionRecapMenu(card, btnElement, renderContainer, controllerName);
+                        else if (item.action === 'recommendations') _this.actionRecommendations(card, btnElement, renderContainer, controllerName);
+                        else if (item.action === 'tags') _this.actionTags(card, btnElement, renderContainer, controllerName);
+                    }, 50);
                 },
                 onBack: function () { 
-                    Lampa.Controller.toggle(controllerName); 
-                    if (!Lampa.Platform.is('touch')) {
-                        setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10); 
-                    }
+                    _this.restoreFocus(controllerName);
                 }
             });
         };
@@ -203,10 +216,7 @@
             
             var close = function() { 
                 viewer.remove(); 
-                Lampa.Controller.toggle(controllerName);
-                if (!Lampa.Platform.is('touch')) {
-                    setTimeout(function() { Lampa.Controller.collectionFocus(btnElement[0], renderContainer[0]); }, 10);
-                }
+                _this.restoreFocus(controllerName); // Гарантоване повернення фокусу
             };
 
             viewer.find('.ai-close-btn').on('click hover:enter', close);
@@ -219,6 +229,7 @@
             Lampa.Controller.toggle('ai_viewer');
         };
 
+
         this.actionFacts = function(card, btn, render, ctrl) {
             var t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
             var type = (card.name || card.original_name) ? 'TV series' : 'movie';
@@ -227,10 +238,13 @@
             _this.updateStatus('Пошук фактів');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                var p = 'Provide strictly 10 interesting facts about the ' + type + ' "' + t + '" (' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. IMPORTANT: This project is already released. Respond ONLY with a valid JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
+                var p = 'Provide 6 to 10 little-known interesting facts about the ' + type + ' "' + t + '" (' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. IMPORTANT: This project is already released. Respond ONLY with a valid JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
                 
                 _this.askGemini(p, function(text) {
                     _this.hideStatus();
+                    // ЗАХИСТ: Якщо юзер вже вийшов з картки - просто глушимо відповідь
+                    if (Lampa.Activity.active().component !== 'full') return; 
+                    
                     var data = _this.parseJsonSafe(text);
                     if (!data) { 
                         Lampa.Noty.show('Помилка обробки результату'); 
@@ -276,6 +290,9 @@
                     
                     _this.askGemini(p, function(text) {
                         _this.hideStatus();
+                        // ЗАХИСТ ВІД ПРИВИДІВ
+                        if (Lampa.Activity.active().component !== 'full') return; 
+                        
                         var data = _this.parseJsonSafe(text);
                         if (!data) { 
                             Lampa.Noty.show('Помилка обробки результату'); 
@@ -289,6 +306,7 @@
                 onBack: function() { _this.openAiMenu(card, btn, render, ctrl); }
             });
         };
+
 
         this.actionTogether = function(card, btn, render, ctrl) {
             var limit = Lampa.Storage.get('ai_result_count', '20');
@@ -600,6 +618,13 @@
             _this.updateStatus('Підбір результатів');
             _this.askGemini(full_prompt, function(text) {
                 var list = _this.parseJsonSafe(text);
+                
+                // ЗАХИСТ ВІД ПРИВИДІВ: Якщо ми вже вийшли з фільму в меню, відміняємо завантаження
+                if (Lampa.Activity.active().component !== 'full') {
+                    _this.hideStatus();
+                    return; 
+                }
+
                 if (!list || !list.length) { 
                     _this.hideStatus(); 
                     Lampa.Noty.show('Нічого не знайдено або помилка парсингу'); 
@@ -611,6 +636,9 @@
 
                 _this.processAiList(list, function(results) {
                     _this.hideStatus();
+                    // Додаткова перевірка перед пушем нової сторінки
+                    if (Lampa.Activity.active().component !== 'full') return; 
+
                     if (!results.length) { 
                         Lampa.Noty.show('Нічого не знайдено'); 
                         if (window.ai_active_controller) Lampa.Controller.toggle(window.ai_active_controller);
@@ -630,6 +658,7 @@
                 });
             }, null, false);
         };
+
 
         this.updateStatus = function(text) {
             if (!statusBox) {
