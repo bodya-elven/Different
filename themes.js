@@ -137,13 +137,13 @@
                'html body .torrent-serial.focus { background-color: ' + secondaryHex + '44 !important; border: 0.2em solid ' + mainHex + ' !important; }';
     }
 
-    window.look_dynamic_current_hex = null;
+    window.themes_dynamic_current_hex = null;
 
     function applyTheme() {
-        var type = Lampa.Storage.get('look_theme_type', 'presets');
+        var type = Lampa.Storage.get('themes_theme_type', 'presets');
         var theme = Lampa.Storage.get('interface_theme', 'default');
-        var customHex = Lampa.Storage.get('look_custom_hex', '#3da18d');
-        var isDynamicEnabled = Lampa.Storage.get('look_dynamic_theme', false);
+        var customHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
+        var isDynamicEnabled = Lampa.Storage.get('themes_dynamic_theme', false);
 
         var oldStyle = document.querySelector('#interface_theme_mod_style');
         if (oldStyle) oldStyle.parentNode.removeChild(oldStyle);
@@ -154,18 +154,18 @@
         var active = Lampa.Activity.active();
         var baseHex = (type === 'custom') ? customHex : (loaderColors[theme] || loaderColors.default);
         
-        var currentLookColor = null;
+        var currentThemesColor = null;
         if (isDynamicEnabled && active) {
-            if (active.look_color) {
-                currentLookColor = active.look_color;
+            if (active.themes_color) {
+                currentThemesColor = active.themes_color;
             } else {
                 // Шукаємо ID фільму в поточної активності (працює для Торрентів та Онлайну)
                 var card = active.card || active.movie;
                 if (card && card.id) {
                     var cached = getCachedLogoColor(card);
                     if (cached) {
-                        currentLookColor = rgbToHex(cached.r, cached.g, cached.b);
-                        active.look_color = currentLookColor;
+                        currentThemesColor = rgbToHex(cached.r, cached.g, cached.b);
+                        active.themes_color = currentThemesColor;
                     }
                 }
             }
@@ -173,7 +173,7 @@
 
         
         var svgCode = encodeURIComponent(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="135" height="140" fill="' + (currentLookColor || baseHex) + '"><rect width="15" height="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="30" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="140" x="60" rx="6"><animate attributeName="height" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="90" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect></svg>'
+            '<svg xmlns="http://www.w3.org/2000/svg" width="135" height="140" fill="' + (currentThemesColor || baseHex) + '"><rect width="15" height="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="30" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="140" x="60" rx="6"><animate attributeName="height" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="90" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect></svg>'
         );
 
         var finalCSS = '';
@@ -184,8 +184,8 @@
         }
 
         // Застосовуємо динамічний фокус, якщо колір знайдено для цієї активності
-        if (currentLookColor) {
-            finalCSS += '\n/* Dynamic Focus Overrides */\n' + generateDynamicFocusCSS(currentLookColor);
+        if (currentThemesColor) {
+            finalCSS += '\n/* Dynamic Focus Overrides */\n' + generateDynamicFocusCSS(currentThemesColor);
         }
 
 
@@ -201,7 +201,7 @@
         var id = card.id;
         var cacheKey = 'theme_color_' + type + '_' + id;
         try {
-            var cache = JSON.parse(localStorage.getItem('look_plugin_cache') || '{}');
+            var cache = JSON.parse(localStorage.getItem('themes_plugin_cache') || '{}');
             if (cache[cacheKey] && cache[cacheKey].timestamp > Date.now()) {
                 return cache[cacheKey].data;
             }
@@ -309,7 +309,7 @@
 
                 // ФАЗА 3: Якщо навіть 3% кольору немає, перевіряємо чорний та білий (>= 10%)
                 if (validBuckets.length === 0) {
-                    var ignoreWhite = Lampa.Storage.get('look_dynamic_ignore_white', true);
+                    var ignoreWhite = Lampa.Storage.get('themes_dynamic_ignore_white', true);
                     var wPercent = (wCount / totalPixels) * 100;
                     var bPercent = (bCount / totalPixels) * 100;
 
@@ -339,9 +339,9 @@
 
                 try {
                     var cacheKey = 'theme_color_' + type + '_' + id;
-                    var cache = JSON.parse(localStorage.getItem('look_plugin_cache') || '{}');
+                    var cache = JSON.parse(localStorage.getItem('themes_plugin_cache') || '{}');
                     cache[cacheKey] = { data: colorData, timestamp: Date.now() + (10 * 24 * 60 * 60 * 1000) };
-                    localStorage.setItem('look_plugin_cache', JSON.stringify(cache));
+                    localStorage.setItem('themes_plugin_cache', JSON.stringify(cache));
                 } catch (e) {}
                 
                 callback(colorData);
@@ -358,12 +358,29 @@
        ========================================================================== */
     Lampa.Listener.follow('activity', function (e) {
         if (e.type === 'start') {
+            var active = Lampa.Activity.active();
+            var history = Lampa.Activity.history();
+            
+            // Якщо ми на головній - завжди скидаємо динамічний колір
+            if (e.component === 'main') {
+                if (active) active.themes_color = null;
+            } 
+            // Якщо колір ще не заданий, перевіряємо "спадковість"
+            else if (active && !active.themes_color && history.length > 1) {
+                var prev = history[history.length - 2]; // Попередня сторінка
+                // Успадковуємо колір тільки якщо прийшли прямо з картки фільму (full)
+                if (prev.component === 'full' && prev.themes_color) {
+                    active.themes_color = prev.themes_color;
+                }
+            }
+            
             applyTheme();
         }
     });
 
+
     Lampa.Listener.follow('full', function (e) {
-        if (!Lampa.Storage.get('look_dynamic_theme', false)) return;
+        if (!Lampa.Storage.get('themes_dynamic_theme', false)) return;
 
         if (e.type === 'complite') {
             var card = e.data.movie || e.object || {};
@@ -371,15 +388,18 @@
             
             var targetActivity = e.object; 
             if (cachedColor) {
-                targetActivity.look_color = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
+                targetActivity.themes_color = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
                 applyTheme();
             } else {
+                var targetActivity = e.object;
                 fetchLogoColor(card, function(colorData) {
                     if (colorData && targetActivity) {
-                        targetActivity.look_color = rgbToHex(colorData.r, colorData.g, colorData.b);
+                        targetActivity.themes_color = rgbToHex(colorData.r, colorData.g, colorData.b);
+                        // Оновлюємо інтерфейс тільки якщо ця картка все ще активна на екрані
                         if (Lampa.Activity.active() === targetActivity) applyTheme();
                     }
                 });
+
             }
         }
     });
@@ -389,54 +409,54 @@
        ========================================================================== */
     function initPlugin() {
         Lampa.SettingsApi.addComponent({
-            component: 'look_plugin',
+            component: 'themes_plugin',
             name: 'Персоналізація',
             icon: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M12 3V4M12 20V21M4 12H3M21 12H20M18.364 5.636L17.6569 6.34315M6.34315 17.6569L5.63604 18.364M18.364 18.364L17.6569 17.6569M6.34315 6.34315L5.63604 5.636M12 8C9.79086 8 8 9.79086 8 12C8 14.2091 9.79086 16 12 16C14.2091 16 16 14.2091 16 12C16 9.79086 14.2091 8 12 8Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'look_plugin',
-            param: { name: 'look_theme_type', type: 'select', values: { presets: 'Готові пресети', custom: 'Власний колір' }, 'default': 'presets' },
+            component: 'themes_plugin',
+            param: { name: 'themes_theme_type', type: 'select', values: { presets: 'Готові пресети', custom: 'Власний колір' }, 'default': 'presets' },
             field: { name: 'Режим оформлення', description: 'Оберіть готову тему або створіть свою' },
             onChange: function() { applyTheme(); Lampa.Settings.update(); }
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'look_plugin',
+            component: 'themes_plugin',
             param: { name: 'interface_theme', type: 'select', values: { 'default': 'Стандартна', 'violet_stroke': 'Фіолетова', 'mint_dark': 'Mint Dark', 'retro': 'Ретро (Шоколад)', 'emerald': 'Emerald' }, 'default': 'default' },
             field: { name: 'Пресети тем', description: 'Оберіть одну з підготовлених тем' },
             onChange: function() { applyTheme(); }
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'look_plugin',
-            param: { name: 'look_custom_hex', type: 'input', values: '', 'default': '#3da18d' },
+            component: 'themes_plugin',
+            param: { name: 'themes_custom_hex', type: 'input', values: '', 'default': '#3da18d' },
             field: { name: 'Власний HEX колір', description: 'Введіть колір у форматі #RRGGBB' },
             onChange: function() { applyTheme(); }
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'look_plugin',
-            param: { name: 'look_dynamic_theme', type: 'trigger', values: '', 'default': false },
+            component: 'themes_plugin',
+            param: { name: 'themes_dynamic_theme', type: 'trigger', values: '', 'default': false },
             field: { name: 'Динамічна тема в картці фільму', description: 'Підлаштовує кнопки під колір логотипу' },
             onChange: function(val) {
-                var ignoreItem = $('div[data-name="look_dynamic_ignore_white"]');
+                var ignoreItem = $('div[data-name="themes_dynamic_ignore_white"]');
                 if (val) ignoreItem.show(); else ignoreItem.hide();
-                if (!val && window.look_dynamic_current_hex) {
-                    window.look_dynamic_current_hex = null;
+                if (!val && window.themes_dynamic_current_hex) {
+                    window.themes_dynamic_current_hex = null;
                     applyTheme();
                 }
             }
         });
 
         Lampa.SettingsApi.addParam({
-            component: 'look_plugin',
-            param: { name: 'look_dynamic_ignore_white', type: 'trigger', values: '', 'default': true },
+            component: 'themes_plugin',
+            param: { name: 'themes_dynamic_ignore_white', type: 'trigger', values: '', 'default': true },
             field: { name: 'Ігнорувати білі логотипи', description: 'Якщо логотип білий, залишати обрану вище базову тему' },
             onChange: function() { applyTheme(); },
             onRender: function(item) {
                 setTimeout(function() {
-                    if (!Lampa.Storage.get('look_dynamic_theme', false)) item.hide();
+                    if (!Lampa.Storage.get('themes_dynamic_theme', false)) item.hide();
                 }, 10);
             }
         });

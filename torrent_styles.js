@@ -51,6 +51,7 @@
       'justify-content': 'center',
       'box-sizing': 'border-box',
       'min-height': '1.7em',
+      // Корекція для підняття тексту: зменшено верхній та збільшено нижній відступ
       'padding': '0.05em 0.45em 0.25em 0.45em',
       'border-radius': '0.5em',
       'font-weight': '700',
@@ -83,7 +84,7 @@
     },
     '.torrent-item__seeds > span.ts-seeds.high-seeds': {
       color: '#ffc371',
-      background: 'linear-gradient(135deg, rgba(255, 195, 113, 0.28), rgba(67, 206, 162, 0.10))',
+      'background-color': 'rgba(255, 195, 113, 0.22)',
       border: '0.15em solid rgba(255, 195, 113, 0.92)'
     },
 
@@ -95,7 +96,7 @@
     },
     '.torrent-item__grabs > span.ts-grabs.high-grabs': {
       color: '#4db6ff',
-      background: 'linear-gradient(135deg, rgba(77, 182, 255, 0.18), rgba(52, 152, 219, 0.10))',
+      'background-color': 'rgba(77, 182, 255, 0.18)',
       border: '0.15em solid rgba(77, 182, 255, 0.92)'
     },
 
@@ -107,12 +108,12 @@
     },
     '.torrent-item__bitrate > span.ts-bitrate.high-bitrate': {
       color: '#ffc371',
-      background: 'linear-gradient(135deg, rgba(255, 195, 113, 0.28), rgba(67, 206, 162, 0.10))',
+      'background-color': 'rgba(255, 195, 113, 0.22)',
       border: '0.15em solid rgba(255, 195, 113, 0.92)'
     },
     '.torrent-item__bitrate > span.ts-bitrate.very-high-bitrate': {
       color: '#ff5f6d',
-      background: 'linear-gradient(135deg, rgba(255, 95, 109, 0.28), rgba(67, 206, 162, 0.08))',
+      'background-color': 'rgba(255, 95, 109, 0.22)',
       border: '0.15em solid rgba(255, 95, 109, 0.92)'
     },
 
@@ -129,24 +130,15 @@
     },
     '.torrent-item__size.ts-size.high-size': {
       color: '#ffc371',
-      background: 'linear-gradient(135deg, rgba(255, 195, 113, 0.28), rgba(67, 206, 162, 0.10))',
+      'background-color': 'rgba(255, 195, 113, 0.22)',
       border: '0.15em solid rgba(255, 195, 113, 0.95)'
     },
     '.torrent-item__size.ts-size.top-size': {
       color: '#ff5f6d',
-      background: 'linear-gradient(135deg, rgba(255, 95, 109, 0.28), rgba(67, 206, 162, 0.08))',
+      'background-color': 'rgba(255, 95, 109, 0.22)',
       border: '0.15em solid rgba(255, 95, 109, 0.95)'
     },
 
-    // Рамка фокусу (Чистий динамічний колір без перехоплення)
-    '.torrent-item.focus::after': {
-      // Товщина 0.09em, колір суворо з теми Лампи
-      'border': '0.09em solid var(--main-color) !important',
-      'border-radius': '0.9em'
-    },
-    '.torrent-item.selector.focus, .torrent-serial.selector.focus, .torrent-file.selector.focus': {
-      'box-shadow': 'none !important'
-    },
     '.scroll__body': {
       margin: '5px'
     }

@@ -66,6 +66,7 @@
                     var tags = resp.keywords || resp.results || [];
                     if (tags.length > 0) {
                         _this.translateTags(tags, function(translatedTags) {
+                            card.translated_tags = translatedTags;
                             _this.activateButton(render, translatedTags);
                         });
                     }

@@ -79,8 +79,31 @@
         };
 
         this.preloadTags = function(card) {
-            if (card.ai_translated_tags !== undefined) return;
-            card.ai_translated_tags = null; 
+            if (card.translated_tags) return;
+
+            var attempts = 0;
+            var delays = [1000, 2000]; // 1 сек, потім ще 2 сек
+
+            var waitAndCheck = function() {
+                setTimeout(function() {
+                    // Якщо інший плагін вже поклав теги в картку — ми вільні
+                    if (card.translated_tags && card.translated_tags.length > 0) return;
+
+                    attempts++;
+                    if (attempts < delays.length) {
+                        waitAndCheck(); // Чекаємо наступний інтервал
+                    } else {
+                        // Якщо за 3 секунди нічого не з'явилося — вантажимо самі
+                        _this.runOwnTagTranslation(card);
+                    }
+                }, delays[attempts]);
+            };
+
+            waitAndCheck();
+        };
+        
+        this.runOwnTagTranslation = function(card) {
+            if (card.translated_tags) return;
             
             var method = (card.original_name || card.name) ? 'tv' : 'movie';
             var url = Lampa.TMDB.api(method + '/' + card.id + '/keywords?api_key=' + Lampa.TMDB.key());
@@ -92,14 +115,15 @@
                     var tags = resp.keywords || resp.results || [];
                     if (tags.length > 0) {
                         _this.translateTags(tags, function(translatedTags) {
-                            card.ai_translated_tags = translatedTags;
+                            card.translated_tags = translatedTags;
                         });
                     } else {
-                        card.ai_translated_tags = [];
+                        card.translated_tags = [];
                     }
                 }
             });
         };
+
         
         this.setupGlobalSearch = function() {
             var searchSource = {
@@ -222,7 +246,7 @@
             ];
 
             // Додаємо пункт ТІЛЬКИ якщо теги існують і масив не порожній
-            if (card.ai_translated_tags && card.ai_translated_tags.length > 0) {
+            if (card.translated_tags && card.translated_tags.length > 0) {
                 items.splice(1, 0, { title: 'Добірки за тегами', action: 'tags' });
             }
             
@@ -391,8 +415,8 @@
         };
 
         this.actionTags = function(card, btn, render, ctrl) {
-            if (card.ai_translated_tags && card.ai_translated_tags.length > 0) {
-                _this.showTagsMenu(card.ai_translated_tags, card, btn, render, ctrl);
+            if (card.translated_tags && card.translated_tags.length > 0) {
+                _this.showTagsMenu(card.translated_tags, card, btn, render, ctrl);
             } else {
                 _this.restoreFocus(ctrl);
             }
