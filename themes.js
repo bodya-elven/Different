@@ -151,12 +151,16 @@
         var style = document.createElement('style');
         style.id = 'interface_theme_mod_style';
         
+        var active = Lampa.Activity.active();
         var baseHex = (type === 'custom') ? customHex : (loaderColors[theme] || loaderColors.default);
+        
+        // ПЕРЕВІРКА: чи має поточна сторінка свій збережений колір
+        var currentLookColor = (isDynamicEnabled && active && active.look_color) ? active.look_color : null;
+        
         var svgCode = encodeURIComponent(
-            '<svg xmlns="http://www.w3.org/2000/svg" width="135" height="140" fill="' + baseHex + '"><rect width="15" height="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="30" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="140" x="60" rx="6"><animate attributeName="height" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="90" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect></svg>'
+            '<svg xmlns="http://www.w3.org/2000/svg" width="135" height="140" fill="' + (currentLookColor || baseHex) + '"><rect width="15" height="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="30" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="140" x="60" rx="6"><animate attributeName="height" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="90" y="10" rx="6"><animate attributeName="height" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.25s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect><rect width="15" height="120" x="120" y="10" rx="6"><animate attributeName="height" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="120;110;100;90;80;70;60;50;40;140;120"/><animate attributeName="y" begin="0.5s" calcMode="linear" dur="1s" repeatCount="indefinite" values="10;15;20;25;30;35;40;45;50;0;10"/></rect></svg>'
         );
 
-        // 1. Генеруємо Базову Тему
         var finalCSS = '';
         if (type === 'custom') {
             finalCSS = generateCustomMintCSS(customHex, svgCode);
@@ -164,10 +168,11 @@
             finalCSS = (themes[theme] || themes['default']).replace(/\${svgCode}/g, svgCode);
         }
 
-        // 2. Якщо ми у фільмі і увімкнена динамічна тема — додаємо стилі-перехоплювачі
-        if (window.look_dynamic_current_hex && isDynamicEnabled) {
-            finalCSS += '\n/* Dynamic Focus Overrides */\n' + generateDynamicFocusCSS(window.look_dynamic_current_hex);
+        // Застосовуємо динамічний фокус, якщо колір знайдено для цієї активності
+        if (currentLookColor) {
+            finalCSS += '\n/* Dynamic Focus Overrides */\n' + generateDynamicFocusCSS(currentLookColor);
         }
+
 
         style.textContent = finalCSS;
         document.head.appendChild(style);
@@ -323,14 +328,11 @@
     }
 
     /* ==========================================================================
-       4. ГЛОБАЛЬНИЙ СЛУХАЧ АКТИВНОСТІ (Скидання теми без залипань)
+       4. ГЛОБАЛЬНИЙ СЛУХАЧ АКТИВНОСТІ
        ========================================================================== */
     Lampa.Listener.follow('activity', function (e) {
         if (e.type === 'start') {
-            if (e.component !== 'full' && window.look_dynamic_current_hex) {
-                window.look_dynamic_current_hex = null;
-                applyTheme();
-            }
+            applyTheme();
         }
     });
 
@@ -342,16 +344,14 @@
             var cachedColor = getCachedLogoColor(card);
             
             if (cachedColor) {
-                window.look_dynamic_current_hex = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
+                e.object.look_color = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
                 applyTheme();
             } else {
                 fetchLogoColor(card, function(colorData) {
-                    if (colorData) {
-                        var active = Lampa.Activity.active();
-                        if (active && active.component === 'full') {
-                            window.look_dynamic_current_hex = rgbToHex(colorData.r, colorData.g, colorData.b);
-                            applyTheme();
-                        }
+                    if (colorData && e.object) {
+                        e.object.look_color = rgbToHex(colorData.r, colorData.g, colorData.b);
+                        // Перевіряємо, чи ми ще на цій сторінці, перед оновленням
+                        if (Lampa.Activity.active() === e.object) applyTheme();
                     }
                 });
             }
