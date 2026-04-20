@@ -248,7 +248,7 @@
             _this.updateStatus('Пошук фактів');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                var p = 'Provide 6 to 10 interesting facts about the ' + type + ' "' + t + '" (' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. CRITICAL RULE: If you do not have verified facts about this specific project in your database (e.g. it is too new or obscure), DO NOT hallucinate or invent plots. Instead, return strictly this JSON array: [{"title": "Інформація відсутня", "text": "На жаль, у моїй базі даних поки що немає достовірних фактів про цей проєкт."}]. If you DO know the movie, return strictly a JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
+                var p = 'Provide 6 to 10 interesting facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. Otherwise, return strictly a JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
                 
                 _this.askGemini(p, function(text) {
                     _this.hideStatus();
@@ -419,7 +419,10 @@
             
             // Читаємо обрану модель (вона залишиться незмінною в налаштуваннях)
             var baseModel = Lampa.Storage.get('ai_model', 'gemini-flash-lite-latest');
-            var payload = { contents: [{ parts: [{ text: p }] }] };
+            var payload = { 
+    contents: [{ parts: [{ text: p }] }],
+    tools: [{ googleSearch: {} }] 
+};
 
             // Внутрішня функція для відправки запиту з можливістю підміни (fallback)
             var sendRequest = function(targetModel, isRetry) {
@@ -700,21 +703,22 @@
                     name: 'ai_model', 
                     type: 'select', 
                     values: { 
-                        'gemini-flash-lite-latest': 'gemini-flash-lite-latest',
-                        'gemini-flash-latest': 'gemini-flash-latest',
-                        'gemini-3.1-flash-lite-preview': 'gemini-3.1-flash-lite-preview',
-                        'gemini-3-flash-preview': 'gemini-3-flash-preview',
-                        'gemini-2.5-flash-lite': 'gemini-2.5-flash-lite',
-                        'gemini-2.5-flash': 'gemini-2.5-flash',
-                        'gemini-2.5-pro': 'gemini-2.5-pro',
-                        'gemma-4-31b-it': 'gemma-4-31b-it',
-                        'gemma-3-27b-it': 'gemma-3-27b-it',
-                        'gemma-3-4b-it': 'gemma-3-4b-it'
+                        'gemini-flash-lite-latest': '\u200Bgemini-flash-lite-latest',
+                        'gemini-flash-latest': '\u200Bgemini-flash-latest',
+                        'gemini-3.1-flash-lite-preview': '\u200Bgemini-3.1-flash-lite-preview',
+                        'gemini-3-flash-preview': '\u200Bgemini-3-flash-preview',
+                        'gemini-2.5-flash-lite': '\u200Bgemini-2.5-flash-lite',
+                        'gemini-2.5-flash': '\u200Bgemini-2.5-flash',
+                        'gemini-3.1-pro-preview': '\u200Bgemini-3.1-pro-preview',
+                        'gemma-4-31b-it': '\u200Bgemma-4-31b-it',
+                        'gemma-3-27b-it': '\u200Bgemma-3-27b-it',
+                        'gemma-3-4b-it': '\u200Bgemma-3-4b-it'
                     }, 
                     default: 'gemini-flash-lite-latest' 
                 }, 
                 field: { name: 'Моделі' } 
             });
+
 
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
         };
