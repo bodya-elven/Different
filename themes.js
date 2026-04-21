@@ -452,32 +452,36 @@
 
             var close = function() { modal.remove(); Lampa.Controller.toggle('themes_plugin'); };
 
-            // Клік/Тач підтримка
-            modal.find('.selector').on('click', function(e) {
+            // Обробка кнопок (Пульт + Клік)
+            var saveAction = function() {
+                Lampa.Storage.set('themes_custom_hex', hslToHex(h, s, l));
+                applyTheme();
+                close();
+            };
+
+            modal.find('[data-action="save"]').on('click hover:enter', saveAction);
+            modal.find('[data-action="cancel"]').on('click hover:enter', close);
+
+            // Обробка слайдерів (Тач + Клік)
+            modal.find('.themes-picker__row').on('click', function(e) {
                 var target = $(this);
-                if (target.hasClass('themes-picker__row')) {
-                    var rect = this.getBoundingClientRect();
-                    var percent = Math.min(100, Math.max(0, (e.clientX - rect.left) / rect.width * 100));
-                    var type = target.data('type');
-                    if (type === 'h') h = Math.floor(percent * 3.6);
-                    if (type === 's') s = Math.floor(percent);
-                    if (type === 'l') l = Math.floor(percent);
-                    update();
-                }
-                Lampa.Controller.collectionFocus(this, modal);
-                if (target.data('action') === 'save') {
-                    Lampa.Storage.set('themes_custom_hex', hslToHex(h, s, l));
-                    applyTheme();
-                    close();
-                } else if (target.data('action') === 'cancel') {
-                    close();
-                }
+                var rect = this.getBoundingClientRect();
+                var clientX = e.clientX || (e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0].clientX : 0);
+                var percent = Math.min(100, Math.max(0, (clientX - rect.left) / rect.width * 100));
+                
+                var type = target.data('type');
+                if (type === 'h') h = Math.floor(percent * 3.6);
+                if (type === 's') s = Math.floor(percent);
+                if (type === 'l') l = Math.floor(percent);
+                
+                update();
+                Lampa.Controller.collectionFocus(this, modal[0]);
             });
 
             Lampa.Controller.add('themes_color_picker', {
                 toggle: function() { 
-                    Lampa.Controller.collectionSet(modal.find('.selector')); 
-                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row')[0], modal); 
+                    Lampa.Controller.collectionSet(modal[0]); 
+                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row')[0], modal[0]); 
                 },
                 left: function() {
                     var focused = modal.find('.themes-picker__row.focus');
@@ -499,8 +503,7 @@
                         update();
                     }
                 },
-                up: function() { Lampa.Controller.collectionPrev(); },
-                down: function() { Lampa.Controller.collectionNext(); },
+                // up/down НЕ ПИШЕМО - Лампа сама знайде шлях по .selector
                 back: close
             });
 
@@ -508,6 +511,7 @@
             Lampa.Controller.toggle('themes_color_picker');
             update();
         };
+
 
 
         
