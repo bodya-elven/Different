@@ -801,10 +801,10 @@
                     Lampa.Storage.set('ai_assistant_token', value);
                 },
                 onRender: function(item) {
+                    // Безпечно показуємо статус у описі, щоб не ламати основний рендер
                     var value = Lampa.Storage.get('ai_assistant_token', '');
-                    // Повертаємо просте Так/Ні без затримок
                     var status = value ? '<span style="color: #2ecc71">Так</span>' : '<span style="color: #e74c3c">Ні</span>';
-                    item.find('.settings-param__value').html(status);
+                    item.find('.settings-param__descr').html('Статус: ' + status + '. Можна вказати кілька ключів через кому.');
                 }
             });
 
@@ -814,7 +814,6 @@
                     name: 'ai_model', 
                     type: 'select', 
                     values: { 
-                        // Додаємо 1.5 назад ТІЛЬКИ щоб не було помилки undefined при відкритті
                         'gemini-1.5-flash': '\u200Bgemini-1.5-flash',
                         'gemini-flash-lite-latest': '\u200Bgemini-flash-lite-latest',
                         'gemini-flash-latest': '\u200Bgemini-flash-latest',
@@ -836,7 +835,8 @@
                     }, 
                     default: 'gemini-flash-lite-latest' 
                 }, 
-                field: { name: 'Моделі' } 
+                field: { name: 'Моделі' },
+                onChange: function(value) { Lampa.Storage.set('ai_model', value); } // Додано обов'язковий onChange
             });
 
             Lampa.SettingsApi.addParam({ 
@@ -847,7 +847,8 @@
                     values: { '10':'10','20':'20','30':'30','50':'50' }, 
                     default: '20' 
                 }, 
-                field: { name: 'Кількість результатів' } 
+                field: { name: 'Кількість результатів' },
+                onChange: function(value) { Lampa.Storage.set('ai_result_count', value); } // Додано обов'язковий onChange
             });
         };
 
