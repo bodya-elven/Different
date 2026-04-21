@@ -475,70 +475,79 @@
         };
 
         this.askGemini = function(p, onSuccess, onError, isSilent) {
-            var key = Lampa.Storage.get(STORAGE_KEY, '').split(',')[0];
-            if (!key) { 
-                if (!isSilent) Lampa.Noty.show('API Ключ не задано'); 
-                if(onError) onError(); 
-                return; 
+            var rawValue = Lampa.Storage.get('ai_assistant_token', '');
+            if (!rawValue) {
+                if (!isSilent) Lampa.Noty.show('Gemini API key is empty');
+                return;
             }
-            
+
+            // Розбиваємо ключі та чистимо їх від зайвих пробілів
+            var keys = rawValue.split(',').map(function(k) { return k.trim(); });
             var baseModel = Lampa.Storage.get('ai_model', 'gemini-flash-lite-latest');
-            var payload = { contents: [{ parts: [{ text: p }] }] };
 
-            // ПЕРЕВІРКА: Додаємо пошук тільки для моделей Gemini
-            if (baseModel.indexOf('gemini') === 0) {
-                payload.tools = [{ googleSearch: {} }];
-            }
+            var sendWithKey = function(keyIndex) {
+                // Якщо ми пройшли всі ключі і нічого не спрацювало
+                if (keyIndex >= keys.length) {
+                    if (!isSilent) {
+                        _this.hideStatus();
+                        Lampa.Noty.show('Всі ліміти вичерпано (All keys hit 429)');
+                        _this.restoreFocus(window.ai_active_controller);
+                    }
+                    return;
+                }
 
-            var sendRequest = function(targetModel, isRetry) {
-                // Якщо при повторі модель змінилася на gemma, прибираємо інструменти
-                if (isRetry && targetModel.indexOf('gemini') === -1) delete payload.tools;
+                var currentKey = keys[keyIndex];
+                
+                // Пропускаємо ключі, які вже мають позначку 429
+                if (currentKey.indexOf('(429)') !== -1) {
+                    sendWithKey(keyIndex + 1);
+                    return;
+                }
 
-                fetch('https://generativelanguage.googleapis.com/v1beta/models/' + targetModel + ':generateContent?key=' + key.trim(), {
-                    method: "POST", body: JSON.stringify(payload)
-                }).then(function(r) { 
+                var payload = { contents: [{ parts: [{ text: p }] }] };
+                if (baseModel.indexOf('gemini') === 0) {
+                    payload.tools = [{ googleSearch: {} }];
+                }
+
+                fetch('https://generativelanguage.googleapis.com/v1beta/models/' + baseModel + ':generateContent?key=' + currentKey, {
+                    method: "POST",
+                    body: JSON.stringify(payload)
+                }).then(function(r) {
                     return r.json().then(function(json) { return { status: r.status, ok: r.ok, data: json }; });
                 }).then(function(res) {
+                    if (res.status === 429) {
+                        // КЛЮЧОВИЙ МОМЕНТ: позначаємо ключ як "втомлений" і йдемо до наступного
+                        keys[keyIndex] = currentKey + ' (429)';
+                        Lampa.Storage.set('ai_assistant_token', keys.join(', '));
+                        console.log('AI Assistant: Key ' + keyIndex + ' exceeded limit, switching...');
+                        sendWithKey(keyIndex + 1);
+                        return;
+                    }
+
+                    if (!res.ok) throw new Error(res.data.error ? res.data.error.message : 'Unknown error');
+
                     var d = res.data;
-                    if (d.error) throw new Error(d.error.message);
-                    
                     if (d.candidates && d.candidates[0].content) {
-                        // Збираємо текст з УСІХ частин (виправляє проблему з роздумами Gemma 4)
+                        // Збираємо текст з усіх частин для Gemma 4
                         var fullText = d.candidates[0].content.parts.map(function(part) { 
                             return part.text || ""; 
                         }).join("\n");
-                        
                         onSuccess(fullText);
                     } else {
-                        throw new Error('Блокування або пуста відповідь');
+                        throw new Error('Empty response or safety block');
                     }
-                }).catch(function(e) { 
-                    if (!isRetry) {
-                        var fallbackModel = null;
-                        if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') {
-                            fallbackModel = 'gemini-2.5-flash-lite';
-                        } else if (targetModel === 'gemini-2.5-flash-lite') {
-                            fallbackModel = 'gemini-flash-lite-latest';
-                        }
-
-                        if (fallbackModel) {
-                            sendRequest(fallbackModel, true);
-                            return;
-                        }
-                    }
-
+                }).catch(function(e) {
                     if (!isSilent) {
-                        _this.hideStatus(); 
-                        Lampa.Noty.show('Помилка: ' + e.message); 
+                        _this.hideStatus();
+                        Lampa.Noty.show('Error: ' + e.message);
                         _this.restoreFocus(window.ai_active_controller);
                     }
-                    if(onError) onError(e.message); 
+                    if (onError) onError(e.message);
                 });
             };
 
-            sendRequest(baseModel, false);
+            sendWithKey(0);
         };
-
 
 
         this.parseJsonSafe = function(text) {
@@ -766,11 +775,27 @@
 
         this.setupSettings = function() {
             Lampa.SettingsApi.addComponent({ component: 'ai_assistant_cfg', name: 'AI Асистент', icon: PLUGIN_ICON });
-            Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_key_trigger', type: 'trigger' }, field: { name: 'API Ключ (Gemini)' }, onRender: function(item) {
-                var updateText = function() { var val = Lampa.Storage.get(STORAGE_KEY, ''); item.find('.settings-param__value').text(val ? 'Так' : 'Ні').css('color', val ? '#4b5':'#f55'); };
-                updateText();
-                item.on('hover:enter', function() { Lampa.Input.edit({ title: 'Введіть ключ', value: Lampa.Storage.get(STORAGE_KEY, ''), free: true }, function(v) { if(v){ Lampa.Storage.set(STORAGE_KEY, v.trim()); updateText(); } }); });
-            }});
+                        Lampa.SettingsApi.addParam({
+                component: 'ai_assistant_cfg',
+                param: {
+                    name: 'ai_assistant_token',
+                    type: 'input',
+                    default: ''
+                },
+                field: {
+                    name: 'Gemini API key',
+                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька ключів через кому'
+                },
+                onChange: function(value) {
+                    Lampa.Storage.set('ai_assistant_token', value);
+                },
+                onRender: function(item) {
+                    var value = Lampa.Storage.get('ai_assistant_token', '');
+                    var status = value ? '<span style="color: #2ecc71">set</span>' : '<span style="color: #e74c3c">empty</span>';
+                    item.find('.settings-param__value').html(status);
+                }
+            });
+
             
             Lampa.SettingsApi.addParam({ 
                 component: 'ai_assistant_cfg', 
@@ -784,6 +809,14 @@
                         'gemini-3-flash-preview': '\u200Bgemini-3-flash-preview',
                         'gemini-2.5-flash-lite': '\u200Bgemini-2.5-flash-lite',
                         'gemini-2.5-flash': '\u200Bgemini-2.5-flash',
+                        'gemini-2.0-flash-lite': '\u200Bgemini-2.0-flash-lite',
+                        'gemini-2.0-flash-lite-001': '\u200Bgemini-2.0-flash-lite-001',
+                        'gemini-2.0-flash': '\u200Bgemini-2.0-flash',
+                        'gemini-2.0-flash-001': '\u200Bgemini-2.0-flash-001',
+                        'gemini-3.1-pro-preview': '\u200Bgemini-3.1-pro-preview',
+                        'gemini-3-pro-preview': '\u200Bgemini-3-pro-preview',
+                        'gemini-2.5-pro': '\u200Bgemini-2.5-pro',
+                        'gemini-pro-latest': '\u200Bgemini-pro-latest',
                         'gemma-4-31b-it': '\u200Bgemma-4-31b-it',
                         'gemma-3-27b-it': '\u200Bgemma-3-27b-it',
                         'gemma-3-4b-it': '\u200Bgemma-3-4b-it'
@@ -792,6 +825,7 @@
                 }, 
                 field: { name: 'Моделі' } 
             });
+
 
 
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
