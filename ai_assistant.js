@@ -573,21 +573,28 @@
 
 
         this.parseJsonSafe = function(text) {
-            try {
-                // Шукаємо межі масиву JSON [ ... ]
-                var s = text.indexOf('['), e = text.lastIndexOf(']');
-                if (s !== -1 && e !== -1 && e > s) {
-                    var potentialJson = text.substring(s, e + 1);
-                    return JSON.parse(potentialJson);
+            if (!text) return null;
+            try { 
+                // Спроба 1: Прямий парсинг (найшвидший)
+                return JSON.parse(text); 
+            } catch (e) {
+                // Спроба 2: Шукаємо перший блок [ ... ] і пробуємо його
+                // Це рятує при подвійних відповідях моделі
+                var regex = /\[[\s\S]*?\]/g; 
+                var match;
+                while ((match = regex.exec(text)) !== null) {
+                    try {
+                        var result = JSON.parse(match[0]);
+                        if (Array.isArray(result) && result.length > 0) return result;
+                    } catch (e3) {}
                 }
-                // Якщо масиву немає, пробуємо очистити від маркдауну
+                // Спроба 3: Чистка від Markdown backticks
                 var clean = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-                return JSON.parse(clean);
-            } catch (err) { 
-                console.log('AI Assistant: JSON Parse Error', err);
-                return null; 
+                try { return JSON.parse(clean); } catch (e2) {}
             }
+            return null; 
         };
+
 
 
         this.processAiList = function(list, callback) {
@@ -829,6 +836,17 @@
 
 
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
+            
+            Lampa.SettingsApi.addParam({ 
+                component: 'ai_assistant_cfg', 
+                param: { 
+                    name: 'ai_font_size', 
+                    type: 'select', 
+                    values: { '1.1em':'1.1em','1.2em':'1.2em','1.25em':'1.25em','1.3em':'1.3em','1.4em':'1.4em','1.5em':'1.5em','1.6em':'1.6em' }, 
+                    default: '1.25em' 
+                }, 
+                field: { name: 'Розмір тексту' } 
+            });
         };
     }
 
