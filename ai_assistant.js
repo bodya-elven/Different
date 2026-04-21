@@ -61,22 +61,26 @@
             
             Lampa.Network.silent(url, function(res) {
                 var overview = (res.overview || '').replace(/"/g, "'").replace(/\n/g, ' ');
-                var leadActor = 'unknown';
-                var director = '';
+                var directors = [];
                 var topCast = [];
-                if (res.credits && res.credits.cast && res.credits.cast.length > 0) {
-                    leadActor = res.credits.cast[0].name;
-                    topCast = res.credits.cast.slice(0, 5).map(function(c) { return c.name; });
-                }
+                var leadActor = 'unknown';
+                
                 if (res.credits && res.credits.crew) {
-                    var dirObj = res.credits.crew.filter(function(c) { return c.job === 'Director'; })[0];
-                    if (dirObj) director = dirObj.name;
+                    // Збираємо ВСІХ режисерів у масив
+                    directors = res.credits.crew.filter(function(c) { return c.job === 'Director'; }).map(function(d) { return d.name; });
                 }
-                callback({ overview: overview, leadActor: leadActor, director: director, topCast: topCast });
+                if (res.credits && res.credits.cast && res.credits.cast.length > 0) {
+                    // Зберігаємо першого актора окремо
+                    leadActor = res.credits.cast[0].name;
+                    // Беремо ПЕРШИХ 10 акторів для масиву
+                    topCast = res.credits.cast.slice(0, 10).map(function(c) { return c.name; });
+                }
+                callback({ overview: overview, leadActor: leadActor, directors: directors, topCast: topCast });
             }, function() {
-                callback({ overview: '', leadActor: 'unknown', director: '', topCast: [] });
+                callback({ overview: '', leadActor: 'unknown', directors: [], topCast: [] });
             });
         };
+
 
         this.preloadTags = function(card) {
             if (card.translated_tags) return;
@@ -205,14 +209,14 @@
                 '.ai-viewer-container { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5001; display: flex; align-items: center; justify-content: center; }' +
                 '.ai-viewer-body { width: 85%; max-width: 900px; height: 80%; background: #121212; display: flex; flex-direction: column; border-radius: 16px; border: 1px solid var(--main-color, #fff); overflow: hidden; }' +
                 '.ai-header { height: 48px; padding: 0 15px; background: #1a1a1a; border-bottom: 1px solid #333; display: flex; justify-content: space-between; align-items: center; }' +
-                '.ai-title { font-size: 1.25em; font-weight: bold; }' +
+                '.ai-title { font-size: 1.5em; font-weight: bold; }' + 
                 '.ai-close-btn { width: 32px; height: 32px; background: #333; color: #fff; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 24px; font-family: sans-serif; cursor: pointer; border: 2px solid transparent; line-height: 0; padding-bottom: 0px; }' +
                 '.ai-close-btn.focus { background: #fff; color: #000; outline: none; }' +
-                '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; color: #efefef; font-size: 1.25em; line-height: 1.4; }' +
+                '.ai-content-scroll { flex: 1; overflow-y: auto; padding: 10px 20px 20px 20px; color: #efefef; line-height: 1.4; font-size: var(--ai-font-size, 1.25em); }' + // Динамічний розмір тексту
                 '.ai-fact-title { color: var(--safe-text-color, var(--main-color, #fff)); font-weight: bold; display: block; margin-bottom: 2px; }'
             ).appendTo('head');
         };
-        
+
 
         this.drawButton = function (render, card) {
             var container = render.find('.full-start-new__buttons, .full-start__buttons').first();
@@ -311,7 +315,6 @@
             _this.getTMDBDetails(card, function(tmdb) {
                 var p = 'Provide 6 to 10 interesting, little-known facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. Otherwise, return strictly a JSON array where each fact is a separate object: [{"title":"..","text":".."}]. No markdown, no intro text.';
                 
-                // Передаємо true в кінці для активації пошуку
                 _this.askGemini(p, function(text) {
                     _this.hideStatus();
                     if (Lampa.Activity.active() && Lampa.Activity.active().component !== 'full') return; 
@@ -322,9 +325,16 @@
                         _this.restoreFocus(btn, render, ctrl);
                         return; 
                     }
-                    var html = (data || []).map(function(f){ return '<div style="margin-bottom:12px"><span class="ai-fact-title">'+f.title+'</span>'+f.text+'</div>'; }).join('');
+                    
+                    // ВИДАЛЯЄМО [1], [2, 5] тощо перед виводом
+                    var html = (data || []).map(function(f){ 
+                        var cleanText = f.text.replace(/\[\d+(?:,\s*\d+)*\]/g, '').trim();
+                        return '<div style="margin-bottom:12px"><span class="ai-fact-title">'+f.title+'</span>'+cleanText+'</div>'; 
+                    }).join('');
+                    
                     _this.showViewer('Цікаві факти: ' + ukrT, html, btn, render, ctrl);
-                }, null, false, true); 
+                }, null, false, true);
+
             });
         };
 
@@ -390,8 +400,9 @@
             _this.updateStatus('Аналіз складу');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                var names = tmdb.topCast.slice();
-                if (tmdb.director) names.unshift('Director: ' + tmdb.director);
+                // Додаємо всіх режисерів з префіксом та список з 10 акторів
+                var names = tmdb.directors.map(function(d){ return 'Director: ' + d; }).concat(tmdb.topCast);
+                
                 if (!names.length) {
                     _this.hideStatus();
                     Lampa.Noty.show('Склад невідомий');
@@ -399,10 +410,12 @@
                     return;
                 }
                 
-                var p = 'Name strictly ' + limit + ' movies/TV shows where these specific actors and directors worked together: ' + names.join(', ') + '. Priority to director and first 5 names.';
+                var p = 'Suggest strictly ' + limit + ' movies or TV series where at least TWO or more people from this list worked together in ANY capacity (actors, directors, producers, etc.): ' + names.join(', ') + '. I am looking for any professional intersections or collaborations among them on the same project.';
                 _this.fetchList(p, 'Спільні проєкти', card, btn, render, ctrl);
             });
         };
+
+
 
         this.actionRecommendations = function(card, btn, render, ctrl) {
             var limit = Lampa.Storage.get('ai_result_count', '20'), t = card.original_title || card.original_name, year = (card.release_date || card.first_air_date || '').slice(0,4);
@@ -490,10 +503,10 @@
                 if (index >= keys.length) {
                     if (!isSilent) {
                         _this.hideStatus();
-                        Lampa.Noty.show('Всі ліміти вичерпано');
+                        Lampa.Noty.show('Сервіс недоступний або ліміти вичерпано');
                         _this.restoreFocus(window.ai_active_controller);
                     }
-                    if (onError) onError('All limits reached');
+                    if (onError) onError('All attempts failed');
                     return;
                 }
 
@@ -510,8 +523,11 @@
                 }).then(function(r) {
                     return r.json().then(function(json) { return { status: r.status, ok: r.ok, data: json }; });
                 }).then(function(res) {
-                    if (res.status === 429) {
-                        // Якщо ліміт - спочатку пробуємо запасну модель на ЦЬОМУ Ж ключі
+                    // ОБРОБКА 429 (Ліміт) ТА 503 (Перевантаження)
+                    if (res.status === 429 || res.status === 503) {
+                        if (res.status === 503) console.log('AI Assistant: Server 503 (Overloaded), trying alternative...');
+
+                        // Спробуємо іншу модель на цьому ж ключі
                         if (!isModelRetry) {
                             var fallback = null;
                             if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallback = 'gemini-2.5-flash-lite';
@@ -520,6 +536,7 @@
                             if (fallback) return attemptRequest(index, fallback, true);
                         }
                         
+                        // Якщо модель не допомогла — переходимо до наступного КЛЮЧА
                         return attemptRequest(index + 1, baseModel, false);
                     }
 
@@ -531,6 +548,7 @@
                     } else { throw new Error('Empty response'); }
 
                 }).catch(function(e) {
+                    // Резерв для мережевих збоїв (failed to fetch)
                     if (!isModelRetry) {
                         var fallbackModel = null;
                         if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallbackModel = 'gemini-2.5-flash-lite';
@@ -541,7 +559,7 @@
 
                     if (!isSilent) {
                         _this.hideStatus();
-                        Lampa.Noty.show('Error: ' + e.message);
+                        Lampa.Noty.show('Помилка: ' + e.message);
                         _this.restoreFocus(window.ai_active_controller);
                     }
                     if (onError) onError(e.message);
@@ -799,6 +817,7 @@
                         'gemini-3-flash-preview': '\u200Bgemini-3-flash-preview',
                         'gemini-2.5-flash-lite': '\u200Bgemini-2.5-flash-lite',
                         'gemini-2.5-flash': '\u200Bgemini-2.5-flash',
+                        'gemini-2.0-flash-lite': '\u200Bgemini-2.0-flash-lite',
                         'gemma-4-31b-it': '\u200Bgemma-4-31b-it',
                         'gemma-3-27b-it': '\u200Bgemma-3-27b-it',
                         'gemma-3-4b-it': '\u200Bgemma-3-4b-it'
@@ -815,7 +834,7 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '3.0',
+    version: '3.1',
     name: 'AI Асистент',
     description: 'Ваш розумний та швидкий ШІ помічник',
     author: '@bodya_elven',
