@@ -775,28 +775,29 @@
 
         this.setupSettings = function() {
             Lampa.SettingsApi.addComponent({ component: 'ai_assistant_cfg', name: 'AI Асистент', icon: PLUGIN_ICON });
-                        Lampa.SettingsApi.addParam({
+
+            Lampa.SettingsApi.addParam({
                 component: 'ai_assistant_cfg',
                 param: {
                     name: 'ai_assistant_token',
                     type: 'input',
-                    default: ''
+                    default: '',
+                    placeholder: 'Ключ1, Ключ2...'
                 },
                 field: {
                     name: 'Gemini API key',
-                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька ключів через кому'
+                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька через кому'
                 },
                 onChange: function(value) {
                     Lampa.Storage.set('ai_assistant_token', value);
                 },
                 onRender: function(item) {
                     var value = Lampa.Storage.get('ai_assistant_token', '');
-                    var status = value ? '<span style="color: #2ecc71">set</span>' : '<span style="color: #e74c3c">empty</span>';
+                    var status = value ? '<span style="color: #2ecc71">Так</span>' : '<span style="color: #e74c3c">Ні</span>';
                     item.find('.settings-param__value').html(status);
                 }
             });
 
-            
             Lampa.SettingsApi.addParam({ 
                 component: 'ai_assistant_cfg', 
                 param: { 
@@ -826,10 +827,18 @@
                 field: { name: 'Моделі' } 
             });
 
-
-
-            Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
+            Lampa.SettingsApi.addParam({ 
+                component: 'ai_assistant_cfg', 
+                param: { 
+                    name: 'ai_result_count', 
+                    type: 'select', 
+                    values: { '10':'10','20':'20','30':'30','50':'50' }, 
+                    default: '20' 
+                }, 
+                field: { name: 'Кількість результатів' } 
+            });
         };
+
     }
 
 var pluginManifest = {
