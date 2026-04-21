@@ -795,13 +795,14 @@
                 },
                 field: {
                     name: 'Gemini API key',
-                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька через кому'
+                    description: 'Отримайте ключ на aistudio.google.com/api-keys'
                 },
                 onChange: function(value) {
                     Lampa.Storage.set('ai_assistant_token', value);
                 },
                 onRender: function(item) {
                     var value = Lampa.Storage.get('ai_assistant_token', '');
+                    // Повертаємо просте Так/Ні без затримок
                     var status = value ? '<span style="color: #2ecc71">Так</span>' : '<span style="color: #e74c3c">Ні</span>';
                     item.find('.settings-param__value').html(status);
                 }
@@ -813,6 +814,8 @@
                     name: 'ai_model', 
                     type: 'select', 
                     values: { 
+                        // Додаємо 1.5 назад ТІЛЬКИ щоб не було помилки undefined при відкритті
+                        'gemini-1.5-flash': '\u200Bgemini-1.5-flash',
                         'gemini-flash-lite-latest': '\u200Bgemini-flash-lite-latest',
                         'gemini-flash-latest': '\u200Bgemini-flash-latest',
                         'gemini-3.1-flash-lite-preview': '\u200Bgemini-3.1-flash-lite-preview',
