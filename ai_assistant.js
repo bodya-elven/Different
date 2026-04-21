@@ -309,14 +309,11 @@
             _this.updateStatus('Пошук фактів');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                var p = 'Provide 6 to 10 interesting, little-known facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. ' +
-                        'CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. ' +
-                        'If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. ' +
-                        'Otherwise, return strictly a JSON array: [{"title":"..","text":".."}]. No markdown, no intro text.';
+                var p = 'Provide 6 to 10 interesting, little-known facts about the ' + type + ' "' + ukrT + '" (original title: "' + origT + '", ' + year + ') with ' + tmdb.leadActor + ' in the lead role, in Ukrainian. CRITICAL RULE: If you lack verified facts in your internal database, you MUST use the Google Search tool to find reliable information. If even after searching you cannot find reliable facts, do not hallucinate. Return strictly: [{"title": "Інформація відсутня", "text": "На жаль, достовірних фактів про цей проєкт не знайдено."}]. Otherwise, return strictly a JSON array where each fact is a separate object: [{"title":"..","text":".."}]. No markdown, no intro text.';
                 
+                // Передаємо true в кінці для активації пошуку
                 _this.askGemini(p, function(text) {
                     _this.hideStatus();
-                    // Захист від втрати фокусу, якщо користувач вийшов з картки
                     if (Lampa.Activity.active() && Lampa.Activity.active().component !== 'full') return; 
                     
                     var data = _this.parseJsonSafe(text);
@@ -327,9 +324,10 @@
                     }
                     var html = (data || []).map(function(f){ return '<div style="margin-bottom:12px"><span class="ai-fact-title">'+f.title+'</span>'+f.text+'</div>'; }).join('');
                     _this.showViewer('Цікаві факти: ' + ukrT, html, btn, render, ctrl);
-                });
+                }, null, false, true); 
             });
         };
+
 
 
         this.actionRecapMenu = function(card, btn, render, ctrl) {
@@ -363,9 +361,9 @@
                     
                     var p = 'Provide a 10-point brief recap in Ukrainian of "' + item.title + '" from the franchise "' + t + '" (' + year + '). Respond ONLY with a valid JSON array: [{"point":".."}]. No markdown, no intro text.';
                     
+                    // Передаємо true в кінці для активації пошуку
                     _this.askGemini(p, function(text) {
                         _this.hideStatus();
-                        // ЗАХИСТ ВІД ПРИВИДІВ
                         if (Lampa.Activity.active().component !== 'full') return; 
                         
                         var data = _this.parseJsonSafe(text);
@@ -376,11 +374,14 @@
                         }
                         var html = (data || []).map(function(i){ return '<div style="margin-bottom:10px">• '+i.point+'</div>'; }).join('');
                         _this.showViewer('Переказ: ' + item.title, html, btn, render, ctrl);
-                    });
+                    }, function() {
+                        _this.hideStatus();
+                    }, false, true);
                 },
                 onBack: function() { _this.openAiMenu(card, btn, render, ctrl); }
             });
         };
+
 
 
         this.actionTogether = function(card, btn, render, ctrl) {
@@ -474,33 +475,32 @@
             });
         };
 
-        this.askGemini = function(p, onSuccess, onError, isSilent) {
+        this.askGemini = function(p, onSuccess, onError, isSilent, useSearch) {
             var rawValue = Lampa.Storage.get(STORAGE_KEY, '');
             if (!rawValue) {
                 if (!isSilent) Lampa.Noty.show('Gemini API key is empty');
+                if (onError) onError();
                 return;
             }
 
-            // Розбиваємо ключі
-            var keys = rawValue.split(',');
+            var keys = rawValue.split(',').map(function(k) { return k.trim(); }).filter(Boolean);
             var baseModel = Lampa.Storage.get('ai_model', 'gemini-flash-lite-latest');
 
-            var attemptRequest = function(index, targetModel, isRetry) {
+            var attemptRequest = function(index, targetModel, isModelRetry) {
                 if (index >= keys.length) {
                     if (!isSilent) {
                         _this.hideStatus();
-                        Lampa.Noty.show('Всі ліміти вичерпано (All keys hit 429)');
+                        Lampa.Noty.show('Всі ліміти вичерпано');
                         _this.restoreFocus(window.ai_active_controller);
                     }
+                    if (onError) onError('All limits reached');
                     return;
                 }
 
-                // ЧИСТИМО КЛЮЧ: видаляємо будь-які (429) або пробіли перед відправкою
-                var currentKey = keys[index].replace(/\s*\([^)]*\)/g, '').trim();
-                if (!currentKey) return attemptRequest(index + 1, baseModel, false);
-
+                var currentKey = keys[index];
                 var payload = { contents: [{ parts: [{ text: p }] }] };
-                if (targetModel.indexOf('gemini') === 0) {
+                
+                if (useSearch && targetModel.indexOf('gemini') === 0) {
                     payload.tools = [{ googleSearch: {} }];
                 }
 
@@ -511,9 +511,15 @@
                     return r.json().then(function(json) { return { status: r.status, ok: r.ok, data: json }; });
                 }).then(function(res) {
                     if (res.status === 429) {
-                        // Позначаємо в пам'яті, що ключ "втомився", але не зупиняємося
-                        keys[index] = currentKey + ' (429)';
-                        Lampa.Storage.set(STORAGE_KEY, keys.join(', '));
+                        // Якщо ліміт - спочатку пробуємо запасну модель на ЦЬОМУ Ж ключі
+                        if (!isModelRetry) {
+                            var fallback = null;
+                            if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallback = 'gemini-2.5-flash-lite';
+                            else if (targetModel === 'gemini-2.5-flash-lite') fallback = 'gemini-flash-lite-latest';
+                            
+                            if (fallback) return attemptRequest(index, fallback, true);
+                        }
+                        
                         return attemptRequest(index + 1, baseModel, false);
                     }
 
@@ -525,16 +531,12 @@
                     } else { throw new Error('Empty response'); }
 
                 }).catch(function(e) {
-                    // Резервні моделі
-                    if (!isRetry) {
+                    if (!isModelRetry) {
                         var fallbackModel = null;
                         if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallbackModel = 'gemini-2.5-flash-lite';
                         else if (targetModel === 'gemini-2.5-flash-lite') fallbackModel = 'gemini-flash-lite-latest';
 
-                        if (fallbackModel) {
-                            attemptRequest(index, fallbackModel, true);
-                            return;
-                        }
+                        if (fallbackModel) return attemptRequest(index, fallbackModel, true);
                     }
 
                     if (!isSilent) {
@@ -548,6 +550,8 @@
 
             attemptRequest(0, baseModel, false);
         };
+
+
 
 
         this.parseJsonSafe = function(text) {
@@ -775,7 +779,9 @@
 
         this.setupSettings = function() {
             Lampa.SettingsApi.addComponent({ component: 'ai_assistant_cfg', name: 'AI Асистент', icon: PLUGIN_ICON });
-            Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_key_trigger', type: 'trigger' }, field: { name: 'API Ключ (Gemini)' }, onRender: function(item) {
+            Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_key_trigger', type: 'trigger' }, field: { 
+                    name: 'Gemini API key', 
+                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька ключів через кому' }, onRender: function(item) {
                 var updateText = function() { var val = Lampa.Storage.get(STORAGE_KEY, ''); item.find('.settings-param__value').text(val ? 'Так' : 'Ні').css('color', val ? '#4b5':'#f55'); };
                 updateText();
                 item.on('hover:enter', function() { Lampa.Input.edit({ title: 'Введіть ключ', value: Lampa.Storage.get(STORAGE_KEY, ''), free: true }, function(v) { if(v){ Lampa.Storage.set(STORAGE_KEY, v.trim()); updateText(); } }); });
