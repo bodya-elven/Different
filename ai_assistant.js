@@ -32,6 +32,14 @@
         var statusBox = null;
 
         this.init = function () {
+            // ПЕРЕВІРКА: Скидаємо модель на дефолт, якщо в пам'яті залишилася видалена (це прибере виліт)
+            var currentModel = Lampa.Storage.get('ai_model', 'gemini-flash-lite-latest');
+            var validModels = ['gemini-flash-lite-latest', 'gemini-flash-latest', 'gemini-3.1-flash-lite-preview', 'gemini-3-flash-preview', 'gemini-2.5-flash-lite', 'gemini-2.5-flash', 'gemini-2.0-flash-lite', 'gemini-2.0-flash-lite-001', 'gemini-2.0-flash', 'gemini-2.0-flash-001', 'gemini-3.1-pro-preview', 'gemini-3-pro-preview', 'gemini-2.5-pro', 'gemini-pro-latest', 'gemma-4-31b-it', 'gemma-3-27b-it', 'gemma-3-4b-it'];
+            
+            if (validModels.indexOf(currentModel) === -1) {
+                Lampa.Storage.set('ai_model', 'gemini-flash-lite-latest');
+            }
+
             this.setupSettings();
             this.injectStyles();
             this.setupGlobalSearch();
@@ -54,6 +62,7 @@
                 }
             });
         };
+
 
         this.getTMDBDetails = function(card, callback) {
             var method = (card.name || card.original_name) ? 'tv' : 'movie';
