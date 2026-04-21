@@ -245,8 +245,7 @@
             var controllerName = prevCtrl || Lampa.Controller.enabled().name; 
             var items = [
                 { title: 'Рекомендації', action: 'recommendations' },
-                { title: 'Цікаві факти', action: 'facts' },
-                { title: 'Спільні роботи акторів', action: 'together' }
+                { title: 'Цікаві факти', action: 'facts' }
             ];
 
             // Додаємо пункт ТІЛЬКИ якщо теги існують і масив не порожній
@@ -254,9 +253,13 @@
                 items.splice(1, 0, { title: 'Добірки за тегами', action: 'tags' });
             }
             
+            // Переказ (буде передостаннім, якщо є)
             if ((card.number_of_seasons && card.number_of_seasons > 1) || card.belongs_to_collection) {
                 items.push({ title: 'Стислий переказ', action: 'recap' });
             }
+
+            // Спільні роботи ТЕПЕР ЗАВЖДИ ОСТАННІ
+            items.push({ title: 'Спільні роботи акторів', action: 'together' });
 
             Lampa.Select.show({
                 title: 'AI Асистент',
@@ -277,10 +280,14 @@
         };
 
 
-        this.showViewer = function(title, contentHtml, btnElement, renderContainer, controllerName) {
+
+         this.showViewer = function(title, contentHtml, btnElement, renderContainer, controllerName) {
             var safeColor = _this.getSafeDynamicColor();
+            // Зчитуємо розмір шрифту з налаштувань
+            var fontSize = Lampa.Storage.get('ai_font_size', '1.25em'); 
             
-            var viewer = $('<div class="ai-viewer-container" style="--safe-text-color: ' + safeColor + ';">' +
+            // Додаємо --ai-font-size у стилі контейнера
+            var viewer = $('<div class="ai-viewer-container" style="--safe-text-color: ' + safeColor + '; --ai-font-size: ' + fontSize + ';">' +
                             '<div class="ai-viewer-body">' +
                                 '<div class="ai-header"><div class="ai-title">' + title + '</div><div class="ai-close-btn selector">×</div></div>' +
                                 '<div class="ai-content-scroll">' + contentHtml + '</div>' +
@@ -301,6 +308,7 @@
             });
             Lampa.Controller.toggle('ai_viewer');
         };
+
 
 
         this.actionFacts = function(card, btn, render, ctrl) {
@@ -400,7 +408,6 @@
             _this.updateStatus('Аналіз складу');
             
             _this.getTMDBDetails(card, function(tmdb) {
-                // Додаємо всіх режисерів з префіксом та список з 10 акторів
                 var names = tmdb.directors.map(function(d){ return 'Director: ' + d; }).concat(tmdb.topCast);
                 
                 if (!names.length) {
@@ -410,10 +417,13 @@
                     return;
                 }
                 
-                var p = 'Suggest strictly ' + limit + ' movies or TV series where at least TWO or more people from this list worked together in ANY capacity (actors, directors, producers, etc.): ' + names.join(', ') + '. I am looking for any professional intersections or collaborations among them on the same project.';
+                // НОВИЙ ПРОМПТ: Шукаємо "до Х проєктів" і забороняємо галюцинації
+                var p = 'Identify up to ' + limit + ' real movies or TV series where at least TWO or more people from this list worked together in ANY capacity: ' + names.join(', ') + '. CRITICAL RULE: You must be absolutely certain they collaborated on these specific projects. Do NOT guess or invent titles. If you can only find 2 real projects, just return 2.';
+                
                 _this.fetchList(p, 'Спільні проєкти', card, btn, render, ctrl);
             });
         };
+
 
 
 
