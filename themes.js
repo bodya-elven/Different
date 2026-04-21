@@ -378,37 +378,34 @@
         }
     });
 
-
-
     Lampa.Listener.follow('full', function (e) {
         if (!Lampa.Storage.get('themes_dynamic_theme', false)) return;
 
-        if (e.type === 'complite') {
+        if (e.type === 'complite' || e.type === 'complete') {
             var card = e.data.movie || e.object || {};
             var cachedColor = getCachedLogoColor(card);
-            
             var targetActivity = e.object; 
+            
             if (cachedColor) {
                 targetActivity.themes_color = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
                 applyTheme();
             } else {
-                var targetActivity = e.object;
                 fetchLogoColor(card, function(colorData) {
                     if (colorData && targetActivity) {
                         targetActivity.themes_color = rgbToHex(colorData.r, colorData.g, colorData.b);
-                        // Оновлюємо інтерфейс тільки якщо ця картка все ще активна на екрані
                         if (Lampa.Activity.active() === targetActivity) applyTheme();
                     }
                 });
-
             }
         }
     });
+
 
     /* ==========================================================================
        5. НАЛАШТУВАННЯ В МЕНЮ
        ========================================================================== */
     function initPlugin() {
+        var _this = this; // Додаємо цей рядок
     
             // Стилі для візуального вибору кольору
         if (!$('#themes-picker-styles').length) {
