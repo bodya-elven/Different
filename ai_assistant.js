@@ -72,25 +72,17 @@
             
             Lampa.Network.silent(url, function(res) {
                 var overview = (res.overview || '').replace(/"/g, "'").replace(/\n/g, ' ');
-                var directors = [];
-                var topCast = [];
                 var leadActor = 'unknown';
                 
-                if (res.credits && res.credits.crew) {
-                    // Збираємо ВСІХ режисерів у масив
-                    directors = res.credits.crew.filter(function(c) { return c.job === 'Director'; }).map(function(d) { return d.name; });
-                }
                 if (res.credits && res.credits.cast && res.credits.cast.length > 0) {
-                    // Зберігаємо першого актора окремо
                     leadActor = res.credits.cast[0].name;
-                    // Беремо ПЕРШИХ 6 акторів для масиву
-                    topCast = res.credits.cast.slice(0, 6).map(function(c) { return c.name; });
                 }
-                callback({ overview: overview, leadActor: leadActor, directors: directors, topCast: topCast });
+                callback({ overview: overview, leadActor: leadActor });
             }, function() {
-                callback({ overview: '', leadActor: 'unknown', directors: [], topCast: [] });
+                callback({ overview: '', leadActor: 'unknown' });
             });
         };
+
 
 
         this.preloadTags = function(card) {
@@ -259,18 +251,13 @@
                 { title: 'Цікаві факти', action: 'facts' }
             ];
 
-            // Додаємо пункт ТІЛЬКИ якщо теги існують і масив не порожній
             if (card.translated_tags && card.translated_tags.length > 0) {
                 items.splice(1, 0, { title: 'Добірки за тегами', action: 'tags' });
             }
-            
-            // Переказ (буде передостаннім, якщо є)
+
             if ((card.number_of_seasons && card.number_of_seasons > 1) || card.belongs_to_collection) {
                 items.push({ title: 'Стислий переказ', action: 'recap' });
             }
-
-            // Спільні роботи ТЕПЕР ЗАВЖДИ ОСТАННІ
-            items.push({ title: 'Спільні роботи акторів', action: 'together' });
 
             Lampa.Select.show({
                 title: 'AI Асистент',
@@ -278,7 +265,6 @@
                 onSelect: function (item) {
                     setTimeout(function() {
                         if (item.action === 'facts') _this.actionFacts(card, btnElement, renderContainer, controllerName);
-                        else if (item.action === 'together') _this.actionTogether(card, btnElement, renderContainer, controllerName);
                         else if (item.action === 'recap') _this.actionRecapMenu(card, btnElement, renderContainer, controllerName);
                         else if (item.action === 'recommendations') _this.actionRecommendations(card, btnElement, renderContainer, controllerName);
                         else if (item.action === 'tags') _this.actionTags(card, btnElement, renderContainer, controllerName);
@@ -289,6 +275,7 @@
                 }
             });
         };
+
 
 
 
@@ -410,32 +397,6 @@
                 onBack: function() { _this.openAiMenu(card, btn, render, ctrl); }
             });
         };
-
-
-
-        this.actionTogether = function(card, btn, render, ctrl) {
-            var limit = Lampa.Storage.get('ai_result_count', '20');
-            window.ai_active_controller = ctrl || Lampa.Controller.enabled().name;
-            _this.updateStatus('Аналіз складу');
-            
-            _this.getTMDBDetails(card, function(tmdb) {
-                var names = tmdb.directors.map(function(d){ return 'Director: ' + d; }).concat(tmdb.topCast);
-                
-                if (!names.length) {
-                    _this.hideStatus();
-                    Lampa.Noty.show('Склад невідомий');
-                    if (window.ai_active_controller) Lampa.Controller.toggle(window.ai_active_controller);
-                    return;
-                }
-                
-                // НОВИЙ ПРОМПТ: Шукаємо "до Х проєктів" і забороняємо галюцинації
-                var p = 'Identify up to ' + limit + ' real movies or TV series where at least TWO or more people from this list worked together in ANY capacity: ' + names.join(', ') + '. CRITICAL RULE: You must be absolutely certain they collaborated on these specific projects. Do NOT guess or invent titles. If you can only find 2 real projects, just return 2.';
-                
-                _this.fetchList(p, 'Спільні проєкти', card, btn, render, ctrl);
-            });
-        };
-
-
 
 
         this.actionRecommendations = function(card, btn, render, ctrl) {
@@ -975,10 +936,40 @@
             var modelValues = {};
             AI_MODELS_LIST.forEach(function(m) { modelValues[m.id] = '\u200B' + m.name; });
 
+            // Запам'ятовуємо модель, яка була обрана ДО зміни
+            var currentPrimaryModel = Lampa.Storage.get('ai_model', 'gemini-2.5-flash-lite');
+
             Lampa.SettingsApi.addParam({ 
                 component: 'ai_assistant_cfg', 
                 param: { name: 'ai_model', type: 'select', values: modelValues, default: 'gemini-2.5-flash-lite' }, 
-                field: { name: 'Основна Модель' } 
+                field: { name: 'Основна модель' },
+                onChange: function(newModel) {
+                    if (newModel !== currentPrimaryModel) {
+                        var list = Lampa.Storage.get('ai_fallback_list', []);
+                        var checked = Lampa.Storage.get('ai_fallback_checked', []);
+                        
+                        // 1. Міняємо місцями в загальному списку сортування
+                        var listIdx = list.indexOf(newModel);
+                        if (listIdx !== -1) {
+                            list[listIdx] = currentPrimaryModel;
+                        } else {
+                            list.push(currentPrimaryModel);
+                        }
+                        
+                        // 2. Якщо нова модель мала галочку, передаємо її старій моделі
+                        var checkedIdx = checked.indexOf(newModel);
+                        if (checkedIdx !== -1) {
+                            checked[checkedIdx] = currentPrimaryModel;
+                        }
+                        
+                        // Зберігаємо зміни тихо під капотом
+                        Lampa.Storage.set('ai_fallback_list', list);
+                        Lampa.Storage.set('ai_fallback_checked', checked);
+                   
+                        // Оновлюємо поточну модель на випадок, якщо ти відразу зміниш її ще раз
+                        currentPrimaryModel = newModel;
+                    }
+                }
             });
 
             Lampa.SettingsApi.addParam({ 
@@ -995,8 +986,8 @@
                 param: { 
                     name: 'ai_font_size', 
                     type: 'select', 
-                    values: { '1.1em':'1.1em','1.2em':'1.2em','1.25em':'1.25em','1.3em':'1.3em','1.4em':'1.4em','1.5em':'1.5em','1.6em':'1.6em' }, 
-                    default: '1.25em' 
+                    values: { '1.1em':'1.1em','1.2em':'1.2em','1.3em':'1.3em','1.4em':'1.4em','1.5em':'1.5em','1.6em':'1.6em' }, 
+                    default: '1.2em' 
                 }, 
                 field: { name: 'Розмір тексту' } 
             });
@@ -1005,7 +996,7 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '3.2',
+    version: '3.3',
     name: 'AI Асистент',
     description: 'Ваш персональний ШІ помічник',
     author: '@bodya_elven',
