@@ -214,7 +214,7 @@
         var id = card.id;
         var url = 'https://api.themoviedb.org/3/' + type + '/' + id + '/images?api_key=' + tmdbKey;
         
-        var network = new Lampa.Reguest();
+        var network = new Lampa.Request();
         network.silent(url, function(data) {
             if (!data || !data.logos || data.logos.length === 0) return callback(null);
 
@@ -377,14 +377,13 @@
             applyTheme();
         }
     });
-
+    
     Lampa.Listener.follow('full', function (e) {
         if (!Lampa.Storage.get('themes_dynamic_theme', false)) return;
 
         if (e.type === 'complite' || e.type === 'complete') {
-            var card = e.data ? (e.data.movie || e.data) : (e.object || {});
+            var card = (e.data && e.data.movie) ? e.data.movie : (e.object || {});
             var targetActivity = e.object; 
-            
             if (!targetActivity) return;
 
             var cachedColor = getCachedLogoColor(card);
@@ -395,22 +394,20 @@
                 fetchLogoColor(card, function(colorData) {
                     if (colorData && targetActivity) {
                         targetActivity.themes_color = rgbToHex(colorData.r, colorData.g, colorData.b);
-                        // Оновлюємо тільки якщо картка ще активна
                         if (Lampa.Activity.active() === targetActivity) applyTheme();
                     }
                 });
             }
         }
     });
+
     
 
     /* ==========================================================================
        5. НАЛАШТУВАННЯ В МЕНЮ
        ========================================================================== */
     function initPlugin() {
-        var _this = this; // Додаємо цей рядок
-    
-            // Стилі для візуального вибору кольору
+        // Стилі для візуального вибору кольору
         if (!$('#themes-picker-styles').length) {
             $('<style id="themes-picker-styles">').prop('type', 'text/css').html(
                 '.themes-picker { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 5002; display: flex; align-items: center; justify-content: center; }' +
@@ -426,7 +423,9 @@
                 '.themes-picker__btn.focus { background: #fff; color: #000; }'
             ).appendTo('head');
         }
-        this.showColorPicker = function() {
+
+        // Оголошуємо як звичайну функцію в області видимості initPlugin
+        var showColorPicker = function() {
             var currentHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
             var hsl = hexToHsl(currentHex);
             var h = hsl.h, s = hsl.s, l = hsl.l;
@@ -492,6 +491,7 @@
             Lampa.Controller.toggle('themes_color_picker');
             update();
         };
+
         
         Lampa.SettingsApi.addComponent({
             component: 'themes_plugin',
@@ -526,7 +526,7 @@
             field: { name: 'Візуальний вибір кольору', description: 'Відкрити палітру для зручного налаштування акценту' },
             onRender: function(item) {
                 item.on('hover:enter', function() {
-                    _this.showColorPicker();
+                    showColorPicker();
                 });
             }
         });
