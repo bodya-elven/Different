@@ -31,6 +31,17 @@
         var _this = this;
         var statusBox = null;
 
+        var AI_MODELS_LIST = [
+            { id: 'gemini-3.1-flash-lite-preview', name: 'gemini-3.1-flash-lite-preview' },
+            { id: 'gemini-3-flash-preview', name: 'gemini-3-flash-preview' },
+            { id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' },
+            { id: 'gemini-2.5-flash', name: 'gemini-2.5-flash' },
+            { id: 'gemma-4-31b-it', name: 'gemma-4-31b-it' },
+            { id: 'gemma-3-27b-it', name: 'gemma-3-27b-it' },
+            { id: 'gemma-3-4b-it', name: 'gemma-3-4b-it' }
+        ];
+        
+
         this.init = function () {
             this.setupSettings();
             this.injectStyles();
@@ -72,8 +83,8 @@
                 if (res.credits && res.credits.cast && res.credits.cast.length > 0) {
                     // Зберігаємо першого актора окремо
                     leadActor = res.credits.cast[0].name;
-                    // Беремо ПЕРШИХ 10 акторів для масиву
-                    topCast = res.credits.cast.slice(0, 10).map(function(c) { return c.name; });
+                    // Беремо ПЕРШИХ 6 акторів для масиву
+                    topCast = res.credits.cast.slice(0, 6).map(function(c) { return c.name; });
                 }
                 callback({ overview: overview, leadActor: leadActor, directors: directors, topCast: topCast });
             }, function() {
@@ -507,10 +518,50 @@
             }
 
             var keys = rawValue.split(',').map(function(k) { return k.trim(); }).filter(Boolean);
-            var baseModel = Lampa.Storage.get('ai_model', 'gemini-flash-lite-latest');
+            var primaryModel = Lampa.Storage.get('ai_model', 'gemini-2.5-flash-lite');
+            
+            var fallbackMode = Lampa.Storage.get('ai_fallback_mode', 'off');
+            var fallbackList = Lampa.Storage.get('ai_fallback_list', []);
+            var fallbackChecked = Lampa.Storage.get('ai_fallback_checked', []);
+            
+            // Формуємо загальну ЧЕРГУ запитів
+            var requestQueue = [];
+            
+            // 1. Основна модель перевіряється на ВСІХ ключах
+            keys.forEach(function(k) {
+                requestQueue.push({ model: primaryModel, key: k });
+            });
+            
+            // 2. Додаємо запасні моделі (якщо увімкнено)
+            if (fallbackMode !== 'off') {
+                var modelsToAdd = [];
+                if (fallbackMode === 'all') {
+                    // Всі (крім основної) у збереженому порядку
+                    fallbackList.forEach(function(mId) {
+                        if (mId !== primaryModel && AI_MODELS_LIST.find(function(am){return am.id === mId})) modelsToAdd.push(mId);
+                    });
+                    // Докидаємо ті, що не були в списку (нові)
+                    AI_MODELS_LIST.forEach(function(m) {
+                        if (m.id !== primaryModel && modelsToAdd.indexOf(m.id) === -1) modelsToAdd.push(m.id);
+                    });
+                } else if (fallbackMode === 'custom') {
+                    // Тільки вибрані галочками
+                    fallbackList.forEach(function(mId) {
+                        if (mId !== primaryModel && fallbackChecked.indexOf(mId) !== -1) modelsToAdd.push(mId);
+                    });
+                }
+                
+                // Кожна запасна модель також перевіряється на ВСІХ ключах
+                modelsToAdd.forEach(function(modelId) {
+                    keys.forEach(function(k) {
+                        requestQueue.push({ model: modelId, key: k });
+                    });
+                });
+            }
 
-            var attemptRequest = function(index, targetModel, isModelRetry) {
-                if (index >= keys.length) {
+            // Функція обробки черги
+            var attemptRequest = function(queueIndex) {
+                if (queueIndex >= requestQueue.length) {
                     if (!isSilent) {
                         _this.hideStatus();
                         Lampa.Noty.show('Сервіс недоступний або ліміти вичерпано');
@@ -520,9 +571,11 @@
                     return;
                 }
 
-                var currentKey = keys[index];
-                var payload = { contents: [{ parts: [{ text: p }] }] };
+                var task = requestQueue[queueIndex];
+                var targetModel = task.model;
+                var currentKey = task.key;
                 
+                var payload = { contents: [{ parts: [{ text: p }] }] };
                 if (useSearch && targetModel.indexOf('gemini') === 0) {
                     payload.tools = [{ googleSearch: {} }];
                 }
@@ -533,21 +586,10 @@
                 }).then(function(r) {
                     return r.json().then(function(json) { return { status: r.status, ok: r.ok, data: json }; });
                 }).then(function(res) {
-                    // ОБРОБКА 429 (Ліміт) ТА 503 (Перевантаження)
+                    // Якщо ліміт (429) або сервер лежить (503) — беремо НАСТУПНЕ завдання з черги
                     if (res.status === 429 || res.status === 503) {
-                        if (res.status === 503) console.log('AI Assistant: Server 503 (Overloaded), trying alternative...');
-
-                        // Спробуємо іншу модель на цьому ж ключі
-                        if (!isModelRetry) {
-                            var fallback = null;
-                            if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallback = 'gemini-2.5-flash-lite';
-                            else if (targetModel === 'gemini-2.5-flash-lite') fallback = 'gemini-flash-lite-latest';
-                            
-                            if (fallback) return attemptRequest(index, fallback, true);
-                        }
-                        
-                        // Якщо модель не допомогла — переходимо до наступного КЛЮЧА
-                        return attemptRequest(index + 1, baseModel, false);
+                        if (res.status === 503) console.log('AI Assistant: Server 503, trying next from queue...');
+                        return attemptRequest(queueIndex + 1);
                     }
 
                     if (!res.ok) throw new Error(res.data.error ? res.data.error.message : 'Unknown error');
@@ -558,28 +600,13 @@
                     } else { throw new Error('Empty response'); }
 
                 }).catch(function(e) {
-                    // Резерв для мережевих збоїв (failed to fetch)
-                    if (!isModelRetry) {
-                        var fallbackModel = null;
-                        if (targetModel === 'gemini-flash-lite-latest' || targetModel === 'gemini-3.1-flash-lite-preview') fallbackModel = 'gemini-2.5-flash-lite';
-                        else if (targetModel === 'gemini-2.5-flash-lite') fallbackModel = 'gemini-flash-lite-latest';
-
-                        if (fallbackModel) return attemptRequest(index, fallbackModel, true);
-                    }
-
-                    if (!isSilent) {
-                        _this.hideStatus();
-                        Lampa.Noty.show('Помилка: ' + e.message);
-                        _this.restoreFocus(window.ai_active_controller);
-                    }
-                    if (onError) onError(e.message);
+                    // Якщо мережевий збій (failed to fetch) — теж рухаємось по черзі
+                    return attemptRequest(queueIndex + 1);
                 });
             };
 
-            attemptRequest(0, baseModel, false);
+            attemptRequest(0);
         };
-
-
 
 
         this.parseJsonSafe = function(text) {
@@ -606,6 +633,126 @@
         };
 
 
+        this.showFallbackSelector = function() {
+            var primaryModel = Lampa.Storage.get('ai_model', 'gemini-2.5-flash-lite');
+            var mode = Lampa.Storage.get('ai_fallback_mode', 'off'); 
+            var savedList = Lampa.Storage.get('ai_fallback_list', []);
+            var savedChecked = Lampa.Storage.get('ai_fallback_checked', []);
+            
+            // Фільтруємо, щоб основна модель не з'являлася в списку запасних
+            var availableModels = AI_MODELS_LIST.filter(function(m) { return m.id !== primaryModel; });
+            
+            var workingList = [];
+            savedList.forEach(function(savedId) {
+                var found = availableModels.find(function(m) { return m.id === savedId; });
+                if (found) workingList.push({ id: found.id, name: found.name, checked: (mode === 'all' || (mode === 'custom' && savedChecked.indexOf(found.id) !== -1)) });
+            });
+            availableModels.forEach(function(m) {
+                if (!workingList.find(function(w) { return w.id === m.id; })) {
+                    workingList.push({ id: m.id, name: m.name, checked: mode === 'all' });
+                }
+            });
+
+            var listContainer = $('<div class="menu-edit-list ai-fallback-list" style="padding-bottom:10px;"></div>');
+            var svgUp = '<svg width="16" height="10" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 12L11 3L20 12" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+            var svgDown = '<svg width="16" height="10" viewBox="0 0 22 14" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M2 2L11 11L20 2" stroke="currentColor" stroke-width="4" stroke-linecap="round"/></svg>';
+            var svgCheck = '<svg width="22" height="22" viewBox="0 0 26 26" fill="none" xmlns="http://www.w3.org/2000/svg"><rect x="1.89111" y="1.78369" width="21.793" height="21.793" rx="3.5" stroke="currentColor" stroke-width="3"/><path d="M7.44873 12.9658L10.8179 16.3349L18.1269 9.02588" stroke="currentColor" stroke-width="3" class="dot" stroke-linecap="round"/></svg>';
+            var svgRadioOn = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="5" fill="currentColor"/></svg>';
+            var svgRadioOff = '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/></svg>';
+
+            var topControls = $('<div style="display:flex; justify-content:space-around; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.1);">' +
+                '<div class="fallback-ctrl-btn selector" data-action="off" style="padding: 8px 15px; border-radius: 8px; display:flex; align-items:center; gap:8px;"></div>' +
+                '<div class="fallback-ctrl-btn selector" data-action="all" style="padding: 8px 15px; border-radius: 8px; display:flex; align-items:center; gap:8px;"></div>' +
+            '</div>');
+            listContainer.append(topControls);
+
+            var modelsContainer = $('<div></div>');
+            listContainer.append(modelsContainer);
+
+            function updateUIState() {
+                var isOff = mode === 'off';
+                var isAll = mode === 'all';
+                topControls.find('[data-action="off"]').html((isOff?svgRadioOn:svgRadioOff) + ' Вимкнути').css('color', isOff?'#f55':'');
+                topControls.find('[data-action="all"]').html((isAll?svgRadioOn:svgRadioOff) + ' Всі').css('color', isAll?'#4b5':'');
+                
+                modelsContainer.find('.source-item').each(function() {
+                    var id = $(this).attr('data-id');
+                    var itm = workingList.find(function(w){return w.id===id;});
+                    if (isOff) itm.checked = false;
+                    else if (isAll) itm.checked = true;
+                    
+                    $(this).find('.dot').attr('opacity', itm.checked ? 1 : 0);
+                    $(this).find('.source-name').css('opacity', itm.checked ? '1' : '0.4');
+                });
+                updateArrowsState();
+            }
+
+            function updateArrowsState() {
+                var items = modelsContainer.find('.source-item');
+                items.each(function(idx) {
+                    $(this).find('.move-up').css('opacity', idx === 0 ? '0.2' : '1');
+                    $(this).find('.move-down').css('opacity', idx === items.length - 1 ? '0.2' : '1');
+                });
+            }
+
+            topControls.find('[data-action="off"]').on('hover:enter', function() { mode = 'off'; updateUIState(); });
+            topControls.find('[data-action="all"]').on('hover:enter', function() { mode = 'all'; updateUIState(); });
+
+            workingList.forEach(function(src) {
+                var itemSort = $('<div class="source-item" data-id="' + src.id + '" style="display:flex; align-items:center; justify-content:space-between; padding:8px 12px; border-bottom:1px solid rgba(255,255,255,0.05);">' +
+                    '<div class="source-name" style="font-size:15px; opacity: ' + (src.checked ? '1' : '0.4') + ';">' + src.name + '</div>' +
+                    '<div style="display:flex; gap:8px; align-items:center;">' +
+                        '<div class="move-up selector" style="padding:6px; border-radius:6px; display:flex; align-items:center;">' + svgUp + '</div>' +
+                        '<div class="move-down selector" style="padding:6px; border-radius:6px; display:flex; align-items:center;">' + svgDown + '</div>' +
+                        '<div class="toggle selector" style="padding:4px; border-radius:6px; margin-left:5px; display:flex; align-items:center;">' + svgCheck + '</div>' +
+                    '</div></div>');
+                
+                itemSort.find('.dot').attr('opacity', src.checked ? 1 : 0);
+                itemSort.find('.move-up').on('hover:enter', function() { var p = itemSort.prev(); if(p.length){ itemSort.insertBefore(p); updateArrowsState(); }});
+                itemSort.find('.move-down').on('hover:enter', function() { var n = itemSort.next(); if(n.length){ itemSort.insertAfter(n); updateArrowsState(); }});
+                itemSort.find('.toggle').on('hover:enter', function() { 
+                    src.checked = !src.checked;
+                    if (src.checked) {
+                        var allChecked = workingList.every(function(w){return w.checked;});
+                        mode = allChecked ? 'all' : 'custom';
+                    } else {
+                        var noneChecked = workingList.every(function(w){return !w.checked;});
+                        mode = noneChecked ? 'off' : 'custom';
+                    }
+                    updateUIState();
+                });
+                modelsContainer.append(itemSort);
+            });
+
+            updateUIState();
+
+            Lampa.Modal.open({ 
+                title: 'Автоперемикання моделей', html: listContainer, size: 'small', scroll_to_center: true, 
+                onBack: function() {
+                    var finalOrder = [];
+                    var finalSavedChecked = [];
+                    modelsContainer.find('.source-item').each(function() {
+                        var id = $(this).attr('data-id');
+                        var s = workingList.find(function(x) { return x.id === id; });
+                        if (s) {
+                            finalOrder.push(s.id);
+                            if (s.checked) finalSavedChecked.push(s.id);
+                        }
+                    });
+                    
+                    if (mode === 'all') Lampa.Storage.set('ai_fallback_mode', 'all');
+                    else if (mode === 'off') Lampa.Storage.set('ai_fallback_mode', 'off');
+                    else Lampa.Storage.set('ai_fallback_mode', finalSavedChecked.length > 0 ? 'custom' : 'off');
+                    
+                    Lampa.Storage.set('ai_fallback_list', finalOrder);
+                    Lampa.Storage.set('ai_fallback_checked', finalSavedChecked);
+                    
+                    Lampa.Modal.close(); 
+                    Lampa.Controller.toggle('settings_component');
+                }
+            });
+        };
+        
 
         this.processAiList = function(list, callback) {
             var results = [], processed = 0;
@@ -814,36 +961,32 @@
 
         this.setupSettings = function() {
             Lampa.SettingsApi.addComponent({ component: 'ai_assistant_cfg', name: 'AI Асистент', icon: PLUGIN_ICON });
-            Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_key_trigger', type: 'trigger' }, field: { 
-                    name: 'Gemini API key', 
-                    description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька ключів через кому' }, onRender: function(item) {
-                var updateText = function() { var val = Lampa.Storage.get(STORAGE_KEY, ''); item.find('.settings-param__value').text(val ? 'Так' : 'Ні').css('color', val ? '#4b5':'#f55'); };
-                updateText();
-                item.on('hover:enter', function() { Lampa.Input.edit({ title: 'Введіть ключ', value: Lampa.Storage.get(STORAGE_KEY, ''), free: true }, function(v) { if(v){ Lampa.Storage.set(STORAGE_KEY, v.trim()); updateText(); } }); });
-            }});
             
             Lampa.SettingsApi.addParam({ 
+                component: 'ai_assistant_cfg', param: { name: 'ai_key_trigger', type: 'trigger' }, 
+                field: { name: 'Gemini API key', description: 'Отримайте ключ на aistudio.google.com/api-keys. Можна вказати кілька ключів через кому' }, 
+                onRender: function(item) {
+                    var updateText = function() { var val = Lampa.Storage.get(STORAGE_KEY, ''); item.find('.settings-param__value').text(val ? 'Так' : 'Ні').css('color', val ? '#4b5' : '#f55'); };
+                    updateText();
+                    item.on('hover:enter', function() { Lampa.Input.edit({ title: 'Gemini API key', value: Lampa.Storage.get(STORAGE_KEY, ''), free: true }, function(v) { if(v !== undefined){ Lampa.Storage.set(STORAGE_KEY, v.trim()); updateText(); } }); });
+                }
+            });
+            
+            var modelValues = {};
+            AI_MODELS_LIST.forEach(function(m) { modelValues[m.id] = '\u200B' + m.name; });
+
+            Lampa.SettingsApi.addParam({ 
                 component: 'ai_assistant_cfg', 
-                param: { 
-                    name: 'ai_model', 
-                    type: 'select', 
-                    values: { 
-                        'gemini-flash-lite-latest': '\u200Bgemini-flash-lite-latest',
-                        'gemini-flash-latest': '\u200Bgemini-flash-latest',
-                        'gemini-3.1-flash-lite-preview': '\u200Bgemini-3.1-flash-lite-preview',
-                        'gemini-3-flash-preview': '\u200Bgemini-3-flash-preview',
-                        'gemini-2.5-flash-lite': '\u200Bgemini-2.5-flash-lite',
-                        'gemini-2.5-flash': '\u200Bgemini-2.5-flash',
-                        'gemini-2.0-flash-lite': '\u200Bgemini-2.0-flash-lite',
-                        'gemma-4-31b-it': '\u200Bgemma-4-31b-it',
-                        'gemma-3-27b-it': '\u200Bgemma-3-27b-it',
-                        'gemma-3-4b-it': '\u200Bgemma-3-4b-it'
-                    }, 
-                    default: 'gemini-flash-lite-latest' 
-                }, 
-                field: { name: 'Моделі' } 
+                param: { name: 'ai_model', type: 'select', values: modelValues, default: 'gemini-2.5-flash-lite' }, 
+                field: { name: 'Основна Модель' } 
             });
 
+            Lampa.SettingsApi.addParam({ 
+                component: 'ai_assistant_cfg', 
+                param: { type: 'button', name: 'ai_fallback_trigger' }, 
+                field: { name: 'Автоперемикання моделей', description: 'Резервні моделі у разі вичерпання лімітів або помилок' }, 
+                onChange: function() { _this.showFallbackSelector(); } 
+            });
 
             Lampa.SettingsApi.addParam({ component: 'ai_assistant_cfg', param: { name: 'ai_result_count', type: 'select', values: { '10':'10','20':'20','30':'30','50':'50' }, default: '20' }, field: { name: 'Кількість результатів' } });
             
@@ -862,9 +1005,9 @@
 
 var pluginManifest = {
     type: 'other',
-    version: '3.1',
+    version: '3.2',
     name: 'AI Асистент',
-    description: 'Ваш розумний та швидкий ШІ помічник',
+    description: 'Ваш персональний ШІ помічник',
     author: '@bodya_elven',
     icon: PLUGIN_ICON
 };
