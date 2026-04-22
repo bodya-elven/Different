@@ -344,35 +344,67 @@
             callback(null); 
         });
     }
-
     /* ==========================================================================
-       4. ГЛОБАЛЬНИЙ СЛУХАЧ АКТИВНОСТІ
+       4. ГЛОБАЛЬНИЙ СЛУХАЧ АКТИВНОСТІ ТА КАРТОК
        ========================================================================== */
-    var lastLampaActivity = null; // Створюємо власну безпечну історію
+    window.themesLastActivity = null; 
 
     Lampa.Listener.follow('activity', function (e) {
-        if (e.type === 'start') {
-            var active = Lampa.Activity.active();
-            
-            // Список компонентів, які мають право на спадковість
-            var trustedCircle = ['category_full', 'torrent_list', 'online_view', 'video_player', 'LampaUaNg'];
+        try {
+            if (e.type === 'start') {
+                var active = Lampa.Activity.active();
+                var trustedCircle = ['category_full', 'torrent_list', 'online_view', 'video_player', 'LampaUaNg'];
 
-            // 1. Залізобетонне скидання на головній
-            if (e.component === 'main') {
-                if (active) active.themes_color = null;
-            } 
-            // 2. Безпечна логіка спадковості (тільки для "Довіреного кола")
-            else if (active && !active.themes_color && lastLampaActivity) {
-                var isTrustedHeir = trustedCircle.indexOf(e.component) > -1;
+                if (e.component === 'main') {
+                    if (active) active.themes_color = null;
+                } 
+                else if (active && !active.themes_color && window.themesLastActivity) {
+                    var isTrustedHeir = trustedCircle.indexOf(e.component) > -1;
 
-                // Успадковуємо колір, якщо ми нащадок і прийшли з картки фільму
-                if (isTrustedHeir && lastLampaActivity.component === 'full' && lastLampaActivity.themes_color) {
-                    active.themes_color = lastLampaActivity.themes_color;
+                    if (isTrustedHeir && window.themesLastActivity.component === 'full' && window.themesLastActivity.themes_color) {
+                        active.themes_color = window.themesLastActivity.themes_color;
+                    }
+                }
+                
+                window.themesLastActivity = active; 
+                applyTheme();
+            }
+        } catch (err) {
+            console.log('Themes Plugin Error (Activity):', err);
+        }
+    });
+    
+    Lampa.Listener.follow('full', function (e) {
+        try {
+            if (!Lampa.Storage.get('themes_dynamic_theme', false)) return;
+
+            if (e.type === 'complite' || e.type === 'complete') {
+                // Універсальне отримання картки: підтримує Головну, Пошук та Рекомендації
+                var card = e.data ? (e.data.movie || e.data.card || e.data) : {};
+                
+                // Якщо це не фільм/серіал (немає ID) - відбій, щоб не крашити систему
+                if (!card || (!card.id && !card.tmdb_id)) return; 
+
+                // Безпечно дістаємо активність компонента
+                var targetActivity = (e.object && e.object.activity) ? e.object.activity : Lampa.Activity.active(); 
+                if (!targetActivity) return;
+
+                var cachedColor = getCachedLogoColor(card);
+                if (cachedColor) {
+                    targetActivity.themes_color = rgbToHex(cachedColor.r, cachedColor.g, cachedColor.b);
+                    applyTheme();
+                } else {
+                    fetchLogoColor(card, function(colorData) {
+                        if (colorData && targetActivity) {
+                            targetActivity.themes_color = rgbToHex(colorData.r, colorData.g, colorData.b);
+                            // Оновлюємо колір, тільки якщо юзер ще не вийшов з цієї сторінки
+                            if (Lampa.Activity.active() === targetActivity) applyTheme();
+                        }
+                    });
                 }
             }
-            
-            lastLampaActivity = active; // Зберігаємо поточну сторінку для наступного переходу
-            applyTheme();
+        } catch (err) {
+            console.log('Themes Plugin Error (Full):', err);
         }
     });
 
