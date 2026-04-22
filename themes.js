@@ -98,7 +98,7 @@
 
     }
 
-    // ДИНАМІЧНИЙ ФОКУС (Зміщення 10%, без штучних кольорів)
+     // ДИНАМІЧНИЙ ФОКУС (М'які селектори, без !important)
     function generateDynamicFocusCSS(mainHex) {
         var hsl = hexToHsl(mainHex);
         var r = parseInt(mainHex.slice(1, 3), 16);
@@ -109,34 +109,31 @@
         var isLight = yiq >= 140;
         var txtCol = isLight ? '#000000' : '#ffffff';
         
-        // Зміщення градієнта строго на 10%
         var gradL = isLight ? hsl.l - 10 : hsl.l + 10;
         gradL = Math.max(0, Math.min(100, gradL));
         var secondaryHex = hslToHex(hsl.h, hsl.s, gradL);
 
-        // Жорстко блокуємо анімацію тексту
-        var resetTransition = 'transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.3s ease !important; ';
+        // Жорстко блокуємо анімацію тексту без використання !important
+        var resetTransition = 'transition: background-color 0.1s ease, border-color 0.1s ease, transform 0.3s ease; ';
 
-        return ':root{--main-color:' + mainHex + '} html body .full-start__button.focus, html body .player-panel .button.focus, html body .full-person.selector.focus, html body .tag-count.selector.focus, html body .full-review.focus, html body .navigation-tabs__button.focus, html body .radio-item.focus { ' +
-               'background: linear-gradient(to right, ' + secondaryHex + ', ' + mainHex + ') !important; ' +
-               'color: ' + txtCol + ' !important; ' +
-               'border: none !important; ' + resetTransition + '} ' +
-               
-               'html body .full-start__button.focus svg, html body .player-panel .button.focus svg, html body .full-person.selector.focus svg, html body .tag-count.selector.focus svg, html body .full-review.focus svg, html body .navigation-tabs__button.focus svg, html body .radio-item.focus svg { ' +
-               'fill: ' + txtCol + ' !important; color: ' + txtCol + ' !important; transition: none !important; } ' +
-               
-               'html body .full-episode.focus::after, html body .card-episode.focus .full-episode::after, html body .card.focus .card__view::after, html body .card.hover .card__view::after, html body .torrent-item.focus::after { ' +
-               'border: 0.2em solid ' + mainHex + ' !important; box-shadow: none !important; } ' + 
-               
-               'html body .torrent-serial.focus { background-color: ' + secondaryHex + '44 !important; border: 0.2em solid ' + mainHex + ' !important; }';
-
+        return ':root{--main-color:' + mainHex + '} ' +
+               '.full-start__button.focus, .player-panel .button.focus, .full-person.selector.focus, .tag-count.selector.focus, .full-review.focus, .navigation-tabs__button.focus, .radio-item.focus { ' +
+               'background: linear-gradient(to right, ' + secondaryHex + ', ' + mainHex + '); ' +
+               'color: ' + txtCol + '; ' +
+               'border: none; ' + resetTransition + '} ' +
+               '.full-start__button.focus svg, .player-panel .button.focus svg, .full-person.selector.focus svg, .tag-count.selector.focus svg, .full-review.focus svg, .navigation-tabs__button.focus svg, .radio-item.focus svg { ' +
+               'fill: ' + txtCol + '; color: ' + txtCol + '; transition: none; } ' +
+               '.full-episode.focus::after, .card-episode.focus .full-episode::after, .card.focus .card__view::after, .card.hover .card__view::after, .torrent-item.focus::after { ' +
+               'border: 0.2em solid ' + mainHex + '; box-shadow: none; } ' + 
+               '.torrent-serial.focus { background-color: ' + secondaryHex + '44; border: 0.2em solid ' + mainHex + '; }';
     }
+
 
     window.themes_dynamic_current_hex = null;
 
     function applyTheme() {
         var type = Lampa.Storage.get('themes_theme_type', 'presets');
-        var theme = Lampa.Storage.get('interface_theme', 'default');
+        var theme = Lampa.Storage.get('themes_interface_preset', 'default');
         var customHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
         var isDynamicEnabled = Lampa.Storage.get('themes_dynamic_theme', false);
 
@@ -426,6 +423,12 @@
         }
 
         var showColorPicker = function() {
+            // Жорстка чистка: вбиваємо всі залишки старих вікон та слухачів перед відкриттям
+            $('.themes-picker').remove();
+            $(window).off('mousemove touchmove', window.themesOnMove);
+            $(window).off('mouseup touchend', window.themesOnEnd);
+            Lampa.Controller.remove('themes_color_picker'); // Звільняємо пам'ять контролера
+
             var currentHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
             var hsl = hexToHsl(currentHex);
             var h = hsl.h, s = hsl.s, l = hsl.l;
@@ -451,7 +454,6 @@
                 modal.find('[data-type="l"] .themes-picker__range-active').css('left', l + '%');
             }
 
-            // Механіка перетягування (Drag & Drop / Touch)
             var isDragging = false;
             var activeSlider = null;
 
@@ -467,28 +469,28 @@
                 update();
             }
 
-            var onMove = function(e) { if (isDragging && activeSlider) handleDrag(e, activeSlider); };
-            var onEnd = function() { isDragging = false; activeSlider = null; };
+            // Робимо функції глобальними (в об'єкті window), щоб 100% гарантувати їх видалення з пам'яті
+            window.themesOnMove = function(e) { if (isDragging && activeSlider) handleDrag(e, activeSlider); };
+            window.themesOnEnd = function() { isDragging = false; activeSlider = null; };
 
-            $(window).on('mousemove touchmove', onMove);
-            $(window).on('mouseup touchend', onEnd);
+            $(window).on('mousemove touchmove', window.themesOnMove);
+            $(window).on('mouseup touchend', window.themesOnEnd);
 
-            // Закриття і повернення фокусу
             var close = function() { 
-                $(window).off('mousemove touchmove', onMove);
-                $(window).off('mouseup touchend', onEnd);
+                $(window).off('mousemove touchmove', window.themesOnMove);
+                $(window).off('mouseup touchend', window.themesOnEnd);
                 modal.remove(); 
+                Lampa.Controller.remove('themes_color_picker'); // Чистимо контролер при закритті
                 Lampa.Controller.toggle('settings_component'); 
             };
 
             var saveAction = function() {
                 Lampa.Storage.set('themes_custom_hex', hslToHex(h, s, l));
                 applyTheme();
-                Lampa.Settings.update(); // Оновлює текст HEX в меню
+                Lampa.Settings.update();
                 close();
             };
 
-            // Слухачі для кнопок і слайдерів (Клік та Тач)
             modal.find('[data-action="save"]').on('click hover:enter', saveAction);
             modal.find('[data-action="cancel"]').on('click hover:enter', close);
 
@@ -499,7 +501,6 @@
                 Lampa.Controller.collectionFocus(this, modal[0]);
             });
 
-            // Виправлена навігація пульта (тепер передаємо чистий DOM [0])
             Lampa.Controller.add('themes_color_picker', {
                 toggle: function() { 
                     Lampa.Controller.collectionSet(modal[0]); 
@@ -574,7 +575,7 @@
 
         Lampa.SettingsApi.addParam({
             component: 'themes_plugin',
-            param: { name: 'interface_theme', type: 'select', values: { 'default': 'Стандартна', 'violet_stroke': 'Фіолетова', 'mint_dark': 'Mint Dark', 'retro': 'Ретро (Шоколад)', 'emerald': 'Emerald' }, 'default': 'default' },
+            param: { name: 'themes_interface_preset', type: 'select', values: { 'default': 'Стандартна', 'violet_stroke': 'Фіолетова', 'mint_dark': 'Mint Dark', 'retro': 'Ретро (Шоколад)', 'emerald': 'Emerald' }, 'default': 'default' },
             field: { name: 'Пресети тем', description: 'Оберіть одну з підготовлених тем' },
             onChange: function() { applyTheme(); }
         });
