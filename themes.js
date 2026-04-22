@@ -351,10 +351,11 @@
     /* ==========================================================================
        4. ГЛОБАЛЬНИЙ СЛУХАЧ АКТИВНОСТІ
        ========================================================================== */
+    var lastLampaActivity = null; // Створюємо власну безпечну історію
+
     Lampa.Listener.follow('activity', function (e) {
         if (e.type === 'start') {
             var active = Lampa.Activity.active();
-            var history = Lampa.Activity.history();
             
             // Список компонентів, які мають право на спадковість
             var trustedCircle = ['category_full', 'torrent_list', 'online_view', 'video_player', 'LampaUaNg'];
@@ -363,20 +364,21 @@
             if (e.component === 'main') {
                 if (active) active.themes_color = null;
             } 
-            // 2. Логіка спадковості (тільки для "Довіреного кола")
-            else if (active && !active.themes_color && history && history.length > 1) {
-                var prev = history[history.length - 2];
+            // 2. Безпечна логіка спадковості (тільки для "Довіреного кола")
+            else if (active && !active.themes_color && lastLampaActivity) {
                 var isTrustedHeir = trustedCircle.indexOf(e.component) > -1;
 
                 // Успадковуємо колір, якщо ми нащадок і прийшли з картки фільму
-                if (isTrustedHeir && prev && prev.component === 'full' && prev.themes_color) {
-                    active.themes_color = prev.themes_color;
+                if (isTrustedHeir && lastLampaActivity.component === 'full' && lastLampaActivity.themes_color) {
+                    active.themes_color = lastLampaActivity.themes_color;
                 }
             }
             
+            lastLampaActivity = active; // Зберігаємо поточну сторінку для наступного переходу
             applyTheme();
         }
     });
+
     
     Lampa.Listener.follow('full', function (e) {
         if (!Lampa.Storage.get('themes_dynamic_theme', false)) return;
@@ -449,6 +451,7 @@
                 modal.find('[data-type="l"] .themes-picker__range-active').css('left', l + '%');
             }
 
+            // Механіка перетягування (Drag & Drop / Touch)
             var isDragging = false;
             var activeSlider = null;
 
@@ -470,6 +473,7 @@
             $(window).on('mousemove touchmove', onMove);
             $(window).on('mouseup touchend', onEnd);
 
+            // Закриття і повернення фокусу
             var close = function() { 
                 $(window).off('mousemove touchmove', onMove);
                 $(window).off('mouseup touchend', onEnd);
@@ -480,10 +484,11 @@
             var saveAction = function() {
                 Lampa.Storage.set('themes_custom_hex', hslToHex(h, s, l));
                 applyTheme();
-                Lampa.Settings.update(); // Миттєво оновлює текст HEX в меню
+                Lampa.Settings.update(); // Оновлює текст HEX в меню
                 close();
             };
 
+            // Слухачі для кнопок і слайдерів (Клік та Тач)
             modal.find('[data-action="save"]').on('click hover:enter', saveAction);
             modal.find('[data-action="cancel"]').on('click hover:enter', close);
 
@@ -494,10 +499,11 @@
                 Lampa.Controller.collectionFocus(this, modal[0]);
             });
 
+            // Виправлена навігація пульта (тепер передаємо чистий DOM [0])
             Lampa.Controller.add('themes_color_picker', {
                 toggle: function() { 
-                    Lampa.Controller.collectionSet(modal.find('.selector')); 
-                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row').eq(0), modal[0]); 
+                    Lampa.Controller.collectionSet(modal[0]); 
+                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row')[0], modal[0]); 
                 },
                 left: function() {
                     var focused = modal.find('.selector.focus');
@@ -508,7 +514,7 @@
                         if (type === 'l') l = Math.max(0, l - 2);
                         update();
                     } else if (focused.data('action') === 'cancel') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]')[0], modal[0]);
                     }
                 },
                 right: function() {
@@ -520,27 +526,27 @@
                         if (type === 'l') l = Math.min(100, l + 2);
                         update();
                     } else if (focused.data('action') === 'save') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-action="cancel"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="cancel"]')[0], modal[0]);
                     }
                 },
                 up: function() {
                     var focused = modal.find('.selector.focus');
                     if (focused.hasClass('themes-picker__btn')) {
-                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]')[0], modal[0]);
                     } else if (focused.data('type') === 'l') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]')[0], modal[0]);
                     } else if (focused.data('type') === 's') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-type="h"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="h"]')[0], modal[0]);
                     }
                 },
                 down: function() {
                     var focused = modal.find('.selector.focus');
                     if (focused.data('type') === 'h') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]')[0], modal[0]);
                     } else if (focused.data('type') === 's') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]')[0], modal[0]);
                     } else if (focused.data('type') === 'l') {
-                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]'), modal[0]);
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]')[0], modal[0]);
                     }
                 },
                 back: close
@@ -550,6 +556,7 @@
             Lampa.Controller.toggle('themes_color_picker');
             update();
         };
+
 
 
         Lampa.SettingsApi.addComponent({
