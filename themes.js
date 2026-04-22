@@ -350,9 +350,7 @@
         } catch (err) {}
     });
 
-    /* ==========================================================================
-       4.5 ВІЗУАЛЬНИЙ ВИБІР КОЛЬОРУ (КОМПАКТНИЙ ДИЗАЙН)
-       ========================================================================== */
+
     function showColorPicker() {
         var currentHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
         var hsl = hexToHsl(currentHex);
@@ -366,23 +364,24 @@
                     .tcp-range-container { margin-bottom: 10px; padding: 8px 0; border-radius: 8px; border: 1px solid transparent; transition: all 0.2s ease; }
                     .tcp-range-container.focus { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); padding: 8px 10px; margin-left: -10px; margin-right: -10px; width: calc(100% + 20px); }
                     
-                    .tcp-label { color: #888; font-size: 12px; margin-bottom: 6px; font-weight: 400; }
-                    .tcp-range-container.focus .tcp-label { color: #fff; }
+                    /* БІЛІ НАПИСИ */
+                    .tcp-label { color: #fff; font-size: 12px; margin-bottom: 6px; font-weight: 400; }
+                    .tcp-range-container.focus .tcp-label { font-weight: 600; }
 
                     .tcp-range { -webkit-appearance: none; width: 100%; background: transparent; margin: 0; pointer-events: auto; }
                     .tcp-range:focus { outline: none; }
                     
-                    /* КОМПАКТНІ ПОВЗУНКИ */
-                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #262626; border-radius: 3px; }
-                    .tcp-range::-webkit-slider-thumb { height: 18px; width: 18px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -6px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+                    /* ТОВСТІШІ ПОВЗУНКИ (як в референсі) */
+                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 12px; cursor: pointer; background: #262626; border-radius: 6px; }
+                    .tcp-range::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
                     
-                    /* МЕНШІ КНОПКИ */
-                    .tcp-btn { flex: 1; text-align: center; background: #262626; padding: 8px; border-radius: 8px; cursor: pointer; color: #aaa; font-size: 13px; border: 1px solid transparent; transition: all 0.2s ease; }
+                    /* МЕНШІ КНОПКИ (зменшено padding та розмір шрифту) */
+                    .tcp-btn { flex: 1; text-align: center; background: #262626; padding: 6px; border-radius: 6px; cursor: pointer; color: #aaa; font-size: 12px; border: 1px solid transparent; transition: all 0.2s ease; margin: 0 5px; }
                     .tcp-btn.focus { background: #fff; color: #000; font-weight: 600; }
                 </style>
                 <div style="background:#111;border-radius:14px;padding:20px 25px;width:90%;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,0.8);border:1px solid #222;">
                     
-                    <div id="tcp_preview" style="background:${currentHex};height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:bold;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.6);border:2px solid #fff;margin-bottom:20px;letter-spacing:1px;">
+                    <div id="tcp_preview" style="background:${currentHex};height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.6);border:2px solid #fff;margin-bottom:20px;letter-spacing:1px;">
                         ${currentHex.toUpperCase()}
                     </div>
 
