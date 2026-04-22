@@ -354,29 +354,32 @@
         var currentHex = Lampa.Storage.get('themes_custom_hex', '#3da18d');
         var hsl = hexToHsl(currentHex);
         
-        // Зберігаємо поточний контролер
         var previousController = Lampa.Controller.enabled().name;
 
         var modalHTML = `
-            <div id="themes_color_picker_modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(5px);">
+            <div id="themes_color_picker_modal" style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.85);z-index:10000;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(4px);">
                 <style>
-                    #themes_color_picker_modal * { box-sizing: border-box; }
-                    .tcp-range-container { margin-bottom: 10px; padding: 8px 12px; border-radius: 8px; border: 1px solid transparent; transition: all 0.2s ease; }
-                    .tcp-range-container.focus { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.15); }
-                    .tcp-label { color: #a0a0a0; font-size: 13px; margin-bottom: 12px; font-weight: 500; transition: color 0.2s; }
+                    #themes_color_picker_modal * { box-sizing: border-box; font-family: sans-serif; }
+                    .tcp-range-container { margin-bottom: 15px; padding: 10px 0; border-radius: 8px; border: 1px solid transparent; transition: all 0.2s ease; }
+                    .tcp-range-container.focus { background: rgba(255,255,255,0.05); border-color: rgba(255,255,255,0.1); padding: 10px; margin-left: -10px; margin-right: -10px; width: calc(100% + 20px); }
+                    
+                    .tcp-label { color: #888; font-size: 14px; margin-bottom: 8px; font-weight: 400; }
                     .tcp-range-container.focus .tcp-label { color: #fff; }
+
                     .tcp-range { -webkit-appearance: none; width: 100%; background: transparent; margin: 0; pointer-events: auto; }
                     .tcp-range:focus { outline: none; }
-                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #333; border-radius: 3px; transition: background 0.2s; }
-                    .tcp-range-container.focus .tcp-range::-webkit-slider-runnable-track { background: #444; }
-                    .tcp-range::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 2px 6px rgba(0,0,0,0.6); transition: transform 0.1s; }
-                    .tcp-range-container.focus .tcp-range::-webkit-slider-thumb { transform: scale(1.15); }
-                    .tcp-btn { flex: 1; text-align: center; background: #2a2a2a; padding: 12px; border-radius: 8px; cursor: pointer; color: #ccc; font-size: 14px; border: 1px solid transparent; transition: all 0.2s ease; font-weight: 500; }
-                    .tcp-btn.focus, .tcp-btn:hover { background: #fff; color: #000; font-weight: 600; box-shadow: 0 4px 15px rgba(255,255,255,0.2); }
-                </style>
-                <div style="background:#141414;border-radius:12px;padding:25px;width:90%;max-width:380px;box-shadow:0 10px 40px rgba(0,0,0,0.7);border:1px solid #2a2a2a;">
                     
-                    <div id="tcp_preview" style="background:${currentHex};height:110px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:bold;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.5);border:2px solid rgba(255,255,255,0.9);margin-bottom:25px;letter-spacing:1px;">
+                    /* ТОВЩИНА СМУЖКИ */
+                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 8px; cursor: pointer; background: #262626; border-radius: 4px; }
+                    .tcp-range::-webkit-slider-thumb { height: 22px; width: 22px; border-radius: 50%; background: #fff; cursor: pointer; -webkit-appearance: none; margin-top: -7px; box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+                    
+                    /* КНОПКИ */
+                    .tcp-btn { flex: 1; text-align: center; background: #262626; padding: 10px; border-radius: 10px; cursor: pointer; color: #aaa; font-size: 14px; border: 1px solid transparent; transition: all 0.2s ease; }
+                    .tcp-btn.focus { background: #fff; color: #000; font-weight: 600; }
+                </style>
+                <div style="background:#111;border-radius:16px;padding:30px;width:90%;max-width:400px;box-shadow:0 20px 50px rgba(0,0,0,0.8);border:1px solid #222;">
+                    
+                    <div id="tcp_preview" style="background:${currentHex};height:120px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:bold;color:#fff;text-shadow:0 2px 5px rgba(0,0,0,0.6);border:3px solid #fff;margin-bottom:30px;letter-spacing:1px;">
                         ${currentHex.toUpperCase()}
                     </div>
 
@@ -395,7 +398,7 @@
                         <input type="range" class="tcp-range" id="tcp_l" min="0" max="100" value="${hsl.l}">
                     </div>
 
-                    <div style="display:flex;justify-content:space-between;gap:12px;margin-top:20px;">
+                    <div style="display:flex;justify-content:space-between;gap:20px;margin-top:25px;">
                         <div id="tcp_save" class="tcp-btn selector">Зберегти</div>
                         <div id="tcp_cancel" class="tcp-btn selector">Скасувати</div>
                     </div>
@@ -415,13 +418,11 @@
             var h = parseFloat(hSlider.val());
             var s = parseFloat(sSlider.val());
             var l = parseFloat(lSlider.val());
-            
             var newHex = hslToHex(h, s, l);
             preview.css('background', newHex).text(newHex.toUpperCase());
             return newHex;
         }
 
-        // Для сенсорного екрану / мишки
         modal.find('.tcp-range').on('input', updateColor);
 
         var closeModal = function() {
@@ -433,7 +434,6 @@
             var finalHex = updateColor();
             Lampa.Storage.set('themes_custom_hex', finalHex);
             applyTheme();
-            
             var hexInput = $('div[data-name="themes_custom_hex"] .settings-param__value');
             if(hexInput.length) hexInput.text(finalHex);
             closeModal();
@@ -446,18 +446,13 @@
                 Lampa.Controller.collectionSet(modal);
                 Lampa.Controller.collectionFocus(modal.find('.selector')[0], modal);
             },
-            up: function() {
-                Lampa.Navigator.direction('up');
-            },
-            down: function() {
-                Lampa.Navigator.direction('down');
-            },
+            up: function() { Lampa.Navigator.direction('up'); },
+            down: function() { Lampa.Navigator.direction('down'); },
             left: function() {
                 var focused = modal.find('.selector.focus');
                 if (focused.hasClass('tcp-range-container')) {
                     var input = focused.find('input');
-                    var step = parseFloat(focused.data('step'));
-                    var val = parseFloat(input.val()) - step;
+                    var val = parseFloat(input.val()) - parseFloat(focused.data('step'));
                     input.val(val < 0 ? 0 : val).trigger('input');
                 } else if (focused.attr('id') === 'tcp_cancel') {
                     Lampa.Controller.collectionFocus(modal.find('#tcp_save')[0], modal);
@@ -467,21 +462,19 @@
                 var focused = modal.find('.selector.focus');
                 if (focused.hasClass('tcp-range-container')) {
                     var input = focused.find('input');
-                    var step = parseFloat(focused.data('step'));
+                    var val = parseFloat(input.val()) + parseFloat(focused.data('step'));
                     var max = parseFloat(focused.data('max'));
-                    var val = parseFloat(input.val()) + step;
                     input.val(val > max ? max : val).trigger('input');
                 } else if (focused.attr('id') === 'tcp_save') {
                     Lampa.Controller.collectionFocus(modal.find('#tcp_cancel')[0], modal);
                 }
             },
-            back: function() {
-                closeModal();
-            }
+            back: function() { closeModal(); }
         });
 
         Lampa.Controller.toggle('themes_color_picker');
     }
+
 
     function initPlugin() {
         Lampa.SettingsApi.addComponent({
