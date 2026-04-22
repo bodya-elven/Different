@@ -363,43 +363,43 @@
                     #themes_color_picker_modal * { box-sizing: border-box; font-family: sans-serif; }
                     .tcp-range-container { margin-bottom: 10px; padding: 8px 0; border-radius: 8px; border: 1px solid transparent; }
                     
-                    /* БІЛІ НАПИСИ (злегка тьмяні без фокусу) */
-                    .tcp-label { color: #fff; font-size: 12px; margin-bottom: 6px; font-weight: 400; opacity: 0.5; transition: opacity 0.2s; }
+                    /* БІЛІ НАПИСИ ТА ВІДСТУП ЗНИЗУ */
+                    .tcp-label { color: #fff; font-size: 12px; margin-bottom: 12px; font-weight: 400; opacity: 0.5; transition: opacity 0.2s; }
                     .tcp-range-container.focus .tcp-label { font-weight: 600; opacity: 1; }
 
                     .tcp-range { -webkit-appearance: none; width: 100%; background: transparent; margin: 0; pointer-events: auto; }
                     .tcp-range:focus { outline: none; }
                     
-                    /* ТОВСТІШІ ПОВЗУНКИ */
-                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 12px; cursor: pointer; background: #262626; border-radius: 6px; }
+                    /* ТРІШКИ НИЖЧІ СМУГИ (10px замість 12px) */
+                    .tcp-range::-webkit-slider-runnable-track { width: 100%; height: 10px; cursor: pointer; background: #262626; border-radius: 5px; }
                     
-                    /* ТОЧКА (СПОКІЙНИЙ СТАН) */
-                    .tcp-range::-webkit-slider-thumb { height: 20px; width: 20px; border-radius: 50%; background: #aaa; cursor: pointer; -webkit-appearance: none; margin-top: -4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: all 0.2s; }
+                    /* МЕНША ТОЧКА (18px замість 20px) */
+                    .tcp-range::-webkit-slider-thumb { height: 18px; width: 18px; border-radius: 50%; background: #aaa; cursor: pointer; -webkit-appearance: none; margin-top: -4px; box-shadow: 0 2px 4px rgba(0,0,0,0.5); transition: all 0.2s; }
                     
-                    /* ФОКУС ВИКЛЮЧНО НА ТОЧЦІ (ЗБІЛЬШУЄТЬСЯ І СВІТИТЬСЯ) */
-                    .tcp-range-container.focus .tcp-range::-webkit-slider-thumb { background: #fff; transform: scale(1.4); box-shadow: 0 0 0 4px rgba(255,255,255,0.2), 0 4px 8px rgba(0,0,0,0.6); }
+                    /* ФОКУС (тільки збільшення та тінь) */
+                    .tcp-range-container.focus .tcp-range::-webkit-slider-thumb { background: #fff; transform: scale(1.2); box-shadow: 0 4px 10px rgba(0,0,0,0.7); }
                     
                     /* МЕНШІ КНОПКИ (зменшено padding та розмір шрифту) */
                     .tcp-btn { flex: 1; text-align: center; background: #262626; padding: 6px; border-radius: 6px; cursor: pointer; color: #aaa; font-size: 12px; border: 1px solid transparent; transition: all 0.2s ease; margin: 0 5px; }
                     .tcp-btn.focus { background: #fff; color: #000; font-weight: 600; }
                 </style>
-                <div style="background:#111;border-radius:14px;padding:20px 25px;width:90%;max-width:340px;box-shadow:0 20px 50px rgba(0,0,0,0.8);border:1px solid #222;">
+                <div style="background:#111;border-radius:14px;padding:20px 25px;width:90%;max-width:420px;box-shadow:0 20px 50px rgba(0,0,0,0.8);border:1px solid #222;">
                     
                     <div id="tcp_preview" style="background:${currentHex};height:90px;border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:bold;color:#fff;text-shadow:0 2px 4px rgba(0,0,0,0.6);border:2px solid #fff;margin-bottom:20px;letter-spacing:1px;">
                         ${currentHex.toUpperCase()}
                     </div>
 
-                    <div class="tcp-range-container selector" data-type="h" data-step="5" data-max="360">
+                    <div class="tcp-range-container selector" data-type="h" data-step="1" data-max="360">
                         <div class="tcp-label">Тон (Hue)</div>
                         <input type="range" class="tcp-range" id="tcp_h" min="0" max="360" value="${hsl.h}">
                     </div>
                     
-                    <div class="tcp-range-container selector" data-type="s" data-step="2" data-max="100">
+                    <div class="tcp-range-container selector" data-type="s" data-step="1" data-max="100">
                         <div class="tcp-label">Насиченість (Saturation)</div>
                         <input type="range" class="tcp-range" id="tcp_s" min="0" max="100" value="${hsl.s}">
                     </div>
                     
-                    <div class="tcp-range-container selector" data-type="l" data-step="2" data-max="100">
+                    <div class="tcp-range-container selector" data-type="l" data-step="1" data-max="100">
                         <div class="tcp-label">Яскравість (Lightness)</div>
                         <input type="range" class="tcp-range" id="tcp_l" min="0" max="100" value="${hsl.l}">
                     </div>
@@ -447,6 +447,50 @@
 
         $('#tcp_cancel').on('hover:enter click', closeModal);
 
+        // Змінні для вимірювання швидкості натискання
+        var lastMoveTime = 0;
+        var moveSpeedMultiplier = 1;
+
+        // Загальна функція для руху (щоб не дублювати код)
+        function handleSliderMove(direction) {
+            var focused = modal.find('.selector.focus');
+            if (focused.hasClass('tcp-range-container')) {
+                var now = Date.now();
+                
+                // Якщо пульт затиснуто (команди йдуть швидко)
+                if (now - lastMoveTime < 150) {
+                    moveSpeedMultiplier = Math.min(moveSpeedMultiplier * 1.25, 10); // Розганяємо крок максимум до x10
+                } else {
+                    moveSpeedMultiplier = 1; // Скидаємо, якщо кнопка була відпущена
+                }
+                lastMoveTime = now;
+
+                var input = focused.find('input');
+                var baseStep = parseFloat(focused.data('step'));
+                var max = parseFloat(focused.data('max'));
+                
+                var actualStep = baseStep * moveSpeedMultiplier; // Застосовуємо прискорення
+                var val = parseFloat(input.val());
+                
+                if (direction === 'left') {
+                    val -= actualStep;
+                } else {
+                    val += actualStep;
+                }
+                
+                // Запобіжник, щоб не вийти за межі
+                val = Math.max(0, Math.min(max, val));
+                input.val(val).trigger('input');
+            } else {
+                // Навігація по кнопках знизу
+                if (direction === 'left' && focused.attr('id') === 'tcp_cancel') {
+                    Lampa.Controller.collectionFocus(modal.find('#tcp_save')[0], modal);
+                } else if (direction === 'right' && focused.attr('id') === 'tcp_save') {
+                    Lampa.Controller.collectionFocus(modal.find('#tcp_cancel')[0], modal);
+                }
+            }
+        }
+
         Lampa.Controller.add('themes_color_picker', {
             toggle: function() {
                 Lampa.Controller.collectionSet(modal);
@@ -467,28 +511,14 @@
                 if (idx < 3) Lampa.Controller.collectionFocus(items.eq(idx + 1)[0], modal);
             },
             left: function() {
-                var focused = modal.find('.selector.focus');
-                if (focused.hasClass('tcp-range-container')) {
-                    var input = focused.find('input');
-                    var val = parseFloat(input.val()) - parseFloat(focused.data('step'));
-                    input.val(val < 0 ? 0 : val).trigger('input');
-                } else if (focused.attr('id') === 'tcp_cancel') {
-                    Lampa.Controller.collectionFocus(modal.find('#tcp_save')[0], modal);
-                }
+                handleSliderMove('left');
             },
             right: function() {
-                var focused = modal.find('.selector.focus');
-                if (focused.hasClass('tcp-range-container')) {
-                    var input = focused.find('input');
-                    var val = parseFloat(input.val()) + parseFloat(focused.data('step'));
-                    var max = parseFloat(focused.data('max'));
-                    input.val(val > max ? max : val).trigger('input');
-                } else if (focused.attr('id') === 'tcp_save') {
-                    Lampa.Controller.collectionFocus(modal.find('#tcp_cancel')[0], modal);
-                }
+                handleSliderMove('right');
             },
             back: function() { closeModal(); }
         });
+        
 
         Lampa.Controller.toggle('themes_color_picker');
 
