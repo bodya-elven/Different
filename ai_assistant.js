@@ -36,7 +36,6 @@
             { id: 'gemini-3-flash-preview', name: 'gemini-3-flash-preview' },
             { id: 'gemini-2.5-flash-lite', name: 'gemini-2.5-flash-lite' },
             { id: 'gemini-2.5-flash', name: 'gemini-2.5-flash' },
-            { id: 'gemini-2.5-pro', name: 'gemini-2.5-pro' },
             { id: 'gemma-4-31b-it', name: 'gemma-4-31b-it' },
             { id: 'gemma-3-27b-it', name: 'gemma-3-27b-it' },
             { id: 'gemma-3-4b-it', name: 'gemma-3-4b-it' }
@@ -538,7 +537,7 @@
                 var currentKey = task.key;
                 
                 var payload = { contents: [{ parts: [{ text: p }] }] };
-                if (useSearch && targetModel.indexOf('gemini') === 0 && targetModel.indexOf('gemini-3') === -1 && targetModel.indexOf('gemini-2.5-pro') === -1) {
+                if (useSearch && targetModel.indexOf('gemini') === 0 && targetModel.indexOf('gemini-3') === -1) {
                     payload.tools = [{ googleSearch: {} }];
                 }
 

@@ -449,12 +449,11 @@
                 modal.find('[data-type="l"] .themes-picker__range-active').css('left', l + '%');
             }
 
-            // Механіка перетягування (Drag & Drop / Touch)
             var isDragging = false;
             var activeSlider = null;
 
             function handleDrag(e, target) {
-                var rect = target[0].getBoundingClientRect();
+                var rect = target.find('.themes-picker__range')[0].getBoundingClientRect();
                 var clientX = e.clientX || (e.originalEvent && e.originalEvent.touches ? e.originalEvent.touches[0].clientX : 0);
                 var percent = Math.min(100, Math.max(0, (clientX - rect.left) / rect.width * 100));
                 
@@ -471,7 +470,6 @@
             $(window).on('mousemove touchmove', onMove);
             $(window).on('mouseup touchend', onEnd);
 
-            // Закриття і повернення фокусу
             var close = function() { 
                 $(window).off('mousemove touchmove', onMove);
                 $(window).off('mouseup touchend', onEnd);
@@ -482,11 +480,10 @@
             var saveAction = function() {
                 Lampa.Storage.set('themes_custom_hex', hslToHex(h, s, l));
                 applyTheme();
-                Lampa.Settings.update(); // Миттєво оновлює текст HEX в меню Лампи
+                Lampa.Settings.update(); // Миттєво оновлює текст HEX в меню
                 close();
             };
 
-            // Слухачі для кнопок і слайдерів
             modal.find('[data-action="save"]').on('click hover:enter', saveAction);
             modal.find('[data-action="cancel"]').on('click hover:enter', close);
 
@@ -499,27 +496,51 @@
 
             Lampa.Controller.add('themes_color_picker', {
                 toggle: function() { 
-                    Lampa.Controller.collectionSet(modal[0]); 
-                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row')[0], modal[0]); 
+                    Lampa.Controller.collectionSet(modal.find('.selector')); 
+                    Lampa.Controller.collectionFocus(modal.find('.themes-picker__row').eq(0), modal[0]); 
                 },
                 left: function() {
-                    var focused = modal.find('.themes-picker__row.focus');
-                    if (focused.length) {
+                    var focused = modal.find('.selector.focus');
+                    if (focused.hasClass('themes-picker__row')) {
                         var type = focused.data('type');
                         if (type === 'h') h = (h - 5 + 360) % 360;
                         if (type === 's') s = Math.max(0, s - 2);
                         if (type === 'l') l = Math.max(0, l - 2);
                         update();
+                    } else if (focused.data('action') === 'cancel') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]'), modal[0]);
                     }
                 },
                 right: function() {
-                    var focused = modal.find('.themes-picker__row.focus');
-                    if (focused.length) {
+                    var focused = modal.find('.selector.focus');
+                    if (focused.hasClass('themes-picker__row')) {
                         var type = focused.data('type');
                         if (type === 'h') h = (h + 5) % 360;
                         if (type === 's') s = Math.min(100, s + 2);
                         if (type === 'l') l = Math.min(100, l + 2);
                         update();
+                    } else if (focused.data('action') === 'save') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="cancel"]'), modal[0]);
+                    }
+                },
+                up: function() {
+                    var focused = modal.find('.selector.focus');
+                    if (focused.hasClass('themes-picker__btn')) {
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]'), modal[0]);
+                    } else if (focused.data('type') === 'l') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]'), modal[0]);
+                    } else if (focused.data('type') === 's') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="h"]'), modal[0]);
+                    }
+                },
+                down: function() {
+                    var focused = modal.find('.selector.focus');
+                    if (focused.data('type') === 'h') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="s"]'), modal[0]);
+                    } else if (focused.data('type') === 's') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-type="l"]'), modal[0]);
+                    } else if (focused.data('type') === 'l') {
+                        Lampa.Controller.collectionFocus(modal.find('[data-action="save"]'), modal[0]);
                     }
                 },
                 back: close
