@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.6.2',
+        version: '2.6.3',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -205,27 +205,20 @@ var css = '<style>\
             getUrl: function (action, page, query, category) {
                 var base = 'https://xom.vtrahe.work';
                 
-                // 1. Пошук
                 if (action === 'search') return base + '/index.php?do=search&subaction=search&story=' + encodeURIComponent(query) + (page > 1 ? '&search_start=' + page : '');
                 
-                // 2. Якщо переходимо по прямому посиланню (наприклад, клік по моделі з меню)
                 if (action === 'direct' && category && category.indexOf('http') !== -1) {
                     return page > 1 ? category + 'page/' + page + '/' : category;
                 }
 
-                // 3. Основна навігація через фільтри
                 var url = base;
                 if (category) url += '/' + category;
-                
                 if (url.slice(-1) !== '/') url += '/';
-
-                if (page > 1) {
-                    url += 'page/' + page + '/';
-                }
+                if (page > 1) url += 'page/' + page + '/';
                 
                 return url;
             },
-            getFilters: function () {
+            getFilter: function () {
                 return [
                     {
                         title: 'Навігація Vtrahe',
@@ -237,7 +230,7 @@ var css = '<style>\
                             { title: 'Каталог категорій', value: 'categories' },
                             { title: 'Каталог студій', value: 'porno-studio' },
                             { title: 'Моделі (Популярні)', value: 'pornstar' },
-                            { title: 'Моделі (За кількістю)', value: 'pornstar/count' }, // якщо сортування інше, зможемо поправити
+                            { title: 'Моделі (За кількістю)', value: 'pornstar/count' },
                             { title: 'Моделі (За алфавітом)', value: 'pornstar/abc' }
                         ]
                     }
@@ -245,20 +238,19 @@ var css = '<style>\
             },
             parseItems: function (htmlText, doc) {
                 var results = [];
-                // Шукаємо всі типи карток
                 var items = doc.querySelectorAll('.innercont, .pornstar, .category-item');
                 
-                items.forEach(function(item) {
+                // Суворо класичний ES5 цикл for
+                for (var i = 0; i < items.length; i++) {
+                    var item = items[i];
                     var linkObj = item.querySelector('a');
                     var imgObj = item.querySelector('img');
                     
                     if (linkObj && imgObj) {
                         var url = linkObj.getAttribute('href') || '';
                         var img = imgObj.getAttribute('data-src') || imgObj.getAttribute('src') || '';
-                        var title = '';
-                        
                         var titleObj = item.querySelector('.preview_title a, .name, .catname');
-                        title = titleObj ? titleObj.textContent.trim() : (imgObj.getAttribute('title') || imgObj.getAttribute('alt') || 'Без назви');
+                        var title = titleObj ? titleObj.textContent.trim() : (imgObj.getAttribute('title') || imgObj.getAttribute('alt') || 'Без назви');
 
                         if (url && img) {
                             if (url.indexOf('http') === -1) url = 'https://xom.vtrahe.work' + url;
@@ -282,19 +274,17 @@ var css = '<style>\
                                     title: title,
                                     url: url,
                                     picture: img,
-                                    time: countObj ? countObj.textContent.trim() : '',
+                                    time: countObj ? countObj.textContent.trim() + ' відео' : '',
                                     is_models: isModels,
                                     is_grid: isGrid
                                 });
                             }
                         }
                     }
-                });
+                }
                 return { results: results, total_pages: 50 };
             },
-
             getStreams: function (htmlText, doc, element, onSuccess, onError) {
-                // Знаходимо всі кнопки вибору якості
                 var qBtns = doc.querySelectorAll('.chooseq');
                 var streams = [];
                 
@@ -310,13 +300,11 @@ var css = '<style>\
                 }
 
                 if (streams.length > 0) {
-                    // Сортуємо по спаданню роздільної здатності (наприклад, 1080 -> 720 -> 480)
+                    // Віддаємо тільки найкращу якість
                     streams.sort(function(a, b) { return b.qNum - a.qNum; });
-                    
-                    // Віддаємо тільки найкращу якість (найперший елемент)
                     onSuccess([{ title: streams[0].title, url: streams[0].url }]);
                 } else {
-                    // Фолбек, якщо плеєр виведено стандартним тегом
+                    // Фолбек
                     var videoSrc = doc.querySelector('video source');
                     if (videoSrc && videoSrc.getAttribute('src')) {
                         onSuccess([{ title: 'Vtrahe (Auto)', url: videoSrc.getAttribute('src') }]);
@@ -328,7 +316,6 @@ var css = '<style>\
             getMenu: function(doc, htmlText, element) {
                 var menu = [];
                 
-                // 1. Актори та Студії (з блоків інфо)
                 var catLinks = doc.querySelectorAll('.catspisok a, .infocategory a');
                 for (var i = 0; i < catLinks.length; i++) {
                     var aUrl = catLinks[i].getAttribute('href');
@@ -342,7 +329,6 @@ var css = '<style>\
                     }
                 }
 
-                // 2. Теги
                 var tagLinks = doc.querySelectorAll('.tagsspisok a');
                 for (var j = 0; j < tagLinks.length; j++) {
                     var tUrl = tagLinks[j].getAttribute('href');
@@ -352,7 +338,6 @@ var css = '<style>\
                     }
                 }
 
-                // 3. Схожі відео (знаходимо блок #preview і беремо всі картки звідти)
                 var simBlocks = doc.querySelectorAll('#preview .innercont');
                 for (var k = 0; k < simBlocks.length; k++) {
                     var sLink = simBlocks[k].querySelector('a');
