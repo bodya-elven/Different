@@ -7,7 +7,7 @@
 
     var pluginManifest = {
         name: 'CatalogX',
-        version: '2.6.9',
+        version: '2.6.2',
         description: 'Мульти-каталог для медіаконтенту.',
         author: '@bodya_elven'
     };
@@ -36,8 +36,39 @@
         }, delay);
     };
     
-    
+    // Глобальна функція для збереження в історію
+    window.pluginx_addToHistory = function(item) {
+        if (item.is_grid) return; 
 
+        var history = window.Lampa.Storage.get('pluginx_history', []);
+        
+        // Видаляємо дублікат, якщо це відео вже є в історії
+        history = history.filter(function(i) { return i.url !== item.url; });
+        
+        // Додаємо на початок списку
+        history.unshift(item);
+        
+        // Обмежуємо історію до 100 записів, щоб не забивати пам'ять
+        if (history.length > 100) history.pop();
+        
+        window.Lampa.Storage.set('pluginx_history', history);
+    };
+    
+    // Глобальна функція для видалення з історії
+    window.pluginx_removeFromHistory = function(item, cardElement) {
+        var history = window.Lampa.Storage.get('pluginx_history', []);
+        
+        // Відфільтровуємо масив, залишаючи всі відео, крім того, що видаляємо
+        history = history.filter(function(i) { return i.url !== item.url; });
+        window.Lampa.Storage.set('pluginx_history', history);
+        
+        // Якщо ми знаходимося в самій історії, видаляємо картку з екрана
+        if (cardElement) {
+            $(cardElement).remove();
+        }
+        window.Lampa.Noty.show('Видалено з історії');
+    };
+    
     function startPlugin() {
         if (window.pluginx_ready) return;
         window.pluginx_ready = true;
@@ -95,7 +126,8 @@ var css = '<style>\
         $('body').append(css);
 
         window.pluginx_smartRequest = function(url, onSuccess, onError, customHeaders) {
-            var network = new Lampa.Reguest(), headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" };
+            var NetworkClass = window.Lampa.Request || window.Lampa.Reguest;
+            var network = new NetworkClass(), headers = { "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36" };
             if (customHeaders) { for (var k in customHeaders) headers[k] = customHeaders[k]; }
             var isAndroid = typeof window !== 'undefined' && window.Lampa && window.Lampa.Platform && window.Lampa.Platform.is('android');
             if (isAndroid) {
@@ -148,188 +180,166 @@ var css = '<style>\
 
         var Adapters = {
 
-
+            // =========================================================================
+            // ОБРАНЕ ТА ІСТОРІЯ
+            // =========================================================================
+            bookmarks: {
+                title: '⭐ Обране',
+                parse: function() {
+                    return window.Lampa.Storage.get('pluginx_bookmarks', []);
+                }
+            },
+            history: {
+                title: '🕒 Історія',
+                parse: function() {
+                    return window.Lampa.Storage.get('pluginx_history', []);
+                }
+            },
+            
 
             // =========================================================================
-            // АДАПТЕР: BRAZZ
+            // АДАПТЕР: LETSJERK
             // =========================================================================
-            brazz: {
-                title: 'Brazz',
-                domain: 'https://brazz.org',
+            letsjerk: {
+                title: 'Letsjerk',
+                domain: 'https://letsjerk.tv',
                 
-                getHomeUrl: function() { return this.domain + '/videos/free-brazz-premium-2026/'; },
+                getHomeUrl: function() { return this.domain + '/'; },
                 
                 getSearchUrl: function(query) { 
-                    return this.domain + '/search/free-brazz-premium-2026/?s=' + encodeURIComponent(query); 
+                    return this.domain + '/?s=' + encodeURIComponent(query); 
                 },
                 
                 getUrl: function(object, page) {
                     var url = object.url || this.getHomeUrl();
                     if (page > 1) {
-                        var parts = url.split('free-brazz-premium-2026');
-                        var base = parts[0].replace(/\/page\/\d+\/?$/, '').replace(/\/+$/, '');
-                        return base + '/page/' + page + '/free-brazz-premium-2026/';
+                        // Формат: /page/2/ або /category1/anal/page/2/
+                        var base = url.split('?')[0].replace(/\/$/, '');
+                        return base + '/page/' + page + '/' + (url.indexOf('?') !== -1 ? '?' + url.split('?')[1] : '');
                     }
                     return url;
                 },
 
                 checkPagination: function(doc, page) {
                     var pagination = doc.querySelector('.pagination');
-                    if (!pagination) return false; 
+                    if (!pagination) return false;
+                    
+                    // Шукаємо активну сторінку
                     var current = pagination.querySelector('.current');
-                    // Запобігаємо зацикленню: якщо сервер віддає сторінку 1 замість 4
-                    if (!current || parseInt(current.textContent) !== page) return false;
-                    return true;
+                    if (!current) return false;
+                    
+                    // Перевіряємо, чи номер поточної сторінки в HTML збігається з тим, що запитала Lampa
+                    var currentPageNum = parseInt(current.textContent.trim());
+                    if (currentPageNum !== page) return false;
+
+                    // Правило: якщо після поточного елемента немає більше посилань (inactive/next), зупиняємось
+                    var nextLink = current.parentElement.nextElementSibling;
+                    return !!nextLink;
                 },
 
                 getFilters: function(doc, currentUrl) {
-                    // Показуємо сортування ТІЛЬКИ на головній або на сторінках сортування
-                    var isHome = currentUrl.endsWith('/videos/free-brazz-premium-2026/') || currentUrl.endsWith('/videos/free-brazz-premium-2026');
-                    var isSort = currentUrl.indexOf('/videos/sortby/') !== -1;
-                    
-                    if (!isHome && !isSort) return null;
+                    // Показуємо фільтри тільки в розділах з відео (не в списках категорій)
+                    if (currentUrl.indexOf('/categories/') !== -1 || currentUrl.indexOf('/pornstars/') !== -1) return null;
 
                     var activeSort = 'Newest';
-                    if (currentUrl.indexOf('/sortby/rating/') !== -1) activeSort = 'Top Rated';
-                    else if (currentUrl.indexOf('/sortby/views/') !== -1) activeSort = 'Most Viewed';
-                    else if (currentUrl.indexOf('/sortby/beingwatched/') !== -1) activeSort = 'Being watched';
+                    if (currentUrl.indexOf('order=rating') !== -1) activeSort = 'Rating';
+                    else if (currentUrl.indexOf('order=views') !== -1) activeSort = 'Views';
+                    else if (currentUrl.indexOf('order=comments') !== -1) activeSort = 'Comments';
 
+                    var baseUrl = currentUrl.split('?')[0];
                     return [{
                         subtitle: '↕️ ' + activeSort,
                         items: [
-                            { title: 'Newest', url: this.domain + '/videos/free-brazz-premium-2026/' },
-                            { title: 'Top Rated', url: this.domain + '/videos/sortby/rating/free-brazz-premium-2026/' },
-                            { title: 'Most Viewed', url: this.domain + '/videos/sortby/views/free-brazz-premium-2026/' },
-                            { title: 'Being watched', url: this.domain + '/videos/sortby/beingwatched/free-brazz-premium-2026/' }
+                            { title: 'Newest', url: baseUrl + '?order=newest' },
+                            { title: 'Rating', url: baseUrl + '?order=rating' },
+                            { title: 'Views', url: baseUrl + '?order=views' },
+                            { title: 'Comments', url: baseUrl + '?order=comments' }
                         ]
                     }];
                 },
 
                 getNavItems: function() {
                     return [
-                        { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories/free-brazz-premium-2026/', is_categories: true },
-                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/gender/female/free-brazz-premium-2026/', is_models: true },
-                        { title: '🎬 Студії', action: 'nav', url: this.domain + '/sites/free-brazz-premium-2026/', is_studios: true }
+                        { title: '🗄️ Категорії', action: 'nav', url: this.domain + '/categories/', is_categories: true },
+                        { title: '👸 Моделі', action: 'nav', url: this.domain + '/pornstars/', is_models: true }
                     ];
                 },
 
                 parse: function(doc, currentUrl, object) {
-                    // Додаємо CSS для відображення студій по ширині (contain)
-                    if (!document.getElementById('brazz_custom_css')) {
-                        var style = document.createElement('style');
-                        style.id = 'brazz_custom_css';
-                        style.innerHTML = '.main-grid.studios-grid .card__img { object-fit: contain !important; padding: 10px; background: #fff !important; }';
-                        document.head.appendChild(style);
-                    }
-
                     var results = [];
-                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0];
                     
-                    // --- 1. ПАРСИНГ СТУДІЙ ---
-                    if (object.is_studios || targetPath.indexOf('/sites/') !== -1) {
-                        var sHeaders = doc.querySelectorAll('h1.widget-title');
-                        for(var s=0; s<sHeaders.length; s++) {
-                            var span = sHeaders[s].querySelector('span');
-                            if(!span) continue;
-                            var sTitle = span.textContent.trim();
-                            var container = sHeaders[s].nextElementSibling;
-                            if(container && container.tagName === 'DIV') {
-                                var sLink = container.querySelector('a');
-                                var sImg = container.querySelector('img');
-                                if(sLink && sImg) {
-                                    var sUrl = sLink.getAttribute('href');
-                                    if (sUrl && sUrl.indexOf('http') !== 0) sUrl = this.domain + sUrl;
-                                    var sImgSrc = sImg.getAttribute('data-src') || sImg.getAttribute('src');
-                                    results.push({ 
-                                        name: sTitle, 
-                                        url: sUrl, 
-                                        picture: sImgSrc, img: sImgSrc, 
-                                        is_grid: true, 
-                                        card_grid: 'categories-grid studios-grid' // studios-grid активує наш CSS
-                                    });
-                                }
-                            }
-                        }
-                        return results;
-                    }
+                    // --- 1. ПАРСИНГ КАТЕГОРІЙ ТА МОДЕЛЕЙ (Taxonomy) ---
+                    var taxItems = doc.querySelectorAll('.taxonomy-item');
+                    if (taxItems.length > 0) {
+                        for (var i = 0; i < taxItems.length; i++) {
+                            var t = taxItems[i];
+                            var tLink = t.querySelector('a.th');
+                            var tTitle = t.querySelector('.taxonomy-name');
+                            var tImg = t.querySelector('img');
+                            var tCount = t.querySelector('.taxonomy-videos .number');
 
-                    // --- 2. ПАРСИНГ КАТЕГОРІЙ ТА МОДЕЛЕЙ ---
-                    if (object.is_categories || object.is_models || targetPath.indexOf('/categories/') !== -1 || targetPath.indexOf('/pornstars/') !== -1) {
-                        var items = doc.querySelectorAll('article.thumb-block');
-                        for (var i = 0; i < items.length; i++) {
-                            var el = items[i];
-                            var a = el.querySelector('a');
-                            var titleEl = el.querySelector('.cat-title, .actor-title');
-                            var imgEl = el.querySelector('img');
-
-                            if (a && titleEl) {
-                                var imgSrc = imgEl ? (imgEl.getAttribute('data-src') || imgEl.getAttribute('src')) : '';
-                                var mUrl = a.getAttribute('href');
-                                if (mUrl && mUrl.indexOf('http') !== 0) mUrl = this.domain + mUrl;
+                            if (tLink && tTitle) {
+                                var tImgSrc = tImg ? (tImg.getAttribute('data-original') || tImg.getAttribute('src')) : '';
                                 results.push({
-                                    name: titleEl.textContent.trim(),
-                                    url: mUrl,
-                                    picture: imgSrc, img: imgSrc,
+                                    name: tTitle.textContent.trim(),
+                                    url: tLink.getAttribute('href'),
+                                    picture: tImgSrc, img: tImgSrc,
                                     is_grid: true,
-                                    card_grid: 'categories-grid'
+                                    card_grid: 'categories-grid',
+                                    card_badge: tCount ? tCount.textContent.trim() : ''
                                 });
                             }
                         }
                         return results;
                     }
 
-                    // --- 3. ПАРСИНГ ВІДЕО ---
-                    var videosContainer = doc;
-                    if (object.is_related) {
-                        var underBlock = doc.querySelector('.under-video-block');
-                        if (underBlock) videosContainer = underBlock;
-                    }
-
-                    var videos = videosContainer.querySelectorAll('article.loop-video');
+                    // --- 2. ПАРСИНГ ВІДЕО ---
+                    var videos = doc.querySelectorAll('.thumbs ul li');
                     for (var j = 0; j < videos.length; j++) {
                         var v = videos[j];
-                        var link = v.querySelector('a');
+                        var link = v.querySelector('a.th');
+                        if (!link || v.classList.contains('taxonomy-item')) continue;
+
                         var imgV = v.querySelector('img');
-                        var dur = v.querySelector('.duration');
+                        var dur = v.querySelector('.time_thumb em');
+                        var qual = v.querySelector('.quality');
+                        var rate = v.querySelector('.rate_thumb em');
 
-                        if (link) {
-                            var vImg = imgV ? (imgV.getAttribute('data-src') || imgV.getAttribute('src')) : '';
-                            var vTitle = link.getAttribute('title') || '';
-                            if (!vTitle) {
-                                var hdr = v.querySelector('header span');
-                                vTitle = hdr ? hdr.textContent : '';
-                            }
-                            vTitle = vTitle.replace(/^[A-Z][a-z]{2}\s\d{2}:\s*/i, '').trim();
+                        var vImg = imgV ? (imgV.getAttribute('data-original') || imgV.getAttribute('src')) : '';
+                        var vRate = rate ? '👍 ' + rate.textContent.trim() : '';
+                        var vQual = qual ? qual.textContent.trim() : '';
 
-                            var previewUrl = "";
-                            if (vImg && vImg.indexOf('project1content.com') !== -1) {
-                                previewUrl = vImg.replace('media-', 'prog-')
-                                                 .replace(/\/m=[^\/]+\//, '/')
-                                                 .replace('poster/poster_01.jpg', 'mediabook/mediabook_320p.mp4');
-                            }
-                            
-                            var vUrl = link.getAttribute('href');
-                            if (vUrl && vUrl.indexOf('http') !== 0) vUrl = this.domain + vUrl;
-
-                            results.push({
-                                name: vTitle,
-                                url: vUrl,
-                                picture: vImg, img: vImg,
-                                time: dur ? dur.textContent.trim() : '', 
-                                preview: previewUrl
-                            });
-                        }
+                        results.push({
+                            name: link.getAttribute('title') || v.querySelector('.desc .title').textContent.trim(),
+                            url: link.getAttribute('href'),
+                            picture: vImg, img: vImg,
+                            time: dur ? dur.textContent.trim() : '',
+                            card_badge: vRate || vQual // Пріоритет рейтингу, потім якості
+                        });
                     }
                     return results;
                 },
 
                 getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    var match = element.url.match(/\/video\/(\d+)\//);
-                    
-                    if (match && match[1]) {
-                        var videoId = match[1];
-                        var streamUrl = 'https://brazzpw.com/player/m3u8_' + videoId + '.m3u8?hash=1&time=1';
-                        startPlayback([{ title: 'Auto', url: streamUrl }]);
+                    var iframe = doc.querySelector('.video-container iframe');
+                    if (iframe) {
+                        var src = iframe.getAttribute('src');
+                        if (src.indexOf('//') === 0) src = 'https:' + src;
+
+                        // Перевіряємо, чи це плеєр VOE
+                        if (src.indexOf('voe') !== -1) {
+                            window.pluginx_smartRequest(src, function(html) {
+                                var voeMatch = html.match(/["']hls["']\s*:\s*["']([^"']+)["']/i);
+                                if (voeMatch && voeMatch[1]) {
+                                    startPlayback([{ title: 'Voe (Auto)', url: voeMatch[1] }]);
+                                } else {
+                                    onError();
+                                }
+                            }, onError);
+                        } else {
+                            // Якщо з'являться інші плеєри, додамо логіку сюди
+                            onError();
+                        }
                     } else {
                         onError();
                     }
@@ -338,23 +348,22 @@ var css = '<style>\
                 getMenu: function(doc, htmlText, element) {
                     var menu = [];
                     
-                    var actors = doc.querySelectorAll('#video-actors a');
-                    for (var i = 0; i < actors.length; i++) {
-                        var aUrl = actors[i].getAttribute('href');
-                        if (aUrl && aUrl.indexOf('http') !== 0) aUrl = this.domain + aUrl;
-                        menu.push({ title: '👸 ' + actors[i].textContent.trim(), action: 'direct', url: aUrl, is_models: true });
+                    // Збираємо Моделі та Категорії з блоку .tools_cat
+                    var tags = doc.querySelectorAll('.tools_cat a');
+                    for (var i = 0; i < tags.length; i++) {
+                        var tUrl = tags[i].getAttribute('href');
+                        var tName = tags[i].textContent.trim();
+                        
+                        if (tUrl.indexOf('/tags1/') !== -1) {
+                            menu.push({ title: '👸 ' + tName, action: 'direct', url: tUrl, is_models: true });
+                        }
                     }
 
-                    var studio = doc.querySelector('#video-author a');
-                    if (studio) {
-                        var sUrl = studio.getAttribute('href');
-                        if (sUrl && sUrl.indexOf('http') !== 0) sUrl = this.domain + sUrl;
-                        menu.push({ title: '🎬 ' + studio.textContent.trim(), action: 'direct', url: sUrl, is_studios: true });
-                    }
+                    // Категорії додаємо випадаючим списком (cats_custom)
+                    menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: '.tools_cat a[href*="/category1/"]' });
 
-                    menu.push({ title: '🗄️ Категорії', action: 'cats_custom', sel: '.tags-list a' });
-
-                    var related = doc.querySelectorAll('.under-video-block article.loop-video');
+                    // Схожі відео
+                    var related = doc.querySelectorAll('#related_videos a.th');
                     if (related.length > 0) {
                         menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
                     }
@@ -362,213 +371,12 @@ var css = '<style>\
                     return menu;
                 }
             },
+            
 
 
-
-
-
-
-
-            // =========================================================================
-            // АДАПТЕР: 24VIDEOS
-            // =========================================================================
-            video24: {
-                title: '24Videos',
-                domain: 'https://lov.24videos.space',
-                
-                getHomeUrl: function() { return this.domain + '/videos/'; },
-                
-                getSearchUrl: function(query) { 
-                    return this.domain + '/search/?text=' + encodeURIComponent(query); 
-                },
-                
-                getUrl: function(object, page) {
-                    var url = object.url || (this.domain + '/videos/');
-                    if (page > 1) {
-                        var base = url.split('?')[0].replace(/\/page-\d+\/?$/, '').replace(/\/+$/, '');
-                        // Пагінація головної: /videos/ -> /page-2/
-                        if (base === this.domain || base.indexOf('/videos') !== -1) {
-                            return this.domain + '/page-' + page + '/';
-                        }
-                        return base + '/page-' + page + '/';
-                    }
-                    return url;
-                },
-
-                getFilters: function(doc, currentUrl) {
-                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
-                    
-                    if (currentUrl.indexOf('/search/') !== -1 || targetPath === '/porno' || currentUrl.indexOf('related') !== -1) return null;
-
-                    var filters = [];
-                    var basePath = currentUrl.split('?')[0]
-                        .replace(/\/page-\d+\/?$/, '')
-                        .replace(/\/most-popular\/?$/, '')
-                        .replace(/\/top-rated\/?$/, '')
-                        .replace(/\/+$/, '');
-
-                    // 1. Динамічне сортування для КАТЕГОРІЙ ТА МОДЕЛЕЙ (умовний шлях)
-                    if (targetPath.indexOf('/porno-') !== -1 || targetPath.indexOf('/pornstar/') !== -1) {
-                        var activeSubSort = 'Новые';
-                        if (currentUrl.indexOf('/most-popular/') !== -1) activeSubSort = 'Популярные';
-                        else if (currentUrl.indexOf('/top-rated/') !== -1) activeSubSort = 'Рейтинг';
-
-                        filters.push({
-                            subtitle: '↕️ ' + activeSubSort,
-                            items: [
-                                { title: 'Новые', url: basePath + '/' },
-                                { title: 'Популярные', url: basePath + '/most-popular/' },
-                                { title: 'Рейтинг', url: basePath + '/top-rated/' }
-                            ]
-                        });
-                    } 
-                    // 2. Глобальне сортування (Головна)
-                    else if (targetPath === '' || targetPath === '/videos' || currentUrl.indexOf('top-rated-porn') !== -1 || currentUrl.indexOf('most-popular-porn') !== -1) {
-                        var activeGlobalSort = 'Новое';
-                        if (currentUrl.indexOf('top-rated-porn') !== -1) activeGlobalSort = 'Лучшее';
-                        else if (currentUrl.indexOf('most-popular-porn') !== -1) activeGlobalSort = 'Популярное';
-
-                        filters.push({
-                            subtitle: '↕️ ' + activeGlobalSort,
-                            items: [
-                                { title: 'Новое', url: this.domain + '/videos/' },
-                                { title: 'Лучшее', url: this.domain + '/top-rated-porn/' },
-                                { title: 'Популярное', url: this.domain + '/most-popular-porn/' }
-                            ]
-                        });
-
-                        if (activeGlobalSort !== 'Новое') {
-                            var activePeriod = 'За неделю';
-                            if (currentUrl.indexOf('/month') !== -1) activePeriod = 'За месяц';
-                            else if (currentUrl.indexOf('/all-time') !== -1) activePeriod = 'За всё время';
-
-                            filters.push({
-                                subtitle: '🗓️ ' + activePeriod,
-                                items: [
-                                    { title: 'За неделю', url: basePath + '/' },
-                                    { title: 'За месяц', url: basePath + '/month/' },
-                                    { title: 'За всё время', url: basePath + '/all-time/' }
-                                ]
-                            });
-                        }
-                    }
-                    return filters;
-                },
-
-                getNavItems: function() {
-                    return [
-                        { title: '🗄️ Категории', action: 'nav', url: this.domain + '/porno/', is_categories: true }
-                    ];
-                },
-
-                parse: function(doc, currentUrl, object) {
-                    var results = [];
-                    var targetPath = currentUrl.replace(this.domain, '').split('?')[0].replace(/\/+$/, '');
-                    var isCatListPage = object.is_categories || targetPath === '/porno';
-
-                    var cleanCatName = function(str) {
-    if (!str) return "";
-    // Розбиваємо рядок на слова за пробілами
-    var parts = str.trim().split(/\s+/);
-    // Видаляємо перше слово (наше "Порно")
-    if (parts.length > 1) parts.shift();
-    
-    // Повертаємо решту, роблячи кожне слово з великої літери
-    return parts.map(function(w) {
-        return w.charAt(0).toUpperCase() + w.slice(1).toLowerCase();
-    }).join(' ');
-};
-
-                    if (isCatListPage) {
-                        var cats = doc.querySelectorAll('.categories-block');
-                        for (var i = 0; i < cats.length; i++) {
-                            var elC = cats[i], linkC = elC.querySelector('a.link'), titleC = elC.querySelector('.title'), countC = elC.querySelector('.videos .text');
-                            if (linkC && titleC) {
-                                var imgC = elC.querySelector('img'), imgSrcC = imgC ? imgC.getAttribute('src') : '';
-                                if (imgSrcC && imgSrcC.indexOf('//') === 0) imgSrcC = 'https:' + imgSrcC;
-                                results.push({
-    name: cleanCatName(titleC.textContent),
-    url: linkC.getAttribute('href'),
-    picture: imgSrcC, 
-    img: imgSrcC,
-    card_badge: countC ? '🎬 ' + countC.textContent.trim() : '',
-    is_grid: true
-});
-                            }
-                        }
-                    } else {
-                        // Тільки .video-block, щоб не було пустих карток
-                        var items = doc.querySelectorAll('.video-block');
-                        for (var j = 0; j < items.length; j++) {
-                            var elV = items[j], aV = elV.querySelector('a.link'), titleV = elV.querySelector('.title'), timeV = elV.querySelector('.duration');
-                            if (aV) {
-                                var urlV = aV.getAttribute('href');
-                                if (urlV && urlV.indexOf('http') !== 0) urlV = this.domain + (urlV.startsWith('/') ? '' : '/') + urlV;
-                                var imgEl = elV.querySelector('img.thumb'), imgSrcV = imgEl ? (imgEl.getAttribute('data-original') || imgEl.getAttribute('src')) : '';
-                                if (imgSrcV && imgSrcV.indexOf('//') === 0) imgSrcV = 'https:' + imgSrcV;
-
-                                var previewUrl = "";
-                                if (imgSrcV && imgSrcV.indexOf('.jpg') !== -1) {
-                                    previewUrl = imgSrcV.substring(0, imgSrcV.lastIndexOf('/')) + '/video.webm';
-                                }
-
-                                results.push({
-                                    name: titleV ? (titleV.textContent || '').trim() : (imgEl ? imgEl.getAttribute('alt') : ''),
-                                    url: urlV,
-                                    picture: imgSrcV, img: imgSrcV,
-                                    time: timeV ? (timeV.textContent || '').trim() : '',
-                                    preview: previewUrl,
-                                    // ПРАВИЛЬНА СІТКА: для відео завжди false, щоб був main-grid (16:9)
-                                    is_grid: false,
-                                    is_models: false
-                                });
-                            }
-                        }
-                    }
-                    return results;
-                },
-
-                getStreams: function(htmlText, doc, element, startPlayback, onError) {
-                    var fileMatch = htmlText.match(/file\s*:\s*["']([^"']+)["']/);
-                    if (fileMatch && fileMatch[1]) {
-                        var fileData = fileMatch[1].replace(/\\/g, ''), parts = fileData.split(','), qualities = [];
-                        for (var i = 0; i < parts.length; i++) {
-                            var m = parts[i].match(/\[(\d+p)\]\s*(https?:\/\/[^\s,]+)/);
-                            if (m) qualities.push({ title: m[1], url: m[2].trim() });
-                        }
-                        if (qualities.length > 0) {
-                            qualities.sort(function(a, b) { return parseInt(b.title) - parseInt(a.title); });
-                            startPlayback(qualities);
-                            return;
-                        }
-                    }
-                    onError();
-                },
-
-                getMenu: function(doc, htmlText, element) {
-                    var menu = [];
-                    var models = doc.querySelectorAll('.row.models a');
-                    for (var i = 0; i < models.length; i++) {
-                        var mName = (models[i].textContent || '').trim();
-                        var mUrl = models[i].getAttribute('href');
-                        if (mName && mUrl) {
-                            menu.push({ title: '👸 ' + mName, action: 'direct', url: mUrl.startsWith('http') ? mUrl : this.domain + mUrl });
-                        }
-                    }
-                    menu.push({ title: '🗄️ Категории', action: 'cats_custom', sel: '.row:not(.models) a.link' });
-                    menu.push({ title: '🔥 Схожі відео', action: 'sim', url: element.url });
-                    return menu;
-                }
-            },
-
-
-
-
-
-            // =========================================================================
-            // АДАПТЕР: ALLPORNSTREAM
-            // =========================================================================
-   
+      //      ======================================
+      // БЛОК ALLPORNSTREAM
+      //    ======================================
             allpornstream: {
                 title: 'AllPornStream',
                 domain: 'https://allpornstream.com',
@@ -1895,9 +1703,8 @@ time: timeText, url: href, picture: posterUrl, img: posterUrl });
                                         var streamUrl = jd.streaming_url + '|Referer=https://' + dynamicDomain + '/';
                                         var pData = { title: element.name, url: streamUrl };
                                         
-                                        // Для Porndish запускаємо напряму в обхід стандратної функції (як було раніше)
-                                        Lampa.Player.play(pData);
-                                        Lampa.Player.playlist([pData]);
+                                        // Передаємо у стандартний колбек для правильної роботи потоку Lampa
+                                        startPlayback([pData]);
                                     } else {
                                         Lampa.Noty.show('Помилка: Немає відео на ' + dynamicDomain);
                                         onError();
@@ -2274,11 +2081,22 @@ time: time, url: urlV, picture: imgV, img: imgV });
                 events.onEnter = function () {
                     window.pluginx_hidePreview();
                     var targetSite = currentSite;
-                    if (currentSite === 'bookmarks') {
-                        for (var siteKey in Adapters) { if (element.url.indexOf(Adapters[siteKey].domain) !== -1) { targetSite = siteKey; break; } }
-                        if (targetSite === 'bookmarks') targetSite = 'porno365';
-                    }
+                    // Перевіряємо, чи ми у віртуальній вкладці (Історія або Обране)
+if (currentSite === 'bookmarks' || currentSite === 'history') {
+    for (var siteKey in Adapters) { 
+        // Шукаємо, якому адаптеру належить домен відео
+        if (Adapters[siteKey].domain && element.url.indexOf(Adapters[siteKey].domain) !== -1) { 
+            targetSite = siteKey; 
+            break; 
+        } 
+    }
+    // Якщо не знайшли (наприклад, старе посилання), ставимо сайт за замовчуванням
+    if (targetSite === 'bookmarks' || targetSite === 'history') targetSite = 'porno365';
+}
+
                     if (element.is_grid) { Lampa.Activity.push({ url: element.url, title: element.name, component: 'pluginx_comp', site: targetSite, page: 1, is_models: false }); return; }
+                    
+                    window.pluginx_addToHistory(element);
                     
                     window.pluginx_smartRequest(element.url, function(htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html');
@@ -2304,10 +2122,19 @@ time: time, url: urlV, picture: imgV, img: imgV });
                     };
                     
                     var targetSite = currentSite;
-                    if (currentSite === 'bookmarks') {
-                        for (var siteKey in Adapters) { if (element.url.indexOf(Adapters[siteKey].domain) !== -1) { targetSite = siteKey; break; } }
-                        if (targetSite === 'bookmarks') targetSite = 'porno365';
-                    }
+                    // Перевіряємо, чи ми у віртуальній вкладці (Історія або Обране)
+if (currentSite === 'bookmarks' || currentSite === 'history') {
+    for (var siteKey in Adapters) { 
+        // Шукаємо, якому адаптеру належить домен відео
+        if (Adapters[siteKey].domain && element.url.indexOf(Adapters[siteKey].domain) !== -1) { 
+            targetSite = siteKey; 
+            break; 
+        } 
+    }
+    // Якщо не знайшли (наприклад, старе посилання), ставимо сайт за замовчуванням
+    if (targetSite === 'bookmarks' || targetSite === 'history') targetSite = 'porno365';
+}
+
                     
                     window.pluginx_smartRequest(element.url, function (htmlText) {
                         var doc = new DOMParser().parseFromString(htmlText, 'text/html'), menu = [];
@@ -2321,9 +2148,19 @@ time: time, url: urlV, picture: imgV, img: imgV });
                             var adapterActions = Adapters[targetSite].getMenu(doc, htmlText, element);
                             menu = menu.concat(adapterActions);
                         }
+
+                        if (currentSite === 'history') {
+                            menu.push({ title: '❌ Видалити з історії', action: 'remove_history' });
+                        }
                         
                         Lampa.Select.show({ title: 'Дії', items: menu, onSelect: function (a) { 
-                            if (a.action === 'bookmark') toggleBookmark(); 
+                            if (a.action === 'bookmark') { toggleBookmark(); 
+                                if (currentSite === 'bookmarks') Lampa.Activity.active().reload(); }
+                            else if (a.action === 'remove_history') {
+                                window.pluginx_removeFromHistory(element);
+                                Lampa.Activity.active().reload();
+                                Lampa.Controller.toggle('content');
+                            }                             
                             else if (a.action === 'play_lampa_internal') {
                                 window.pluginx_smartRequest(element.url, function(hText) {
                                     var d = new DOMParser().parseFromString(hText, 'text/html');
@@ -2389,10 +2226,34 @@ time: time, url: urlV, picture: imgV, img: imgV });
             if (menuList.length && menuList.find('[data-action="pluginx"]').length === 0) {
                 var item = $('<li class="menu__item selector" data-action="pluginx" id="menu_pluginx"><div class="menu__ico"><img src="https://bodya-elven.github.io/different/icons/pluginx.svg" width="24" height="24" style="filter: brightness(0) invert(1);" /></div><div class="menu__text">CatalogX</div></li>');
                 item.on('hover:enter', function () {
-                    var siteOptions = [];
-                    for (var key in Adapters) siteOptions.push({ title: Adapters[key].title, site: key });
-                    Lampa.Select.show({ title: 'CatalogX', items: siteOptions, onSelect: function(a) { Lampa.Activity.push({ title: a.title, component: 'pluginx_comp', site: a.site, page: 1 }); }, onBack: function() { Lampa.Controller.toggle('menu'); } });
+                    var siteOptions = [
+                        { title: '⭐ Обране', site: 'bookmarks' },
+                        { title: '🕒 Історія', site: 'history' },
+                        { title: '---', separator: true } // Візуальний розділювач
+                    ];
+                    
+                    for (var key in Adapters) {
+                        // Пропускаємо віртуальні, бо ми їх вже додали зверху вручну
+                        if (key === 'bookmarks' || key === 'history') continue;
+                        siteOptions.push({ title: Adapters[key].title, site: key });
+                    }
+
+                    window.Lampa.Select.show({ 
+                        title: 'CatalogX', 
+                        items: siteOptions, 
+                        onSelect: function(a) { 
+                            if (a.separator) return;
+                            window.Lampa.Activity.push({ 
+                                title: a.title, 
+                                component: 'pluginx_comp', 
+                                site: a.site, 
+                                page: 1 
+                            }); 
+                        }, 
+                        onBack: function() { window.Lampa.Controller.toggle('menu'); } 
+                    });
                 });
+
                 var settings = menuList.find('[data-action="settings"]'); if (settings.length) item.insertBefore(settings); else menuList.append(item);
             }
         }
