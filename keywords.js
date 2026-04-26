@@ -77,6 +77,9 @@
 
         this.translateTags = function (tags, callback) {
             var lang = Lampa.Storage.get('language', 'uk');
+            
+            tags.forEach(function(tag) { tag.orig_name = tag.name; });
+
             if (lang !== 'uk') return callback(tags);
 
             var tagsWithContext = tags.map(function(t) { return "Movie tag: " + t.name; });
@@ -107,6 +110,7 @@
                 error: function () { callback(tags); }
             });
         };
+
 
         this.activateButton = function (render, tags) {
             var btn = render.find('.button--keywords');
